@@ -9,8 +9,6 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: "file:./dev.db"
 
     steps:
       - name: Checkout
@@ -25,6 +23,8 @@ jobs:
         run: npm install
 
       - name: Generate Prisma client
+        env:
+          DATABASE_URL: "file:./dev.db"
         run: npm run db:generate
 
       - name: Lint
