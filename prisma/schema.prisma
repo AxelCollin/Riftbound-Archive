@@ -111,6 +111,10 @@ enum CardPriceType {
   LOW
   MID
   HIGH
+  TREND
+  AVERAGE_1_DAY
+  AVERAGE_7_DAY
+  AVERAGE_30_DAY
   CUSTOM
 }
 
