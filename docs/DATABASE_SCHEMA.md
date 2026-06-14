@@ -27,6 +27,20 @@ available = owned - binderReserved - assembledDeckAllocated
 
 Deck, booster, price, provider, and sync workflow tables are still future Phase 3 pull requests.
 
+## Phase 3C scope
+
+This schema increment adds only the deck persistence foundation:
+
+- `Deck` stores user-created deck metadata, including the deck name, optional description, current status, and allocation strategy.
+- `DeckCard` stores theoretical deck requirements: which official cards a deck wants, in what quantity, and which explicit variant preference applies.
+- `DeckCardAllocation` stores real allocated physical cards for assembled decks by card, variant, and quantity.
+
+`DeckCard.preferredVariant` uses the deck-specific `DeckCardVariantPreference` enum instead of nullable `CardVariant`. `ANY` means no specific physical variant is required for that deck requirement, while `NORMAL`, `FOIL`, and `SHOWCASE` require that variant. The field is non-null with a default of `ANY` so SQLite can enforce one requirement row per deck, card, and preference through the composite unique index. `CardVariant` remains reserved for real physical variants on owned collection entries and assembled deck allocations.
+
+Only allocations belonging to assembled decks should block global availability. Theoretical decks remain planning records and do not reduce availability.
+
+Missing-card calculation, deck assembly allocation, and deck disassembly flows remain future domain, service, and UI work. Booster, price, provider, and sync tables are still future Phase 3 pull requests.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
