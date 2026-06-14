@@ -17,9 +17,28 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Project setup phase.
+Initial Next.js foundation.
 
-See:
+## Local setup
+
+```bash
+npm install
+cp .env.example .env.local
+npm run db:generate
+npm run db:migrate
+npm run dev
+```
+
+## Validation
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+## Project documentation
 
 - `AGENTS.md`
 - `docs/PRODUCT_SPEC.md`
