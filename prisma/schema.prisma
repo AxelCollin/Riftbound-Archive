@@ -7,9 +7,77 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum CardRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  SECRET
+}
+
+enum CardKind {
+  GAMEPLAY
+  ENERGY
+  TOKEN
+  RULES
+}
+
+enum CardVariant {
+  NORMAL
+  FOIL
+  SHOWCASE
+}
+
 model AppSetting {
   key       String   @id
   jsonValue String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Set {
+  id         String    @id
+  code       String    @unique
+  name       String
+  releasedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  cards      Card[]
+}
+
+model Card {
+  id               String            @id
+  setId            String
+  set              Set               @relation(fields: [setId], references: [id])
+  collectorNumber  String?
+  name             String
+  rarity           CardRarity
+  kind             CardKind
+  hasShowcase      Boolean           @default(false)
+  officialImageUrl String?
+  officialArtist   String?
+  officialRawJson  Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  translations     CardTranslation[]
+
+  @@unique([setId, collectorNumber])
+  @@index([setId])
+}
+
+model CardTranslation {
+  id         String   @id @default(cuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id])
+  locale     String
+  name       String
+  subtitle   String?
+  rulesText  String?
+  flavorText String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([cardId, locale])
+  @@index([locale])
 }
