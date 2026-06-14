@@ -10,6 +10,23 @@ This schema foundation adds only the first official Riftbound card data tables:
 
 This PR intentionally does not add user collection, deck, booster, price, sync log, provider, or workflow tables. Those persistence concerns are planned for later Phase 3 pull requests so each schema change remains small and reviewable.
 
+## Phase 3B scope
+
+This schema increment adds only the first user collection persistence tables:
+
+- `CollectionEntry` stores the current owned quantity snapshot for one official card and one physical `CardVariant`.
+- `CollectionTransaction` stores append-only collection history entries so owned quantities can be audited and rebuilt later.
+- `CardUserMeta` stores user-specific card metadata such as favorites and personal notes.
+- `BinderOverride` stores optional user overrides for binder reservation behavior.
+
+Binder reservation and availability remain computed by domain logic rather than stored as database facts. Availability still uses the canonical formula:
+
+```text
+available = owned - binderReserved - assembledDeckAllocated
+```
+
+Deck, booster, price, provider, and sync workflow tables are still future Phase 3 pull requests.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.

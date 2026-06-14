@@ -35,7 +35,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 
 - [ ] Add Prisma schema.
 - [x] Add official data tables.
-- [ ] Add user collection tables.
+- [x] Add user collection tables.
 - [ ] Add deck tables.
 - [ ] Add booster tables.
 - [ ] Add price tables.
