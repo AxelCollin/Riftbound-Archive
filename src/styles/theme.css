@@ -1,0 +1,24 @@
+:root {
+  --bg-950: #05080e;
+  --bg-900: #08111b;
+  --bg-850: #0c1724;
+  --bg-800: #102033;
+  --gold-500: #c7a866;
+  --gold-300: #e6d0a0;
+  --azure-500: #3a7bd5;
+  --danger-500: #d94a4a;
+  --success-500: #79b85a;
+  --warning-500: #d9a441;
+  --text-100: #f3eedf;
+  --text-300: #c7c0af;
+  --text-500: #8f8878;
+  --radius-panel: 20px;
+  --radius-card: 14px;
+  --radius-chip: 999px;
+  --border-gold: 1px solid rgba(199, 168, 102, 0.42);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.45);
+  --ui-scale: clamp(0.78, 100vw / 3840, 1);
+  --sidebar-w: clamp(264px, 16vw, 320px);
+  --inspector-w: clamp(380px, 22vw, 520px);
+  --content-max: min(3600px, calc(100vw - 48px));
+}
