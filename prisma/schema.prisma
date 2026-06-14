@@ -375,7 +375,7 @@ model PriceMapping {
   cardId               String
   card                 Card               @relation(fields: [cardId], references: [id])
   variant              CardVariant
-  externalId           String
+  externalId           String?
   externalVariantId    String             @default("DEFAULT")
   externalVariantLabel String?
   status               PriceMappingStatus @default(CONFIRMED)

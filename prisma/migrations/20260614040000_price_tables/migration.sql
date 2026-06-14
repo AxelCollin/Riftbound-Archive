@@ -17,7 +17,7 @@ CREATE TABLE "PriceMapping" (
     "providerId" TEXT NOT NULL,
     "cardId" TEXT NOT NULL,
     "variant" TEXT NOT NULL,
-    "externalId" TEXT NOT NULL,
+    "externalId" TEXT,
     "externalVariantId" TEXT NOT NULL DEFAULT 'DEFAULT',
     "externalVariantLabel" TEXT,
     "status" TEXT NOT NULL DEFAULT 'CONFIRMED',
