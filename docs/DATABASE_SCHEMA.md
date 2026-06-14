@@ -41,6 +41,19 @@ Only allocations belonging to assembled decks should block global availability. 
 
 Missing-card calculation, deck assembly allocation, and deck disassembly flows remain future domain, service, and UI work. Booster, price, provider, and sync tables are still future Phase 3 pull requests.
 
+## Phase 3D scope
+
+This schema increment adds only the booster persistence foundation:
+
+- `BoosterSettings` stores user-configurable booster accrual settings, including the number of boosters per interval, interval length and unit, accrual anchor, and default opening decrement behavior.
+- `BoosterCounterEvent` stores signed booster counter ledger events. Positive `quantityDelta` values add boosters and negative values remove boosters; opening decrement events may optionally link back to a recorded opening.
+- `BoosterOpening` stores recorded booster opening sessions, including when the session was opened, how many boosters it represented, whether the counter should be decremented, status, and notes.
+- `BoosterOpeningCard` stores pulled cards as aggregated quantities per opening, official card, and physical `CardVariant`.
+
+The current booster count is intentionally not stored directly. It will be computed later from booster settings and counter events.
+
+Automatic collection transactions, post-opening summaries, accumulated counter calculation, and rollback flows remain future service, domain, and UI work. Price, provider, and sync tables are also still future Phase 3 pull requests.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.

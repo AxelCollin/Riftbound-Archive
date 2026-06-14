@@ -68,6 +68,24 @@ enum DeckCardVariantPreference {
   SHOWCASE
 }
 
+enum BoosterIntervalUnit {
+  DAY
+  WEEK
+  MONTH
+}
+
+enum BoosterCounterEventType {
+  ACCRUAL
+  MANUAL_ADJUSTMENT
+  OPENING_DECREMENT
+  ROLLBACK
+}
+
+enum BoosterOpeningStatus {
+  RECORDED
+  ROLLED_BACK
+}
+
 model AppSetting {
   key       String   @id
   jsonValue String
@@ -109,6 +127,7 @@ model Card {
   binderOverride         BinderOverride?
   deckCards              DeckCard[]
   deckCardAllocations    DeckCardAllocation[]
+  boosterOpeningCards    BoosterOpeningCard[]
 
   @@unique([setId, collectorNumber])
   @@index([setId])
@@ -229,6 +248,68 @@ model DeckCardAllocation {
 
   @@unique([deckId, cardId, variant])
   @@index([deckId])
+  @@index([cardId])
+  @@index([variant])
+}
+
+model BoosterSettings {
+  id                     String              @id @default(cuid())
+  boostersPerInterval    Int                 @default(1)
+  intervalCount          Int                 @default(1)
+  intervalUnit           BoosterIntervalUnit @default(DAY)
+  accrualAnchorAt        DateTime
+  autoDecrementOnOpening Boolean             @default(true)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  @@index([intervalUnit])
+}
+
+model BoosterCounterEvent {
+  id               String                  @id @default(cuid())
+  type             BoosterCounterEventType
+  quantityDelta    Int
+  occurredAt       DateTime                @default(now())
+  note             String?
+  boosterOpeningId String?
+  boosterOpening   BoosterOpening?         @relation(fields: [boosterOpeningId], references: [id], onDelete: SetNull)
+  createdAt        DateTime                @default(now())
+
+  @@index([type])
+  @@index([occurredAt])
+  @@index([boosterOpeningId])
+}
+
+model BoosterOpening {
+  id               String                @id @default(cuid())
+  openedAt         DateTime              @default(now())
+  boosterCount     Int                   @default(1)
+  decrementCounter Boolean               @default(true)
+  status           BoosterOpeningStatus  @default(RECORDED)
+  note             String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  cards            BoosterOpeningCard[]
+  counterEvents    BoosterCounterEvent[]
+
+  @@index([openedAt])
+  @@index([status])
+  @@index([decrementCounter])
+}
+
+model BoosterOpeningCard {
+  id               String         @id @default(cuid())
+  boosterOpeningId String
+  boosterOpening   BoosterOpening @relation(fields: [boosterOpeningId], references: [id], onDelete: Cascade)
+  cardId           String
+  card             Card           @relation(fields: [cardId], references: [id])
+  variant          CardVariant
+  quantity         Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([boosterOpeningId, cardId, variant])
+  @@index([boosterOpeningId])
   @@index([cardId])
   @@index([variant])
 }
