@@ -99,6 +99,13 @@ enum PriceProviderStatus {
   DISABLED
 }
 
+enum PriceMappingStatus {
+  CONFIRMED
+  CANDIDATE
+  UNRESOLVED
+  REJECTED
+}
+
 enum CardPriceType {
   MARKET
   LOW
@@ -358,24 +365,29 @@ model PriceProvider {
 }
 
 model PriceMapping {
-  id                   String        @id @default(cuid())
+  id                   String             @id @default(cuid())
   providerId           String
-  provider             PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider             PriceProvider      @relation(fields: [providerId], references: [id], onDelete: Cascade)
   cardId               String
-  card                 Card          @relation(fields: [cardId], references: [id])
+  card                 Card               @relation(fields: [cardId], references: [id])
   variant              CardVariant
   externalId           String
-  externalVariantId    String        @default("DEFAULT")
+  externalVariantId    String             @default("DEFAULT")
   externalVariantLabel String?
+  status               PriceMappingStatus @default(CONFIRMED)
+  confidence           Int?
+  matchSource          String?
   externalUrl          String?
   rawJson              Json?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@unique([providerId, cardId, variant])
   @@unique([providerId, externalId, externalVariantId])
   @@index([cardId])
   @@index([variant])
+  @@index([status])
+  @@index([confidence])
   @@index([externalVariantId])
 }
 
