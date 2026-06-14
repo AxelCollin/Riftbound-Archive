@@ -18,6 +18,8 @@ CREATE TABLE "PriceMapping" (
     "cardId" TEXT NOT NULL,
     "variant" TEXT NOT NULL,
     "externalId" TEXT NOT NULL,
+    "externalVariantId" TEXT NOT NULL DEFAULT 'DEFAULT',
+    "externalVariantLabel" TEXT,
     "externalUrl" TEXT,
     "rawJson" JSONB,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -78,7 +80,10 @@ CREATE INDEX "PriceMapping_variant_idx" ON "PriceMapping"("variant");
 CREATE UNIQUE INDEX "PriceMapping_providerId_cardId_variant_key" ON "PriceMapping"("providerId", "cardId", "variant");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PriceMapping_providerId_externalId_key" ON "PriceMapping"("providerId", "externalId");
+CREATE INDEX "PriceMapping_externalVariantId_idx" ON "PriceMapping"("externalVariantId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PriceMapping_providerId_externalId_externalVariantId_key" ON "PriceMapping"("providerId", "externalId", "externalVariantId");
 
 -- CreateIndex
 CREATE INDEX "CardPrice_providerId_idx" ON "CardPrice"("providerId");

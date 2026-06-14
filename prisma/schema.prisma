@@ -358,22 +358,25 @@ model PriceProvider {
 }
 
 model PriceMapping {
-  id          String        @id @default(cuid())
-  providerId  String
-  provider    PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  cardId      String
-  card        Card          @relation(fields: [cardId], references: [id])
-  variant     CardVariant
-  externalId  String
-  externalUrl String?
-  rawJson     Json?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                   String        @id @default(cuid())
+  providerId           String
+  provider             PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  cardId               String
+  card                 Card          @relation(fields: [cardId], references: [id])
+  variant              CardVariant
+  externalId           String
+  externalVariantId    String        @default("DEFAULT")
+  externalVariantLabel String?
+  externalUrl          String?
+  rawJson              Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   @@unique([providerId, cardId, variant])
-  @@unique([providerId, externalId])
+  @@unique([providerId, externalId, externalVariantId])
   @@index([cardId])
   @@index([variant])
+  @@index([externalVariantId])
 }
 
 model CardPrice {
