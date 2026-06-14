@@ -12,8 +12,8 @@ enum CardRarity {
   UNCOMMON
   RARE
   EPIC
-  LEGENDARY
-  SECRET
+  ULTIMATE
+  UNKNOWN
 }
 
 enum CardKind {
@@ -27,6 +27,13 @@ enum CardVariant {
   NORMAL
   FOIL
   SHOWCASE
+}
+
+enum CardPrintTreatment {
+  REGULAR
+  ALT
+  OVERNUMBER
+  UNKNOWN
 }
 
 model AppSetting {
@@ -47,20 +54,23 @@ model Set {
 }
 
 model Card {
-  id               String            @id
-  setId            String
-  set              Set               @relation(fields: [setId], references: [id])
-  collectorNumber  String?
-  name             String
-  rarity           CardRarity
-  kind             CardKind
-  hasShowcase      Boolean           @default(false)
-  officialImageUrl String?
-  officialArtist   String?
-  officialRawJson  Json?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  translations     CardTranslation[]
+  id                String             @id
+  setId             String
+  set               Set                @relation(fields: [setId], references: [id])
+  collectorNumber   String?
+  name              String
+  rarity            CardRarity         @default(UNKNOWN)
+  officialRarityRaw String?
+  kind              CardKind
+  printTreatment    CardPrintTreatment @default(REGULAR)
+  printTreatmentRaw String?
+  hasShowcase       Boolean            @default(false)
+  officialImageUrl  String?
+  officialArtist    String?
+  officialRawJson   Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  translations      CardTranslation[]
 
   @@unique([setId, collectorNumber])
   @@index([setId])
