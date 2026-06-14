@@ -15,7 +15,7 @@ CREATE TABLE "DeckCard" (
     "deckId" TEXT NOT NULL,
     "cardId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "preferredVariant" TEXT,
+    "preferredVariant" TEXT NOT NULL DEFAULT 'ANY',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
     CONSTRAINT "DeckCard_deckId_fkey" FOREIGN KEY ("deckId") REFERENCES "Deck" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
