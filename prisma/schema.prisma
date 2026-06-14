@@ -86,6 +86,27 @@ enum BoosterOpeningStatus {
   ROLLED_BACK
 }
 
+enum PriceProviderKind {
+  MANUAL
+  TCGCSV
+  JUSTTCG
+  CARDMARKET
+  OTHER
+}
+
+enum PriceProviderStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum CardPriceType {
+  MARKET
+  LOW
+  MID
+  HIGH
+  CUSTOM
+}
+
 model AppSetting {
   key       String   @id
   jsonValue String
@@ -128,6 +149,9 @@ model Card {
   deckCards              DeckCard[]
   deckCardAllocations    DeckCardAllocation[]
   boosterOpeningCards    BoosterOpeningCard[]
+  priceMappings          PriceMapping[]
+  cardPrices             CardPrice[]
+  manualPriceOverrides   ManualPriceOverride[]
 
   @@unique([setId, collectorNumber])
   @@index([setId])
@@ -312,4 +336,82 @@ model BoosterOpeningCard {
   @@index([boosterOpeningId])
   @@index([cardId])
   @@index([variant])
+}
+
+model PriceProvider {
+  id         String              @id @default(cuid())
+  kind       PriceProviderKind
+  name       String
+  status     PriceProviderStatus @default(ACTIVE)
+  priority   Int                 @default(100)
+  baseUrl    String?
+  configJson Json?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  mappings   PriceMapping[]
+  prices     CardPrice[]
+
+  @@unique([kind, name])
+  @@index([kind])
+  @@index([status])
+  @@index([priority])
+}
+
+model PriceMapping {
+  id          String        @id @default(cuid())
+  providerId  String
+  provider    PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  cardId      String
+  card        Card          @relation(fields: [cardId], references: [id])
+  variant     CardVariant
+  externalId  String
+  externalUrl String?
+  rawJson     Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@unique([providerId, cardId, variant])
+  @@unique([providerId, externalId])
+  @@index([cardId])
+  @@index([variant])
+}
+
+model CardPrice {
+  id          String        @id @default(cuid())
+  providerId  String
+  provider    PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  cardId      String
+  card        Card          @relation(fields: [cardId], references: [id])
+  variant     CardVariant
+  type        CardPriceType @default(MARKET)
+  amountMinor Int
+  currency    String        @default("EUR")
+  fetchedAt   DateTime      @default(now())
+  sourceUrl   String?
+  rawJson     Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([providerId])
+  @@index([cardId])
+  @@index([variant])
+  @@index([type])
+  @@index([currency])
+  @@index([fetchedAt])
+}
+
+model ManualPriceOverride {
+  id          String      @id @default(cuid())
+  cardId      String
+  card        Card        @relation(fields: [cardId], references: [id])
+  variant     CardVariant
+  amountMinor Int
+  currency    String      @default("EUR")
+  note        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([cardId, variant, currency])
+  @@index([cardId])
+  @@index([variant])
+  @@index([currency])
 }

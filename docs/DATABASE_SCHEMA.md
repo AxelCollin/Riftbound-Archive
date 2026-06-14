@@ -54,6 +54,19 @@ The current booster count is intentionally not stored directly. It will be compu
 
 Automatic collection transactions, post-opening summaries, accumulated counter calculation, and rollback flows remain future service, domain, and UI work. Price, provider, and sync tables are also still future Phase 3 pull requests.
 
+## Phase 3E scope
+
+This schema increment adds only the price persistence foundation:
+
+- `PriceProvider` stores interchangeable price provider definitions, status, priority, base URL, and non-secret configuration metadata. API keys and secrets must remain environment variables and must not be stored in this table.
+- `PriceMapping` maps one local official card plus one physical `CardVariant` to a provider-specific product or listing identifier. The variant is required so provider normalization happens in provider logic rather than by storing imprecise mappings.
+- `CardPrice` stores provider price snapshots for a local card and physical variant. Multiple snapshots are allowed; later service/query logic will decide which latest provider price to use.
+- `ManualPriceOverride` stores user-defined prices per card, physical variant, and currency. Manual overrides are independent from external providers and must win over provider prices later in service/domain logic.
+
+Money amounts use `amountMinor` in minor currency units, such as cents for EUR.
+
+This PR intentionally does not add value calculations, market pages, price provider synchronization, external API calls, collection value display, deck value display, missing deck value calculation, or booster opening value calculation. Those remain future service, domain, and UI work. Sync logs and price sync settings are also still a future Phase 3 pull request.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
