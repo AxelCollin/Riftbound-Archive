@@ -23,12 +23,8 @@ describe("variant rules", () => {
     expect(supportsNormalVariant({ ...gameplayCard, rarity: "RARE" })).toBe(false);
   });
 
-  it("tracks showcase variants separately when present", () => {
-    expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", hasShowcase: true })).toEqual([
-      "FOIL",
-      "SHOWCASE",
-      "SHOWCASE_FOIL",
-    ]);
+  it("tracks one showcase variant separately from regular foil when present", () => {
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", hasShowcase: true })).toEqual(["FOIL", "SHOWCASE"]);
   });
 
   it("returns no variants for ignored tokens and rules cards", () => {

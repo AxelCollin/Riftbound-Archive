@@ -1,7 +1,7 @@
 import type { CardRarity, RiftboundCard } from "./cards";
 import { isTrackableCard } from "./cards";
 
-export const CARD_VARIANTS = ["NORMAL", "FOIL", "SHOWCASE", "SHOWCASE_FOIL"] as const;
+export const CARD_VARIANTS = ["NORMAL", "FOIL", "SHOWCASE"] as const;
 export type CardVariant = (typeof CARD_VARIANTS)[number];
 
 export type VariantCounts = Partial<Record<CardVariant, number>>;
@@ -13,7 +13,7 @@ export function supportsNormalVariant(card: Pick<RiftboundCard, "rarity" | "kind
 }
 
 export function isShowcaseVariant(variant: CardVariant): boolean {
-  return variant === "SHOWCASE" || variant === "SHOWCASE_FOIL";
+  return variant === "SHOWCASE";
 }
 
 export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" | "hasShowcase">): CardVariant[] {
@@ -24,7 +24,7 @@ export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" |
   const variants: CardVariant[] = supportsNormalVariant(card) ? ["NORMAL", "FOIL"] : ["FOIL"];
 
   if (card.hasShowcase) {
-    variants.push("SHOWCASE", "SHOWCASE_FOIL");
+    variants.push("SHOWCASE");
   }
 
   return variants;

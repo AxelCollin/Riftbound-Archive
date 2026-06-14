@@ -36,14 +36,14 @@ It must return `false` for tokens and rules cards, and `true` for Energy cards.
 Supported variants for the MVP:
 
 ```ts
-type CardVariant = "NORMAL" | "FOIL" | "SHOWCASE" | "SHOWCASE_FOIL";
+type CardVariant = "NORMAL" | "FOIL" | "SHOWCASE";
 ```
 
 Rules:
 
 - Common and Uncommon cards support normal and foil variants.
 - All other rarities are considered foil-only by default.
-- Showcase variants are tracked separately if present.
+- A single Showcase variant is tracked separately from regular Foil if present.
 - Showcase cards are never automatically reserved for the binder.
 - Variant support must remain extensible because providers may expose more precise variants later.
 
