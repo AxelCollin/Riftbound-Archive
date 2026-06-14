@@ -2,7 +2,7 @@ import type { RiftboundCard } from "./cards";
 import { isTrackableCard } from "./cards";
 import { getBinderReservation } from "./binder";
 import type { CardVariant, VariantCounts } from "./variants";
-import { CARD_VARIANTS, getVariantCount } from "./variants";
+import { getAllowedVariants, getVariantCount } from "./variants";
 
 export interface DeckVariantAllocation {
   cardId: string;
@@ -37,7 +37,7 @@ export function getAssembledDeckAllocatedCount(
 }
 
 export function getCardAvailability(
-  card: Pick<RiftboundCard, "id" | "kind" | "rarity">,
+  card: Pick<RiftboundCard, "id" | "kind" | "rarity" | "hasShowcase">,
   owned: VariantCounts,
   deckAllocationSets: DeckAllocationSet[] = [],
   binderReserved: VariantCounts = getBinderReservation(card, owned).reserved,
@@ -48,7 +48,7 @@ export function getCardAvailability(
     return { cardId: card.id, available };
   }
 
-  for (const variant of CARD_VARIANTS) {
+  for (const variant of getAllowedVariants(card)) {
     const count = getAvailableCount(
       getVariantCount(owned, variant),
       getVariantCount(binderReserved, variant),

@@ -56,8 +56,15 @@ describe("availability rules", () => {
     expect(getCardAvailability({ ...card, kind: "RULES", rarity: "COMMON" }, { FOIL: 2 }).available).toEqual({});
   });
 
-  it("keeps showcase availability separate from binder-reserved regular foils", () => {
-    expect(getCardAvailability({ ...card, rarity: "RARE" }, { FOIL: 1, SHOWCASE: 1 }).available).toEqual({
+  it("ignores owned counts for variants unsupported by the card", () => {
+    expect(getCardAvailability({ ...card, rarity: "RARE" }, { NORMAL: 2, FOIL: 2 }).available).toEqual({
+      FOIL: 1,
+    });
+  });
+
+  it("only reports showcase availability when the card has a showcase variant", () => {
+    expect(getCardAvailability({ ...card, rarity: "RARE" }, { FOIL: 1, SHOWCASE: 1 }).available).toEqual({});
+    expect(getCardAvailability({ ...card, rarity: "RARE", hasShowcase: true }, { FOIL: 1, SHOWCASE: 1 }).available).toEqual({
       SHOWCASE: 1,
     });
   });
