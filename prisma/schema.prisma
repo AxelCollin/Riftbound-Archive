@@ -49,6 +49,18 @@ enum BinderOverrideMode {
   FORCE_VARIANT
 }
 
+enum DeckStatus {
+  THEORETICAL
+  ASSEMBLED
+  ARCHIVED
+}
+
+enum DeckAllocationStrategy {
+  PRESERVE_PREMIUM_VARIANTS
+  EXACT_VARIANT
+  ANY_VARIANT
+}
+
 model AppSetting {
   key       String   @id
   jsonValue String
@@ -88,6 +100,8 @@ model Card {
   collectionTransactions CollectionTransaction[]
   userMeta               CardUserMeta?
   binderOverride         BinderOverride?
+  deckCards              DeckCard[]
+  deckCardAllocations    DeckCardAllocation[]
 
   @@unique([setId, collectorNumber])
   @@index([setId])
@@ -160,4 +174,54 @@ model BinderOverride {
   updatedAt DateTime           @updatedAt
 
   @@index([mode])
+}
+
+model Deck {
+  id                 String                 @id @default(cuid())
+  name               String
+  status             DeckStatus             @default(THEORETICAL)
+  description        String?
+  allocationStrategy DeckAllocationStrategy @default(PRESERVE_PREMIUM_VARIANTS)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  deckCards          DeckCard[]
+  allocations        DeckCardAllocation[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model DeckCard {
+  id               String       @id @default(cuid())
+  deckId           String
+  deck             Deck         @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  cardId           String
+  card             Card         @relation(fields: [cardId], references: [id])
+  quantity         Int
+  preferredVariant CardVariant?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([deckId, cardId, preferredVariant])
+  @@index([deckId])
+  @@index([cardId])
+  @@index([preferredVariant])
+}
+
+model DeckCardAllocation {
+  id        String      @id @default(cuid())
+  deckId    String
+  deck      Deck        @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card        @relation(fields: [cardId], references: [id])
+  variant   CardVariant
+  quantity  Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([deckId, cardId, variant])
+  @@index([deckId])
+  @@index([cardId])
+  @@index([variant])
 }
