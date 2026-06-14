@@ -2,101 +2,103 @@
 
 The project must progress through small, reviewable pull requests.
 
+Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when that keeps reviews focused.
+
 ## Phase 0 - Governance
 
-- Add project documentation.
-- Add `AGENTS.md`.
-- Add Codex contribution guidelines.
-- Define roadmap and domain rules.
+- [x] Add project documentation.
+- [x] Add `AGENTS.md`.
+- [x] Add Codex contribution guidelines.
+- [x] Define roadmap and domain rules.
 
 ## Phase 1 - Project foundation
 
-- Initialize Next.js App Router project.
-- Add TypeScript configuration.
-- Add Tailwind.
-- Add Prisma and SQLite.
-- Add Zod.
-- Add Vitest.
-- Add CI for lint, typecheck, test, and build.
-- Add `.env.example`.
+- [x] Initialize Next.js App Router project.
+- [x] Add TypeScript configuration.
+- [x] Add Tailwind.
+- [x] Add Prisma and SQLite.
+- [x] Add Zod.
+- [x] Add Vitest.
+- [x] Add CI for lint, typecheck, test, and build.
+- [x] Add `.env.example`.
 
 ## Phase 2 - Domain model and tests
 
-- Implement card model types.
-- Implement variant rules.
-- Implement trackable-card logic.
-- Implement binder reservation logic.
-- Implement availability calculation.
-- Add Vitest coverage for all core rules.
+- [x] Implement card model types.
+- [x] Implement variant rules.
+- [x] Implement trackable-card logic.
+- [x] Implement binder reservation logic.
+- [x] Implement availability calculation.
+- [x] Add Vitest coverage for all core rules.
 
 ## Phase 3 - Database schema
 
-- Add Prisma schema.
-- Add official data tables.
-- Add user collection tables.
-- Add deck tables.
-- Add booster tables.
-- Add price tables.
-- Add sync logs and settings.
+- [ ] Add Prisma schema.
+- [x] Add official data tables.
+- [ ] Add user collection tables.
+- [ ] Add deck tables.
+- [ ] Add booster tables.
+- [ ] Add price tables.
+- [ ] Add sync logs and settings.
 
 ## Phase 4 - Collection MVP
 
-- Add manual card seed/mock data support.
-- Add collection transactions.
-- Add collection entry snapshots.
-- Add collection page.
-- Add filters and search MVP.
-- Add card detail page.
+- [ ] Add manual card seed/mock data support.
+- [ ] Add collection transactions.
+- [ ] Add collection entry snapshots.
+- [ ] Add collection page.
+- [ ] Add filters and search MVP.
+- [ ] Add card detail page.
 
 ## Phase 5 - Binder and availability UI
 
-- Add binder reservation calculation to queries.
-- Add owned versus available toggle.
-- Add binder page.
-- Add availability explanation page.
+- [ ] Add binder reservation calculation to queries.
+- [ ] Add owned versus available toggle.
+- [ ] Add binder page.
+- [ ] Add availability explanation page.
 
 ## Phase 6 - Deckbuilding MVP
 
-- Add deck CRUD.
-- Add deck card requirements.
-- Add missing-card calculation.
-- Add assembled deck allocation.
-- Add disassemble flow.
-- Add deckbuilder UI.
+- [ ] Add deck CRUD.
+- [ ] Add deck card requirements.
+- [ ] Add missing-card calculation.
+- [ ] Add assembled deck allocation.
+- [ ] Add disassemble flow.
+- [ ] Add deckbuilder UI.
 
 ## Phase 7 - Booster opening
 
-- Add booster counter settings.
-- Add accumulated counter calculation.
-- Add booster opening entry flow.
-- Add automatic collection transactions.
-- Add post-opening summary.
-- Add rollback where safe.
+- [ ] Add booster counter settings.
+- [ ] Add accumulated counter calculation.
+- [ ] Add booster opening entry flow.
+- [ ] Add automatic collection transactions.
+- [ ] Add post-opening summary.
+- [ ] Add rollback where safe.
 
 ## Phase 8 - Pricing MVP
 
-- Add manual price overrides.
-- Add value calculations.
-- Add price display in collection and decks.
-- Add market page.
-- Add TCGCSV provider if practical.
-- Add JustTCG runtime capability check later.
+- [ ] Add manual price overrides.
+- [ ] Add value calculations.
+- [ ] Add price display in collection and decks.
+- [ ] Add market page.
+- [ ] Add TCGCSV provider if practical.
+- [ ] Add JustTCG runtime capability check later.
 
 ## Phase 9 - Riot sync
 
-- Add Riot provider behind feature flag.
-- Add locale fallback chain.
-- Store raw JSON.
-- Add sync logs.
-- Replace mock data with Riot data when available.
+- [ ] Add Riot provider behind feature flag.
+- [ ] Add locale fallback chain.
+- [ ] Store raw JSON.
+- [ ] Add sync logs.
+- [ ] Replace mock data with Riot data when available.
 
 ## Phase 10 - Premium 4K UI polish
 
-- Add final shell layout.
-- Add original UI assets.
-- Add dashboard data density.
-- Add responsive 1080p adaptation.
-- Add visual QA pass.
+- [ ] Add final shell layout.
+- [ ] Add original UI assets.
+- [ ] Add dashboard data density.
+- [ ] Add responsive 1080p adaptation.
+- [ ] Add visual QA pass.
 
 ## Merge policy
 
