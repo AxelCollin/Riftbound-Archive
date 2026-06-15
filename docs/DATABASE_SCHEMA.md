@@ -65,7 +65,18 @@ This schema increment adds only the price persistence foundation:
 
 Money amounts use `amountMinor` in minor currency units, such as cents for EUR.
 
-This PR intentionally does not add value calculations, market pages, price provider synchronization, external API calls, collection value display, deck value display, missing deck value calculation, or booster opening value calculation. Those remain future service, domain, and UI work. Sync logs and price sync settings are also still a future Phase 3 pull request.
+This PR intentionally does not add value calculations, market pages, price provider synchronization, external API calls, collection value display, deck value display, missing deck value calculation, or booster opening value calculation. Those remain future service, domain, and UI work.
+
+## Phase 3F scope
+
+This schema increment adds only the sync persistence foundation:
+
+- `SyncSetting` stores queryable, non-secret sync configuration for one `SyncTarget` and provider key, such as `riot`, `tcgcsv`, `justtcg`, or `cardmarket`. Settings default to `enabled = false`, so the app remains usable when every sync setting is disabled or provider credentials are unavailable. `localeChain` supports a future Riot official-data fallback chain, and `configJson` is reserved for non-secret provider configuration only. API keys, tokens, and credentials must stay in environment variables and must not be stored in this table.
+- `SyncLog` stores append-only sync attempt results for later debugging and UI history. It records the sync target, provider key, status, optional trigger, timestamps, optional summary message, non-secret error details, item counts, and optional non-secret raw result metadata.
+
+`OFFICIAL_DATA` is intended for future Riot card, set, asset, and localized metadata synchronization. `PRICE_DATA` is intended for future interchangeable price provider synchronization.
+
+This PR intentionally does not add actual sync execution, scheduling, provider clients, Riot API calls, price provider API calls, conflict handling, import logic, API routes, or UI. Those remain future service, domain, and UI work.
 
 ## Official data and local state
 
