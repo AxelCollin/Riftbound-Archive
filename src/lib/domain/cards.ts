@@ -1,4 +1,4 @@
-export const CARD_RARITIES = ["COMMON", "UNCOMMON", "RARE", "EPIC", "LEGENDARY", "SECRET"] as const;
+export const CARD_RARITIES = ["COMMON", "UNCOMMON", "RARE", "EPIC", "ULTIMATE", "UNKNOWN"] as const;
 export type CardRarity = (typeof CARD_RARITIES)[number];
 
 export const CARD_KINDS = ["GAMEPLAY", "ENERGY", "TOKEN", "RULES"] as const;

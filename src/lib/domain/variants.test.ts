@@ -19,8 +19,11 @@ describe("variant rules", () => {
   it("treats other rarities as foil-only by default", () => {
     expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE" })).toEqual(["FOIL"]);
     expect(getAllowedVariants({ ...gameplayCard, rarity: "EPIC" })).toEqual(["FOIL"]);
-    expect(getAllowedVariants({ ...gameplayCard, rarity: "LEGENDARY" })).toEqual(["FOIL"]);
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "ULTIMATE" })).toEqual(["FOIL"]);
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "UNKNOWN" })).toEqual(["FOIL"]);
     expect(supportsNormalVariant({ ...gameplayCard, rarity: "RARE" })).toBe(false);
+    expect(supportsNormalVariant({ ...gameplayCard, rarity: "ULTIMATE" })).toBe(false);
+    expect(supportsNormalVariant({ ...gameplayCard, rarity: "UNKNOWN" })).toBe(false);
   });
 
   it("tracks one showcase variant separately from regular foil when present", () => {
