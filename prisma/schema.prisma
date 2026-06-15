@@ -118,6 +118,26 @@ enum CardPriceType {
   CUSTOM
 }
 
+enum SyncTarget {
+  OFFICIAL_DATA
+  PRICE_DATA
+}
+
+enum SyncStatus {
+  STARTED
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum SyncTrigger {
+  MANUAL
+  SCHEDULED
+  STARTUP
+  SYSTEM
+}
+
 model AppSetting {
   key       String   @id
   jsonValue String
@@ -433,4 +453,53 @@ model ManualPriceOverride {
   @@index([cardId])
   @@index([variant])
   @@index([currency])
+}
+
+model SyncSetting {
+  id              String      @id @default(cuid())
+  target          SyncTarget
+  providerKey     String
+  enabled         Boolean     @default(false)
+  intervalMinutes Int?
+  localeChain     String?
+  configJson      Json?
+  lastRunAt       DateTime?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  lastStatus      SyncStatus?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([target, providerKey])
+  @@index([target])
+  @@index([providerKey])
+  @@index([enabled])
+  @@index([lastRunAt])
+  @@index([lastStatus])
+}
+
+model SyncLog {
+  id           String       @id @default(cuid())
+  target       SyncTarget
+  providerKey  String
+  status       SyncStatus
+  trigger      SyncTrigger?
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+  message      String?
+  errorCode    String?
+  errorMessage String?
+  itemsScanned Int?
+  itemsCreated Int?
+  itemsUpdated Int?
+  itemsSkipped Int?
+  rawJson      Json?
+  createdAt    DateTime     @default(now())
+
+  @@index([target])
+  @@index([providerKey])
+  @@index([status])
+  @@index([trigger])
+  @@index([startedAt])
+  @@index([completedAt])
 }
