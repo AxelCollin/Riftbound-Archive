@@ -78,6 +78,10 @@ This schema increment adds only the sync persistence foundation:
 
 This PR intentionally does not add actual sync execution, scheduling, provider clients, Riot API calls, price provider API calls, conflict handling, import logic, API routes, or UI. Those remain future service, domain, and UI work.
 
+## Phase 3 completion
+
+Phase 3A through Phase 3F now provide the Prisma schema foundation for official data, user collection state, decks, boosters, prices, sync logs, and settings. This closes the Phase 3 database-schema foundation without adding Phase 4 seed data, collection UI, runtime sync logic, schema changes, or migrations in this housekeeping update.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
