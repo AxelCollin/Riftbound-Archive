@@ -378,7 +378,7 @@ model PriceMapping {
   externalId           String?
   externalVariantId    String             @default("DEFAULT")
   externalVariantLabel String?
-  status               PriceMappingStatus @default(CONFIRMED)
+  status               PriceMappingStatus @default(UNRESOLVED)
   confidence           Int?
   matchSource          String?
   externalUrl          String?

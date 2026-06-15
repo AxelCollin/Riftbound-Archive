@@ -20,7 +20,7 @@ CREATE TABLE "PriceMapping" (
     "externalId" TEXT,
     "externalVariantId" TEXT NOT NULL DEFAULT 'DEFAULT',
     "externalVariantLabel" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'CONFIRMED',
+    "status" TEXT NOT NULL DEFAULT 'UNRESOLVED',
     "confidence" INTEGER,
     "matchSource" TEXT,
     "externalUrl" TEXT,
