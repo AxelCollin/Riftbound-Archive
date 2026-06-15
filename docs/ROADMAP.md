@@ -38,7 +38,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add user collection tables.
 - [x] Add deck tables.
 - [x] Add booster tables.
-- [ ] Add price tables.
+- [x] Add price tables.
 - [ ] Add sync logs and settings.
 
 ## Phase 4 - Collection MVP
