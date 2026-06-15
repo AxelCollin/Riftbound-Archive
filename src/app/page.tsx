@@ -17,8 +17,9 @@ export default function HomePage() {
             Gestion locale de collection et deckbuilding
           </h1>
           <p className="mt-4 max-w-3xl text-base leading-7 text-archive-text300">
-            Socle initial du projet. Les prochaines PR ajouteront le moteur métier,
-            la base SQLite, la collection, les decks, les boosters et les prix.
+            Le socle Next.js, les règles métier testées et le schéma SQLite sont
+            en place. Les prochains travaux commenceront par des données
+            manuelles de seed/mock et les flux MVP de collection.
           </p>
         </header>
 

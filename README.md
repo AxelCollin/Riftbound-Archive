@@ -17,7 +17,9 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Initial Next.js foundation.
+Phase 3 is complete. The repository now contains the Next.js / TypeScript / Tailwind foundation, pure domain rules with Vitest coverage, and the Prisma/SQLite schema foundation for official data and local application state.
+
+Phase 4 Collection MVP work has not started yet.
 
 ## Local setup
 
@@ -47,6 +49,7 @@ npm run build
 - `docs/DOMAIN_RULES.md`
 - `docs/UI_STYLE_GUIDE.md`
 - `docs/API_PROVIDERS.md`
+- `docs/DATABASE_SCHEMA.md`
 - `docs/ROADMAP.md`
 - `docs/CODEX_GUIDELINES.md`
 

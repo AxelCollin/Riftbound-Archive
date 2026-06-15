@@ -107,9 +107,11 @@ Official synchronized data:
 - `sets`
 - `cards`
 - `cardTranslations`
-- `cardAssets`
+- `cardAssets` (future/optional dedicated asset table)
 - `syncLogs`
 - raw provider payloads
+
+The current Phase 3 MVP Prisma schema does not include a dedicated `CardAsset`/`cardAssets` table. It stores the official image URL and artist metadata directly on `Card` through fields such as `officialImageUrl` and `officialArtist`. A separate asset table can be added later only if multiple images, richer asset metadata, or provider-specific asset history justify it.
 
 User-owned data:
 

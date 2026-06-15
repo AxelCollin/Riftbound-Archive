@@ -94,11 +94,17 @@ available = owned - binderReserved - assembledDeckAllocated
 
 Tokens and rules cards may be imported into official metadata when a provider exposes them, but collection and deckbuilding logic must ignore them. Energy cards remain trackable.
 
+## Numeric validation expectations
+
+SQLite currently relies on future service and Zod validation for most numeric invariants instead of raw SQL `CHECK` constraints. Signed numeric fields are intentional only where the domain requires deltas, such as `BoosterCounterEvent.quantityDelta`, where positive values add boosters and negative values remove boosters.
+
+Before future write flows persist data, service/Zod validation must reject invalid numeric values for fields that are snapshots, quantities, or money amounts. Collection quantities, deck requirement quantities, assembled allocation quantities, booster opening quantities, and price `amountMinor` values must be validated as non-negative or positive according to their domain meaning before writes. Raw SQL `CHECK` constraints may be considered later as an additional database-level guard, but Phase 3 keeps the schema foundation migration-free in this cleanup.
+
 ## Rarity, print treatment, collector numbers, and variants
 
 Official rarity is stored separately from special print treatment and from owned physical variant or finish:
 
-- `Card.rarity` stores the normalized Riftbound rarity used by official data queries. It currently supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN`.
+- `Card.rarity` stores the normalized Riftbound rarity used by official data queries. It currently supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN`. Domain variant rules treat `ULTIMATE` and conservative `UNKNOWN` rarity cards as foil-only by default unless future official data proves a more precise rule.
 - `Card.officialRarityRaw` preserves the exact provider or Riot rarity label when present. This lets sync code store future, localized, or provider-specific rarity values without forcing them into an inaccurate normalized enum value.
 - `Card.printTreatment` stores the official printing/treatment concept for a card row. `REGULAR`, `ALT`, and `OVERNUMBER` are separated from rarity because official booster distribution distinguishes Rare, Epic, Alt, Overnumber, and Ultimate cards.
 - `Card.printTreatmentRaw` preserves a provider-specific treatment label when the normalized enum is not expressive enough.
