@@ -33,7 +33,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 
 ## Phase 3 - Database schema
 
-- [ ] Add Prisma schema.
+- [x] Add Prisma schema.
 - [x] Add official data tables.
 - [x] Add user collection tables.
 - [x] Add deck tables.
