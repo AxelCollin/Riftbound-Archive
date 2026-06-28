@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   filterCollectionRows,
@@ -147,7 +148,11 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
             <tbody className="divide-y divide-[rgba(199,168,102,0.14)]">
               {filteredRows.map((row) => (
                 <tr className="text-archive-text300 hover:bg-[rgba(58,123,213,0.08)]" key={row.rowId}>
-                  <td className="px-5 py-4 font-medium text-archive-text100">{row.cardName}</td>
+                  <td className="px-5 py-4 font-medium text-archive-text100">
+                    <Link className="text-archive-text100 underline decoration-archive-gold300/40 underline-offset-4 hover:text-archive-gold300" href={`/cards/${row.cardId}`}>
+                      {row.cardName}
+                    </Link>
+                  </td>
                   <td className="px-5 py-4" title={row.setName}>{row.setCode}</td>
                   <td className="px-5 py-4">{row.collectorNumber}</td>
                   <td className="px-5 py-4">{rarityLabels[row.rarity]}</td>
