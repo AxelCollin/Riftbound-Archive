@@ -75,7 +75,7 @@ async function seedOfficialMetadata(seedData) {
   let translationCount = 0;
 
   for (const set of seedData.sets) {
-    await prisma.set.upsert({
+    const persistedSet = await prisma.set.upsert({
       where: { code: set.code },
       create: { id: set.id, code: set.code, name: set.name, releasedAt: set.releasedAt ? new Date(set.releasedAt) : null },
       update: { name: set.name, releasedAt: set.releasedAt ? new Date(set.releasedAt) : null },
@@ -83,11 +83,11 @@ async function seedOfficialMetadata(seedData) {
     setCount += 1;
 
     for (const card of set.cards) {
-      await prisma.card.upsert({
-        where: { setId_collectorNumber: { setId: set.id, collectorNumber: card.collectorNumber } },
+      const persistedCard = await prisma.card.upsert({
+        where: { setId_collectorNumber: { setId: persistedSet.id, collectorNumber: card.collectorNumber } },
         create: {
           id: card.id,
-          setId: set.id,
+          setId: persistedSet.id,
           collectorNumber: card.collectorNumber,
           name: card.name,
           rarity: card.rarity,
@@ -117,9 +117,9 @@ async function seedOfficialMetadata(seedData) {
 
       for (const translation of card.translations) {
         await prisma.cardTranslation.upsert({
-          where: { cardId_locale: { cardId: card.id, locale: translation.locale } },
+          where: { cardId_locale: { cardId: persistedCard.id, locale: translation.locale } },
           create: {
-            cardId: card.id,
+            cardId: persistedCard.id,
             locale: translation.locale,
             name: translation.name,
             subtitle: translation.subtitle ?? null,
