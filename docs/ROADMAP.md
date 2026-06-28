@@ -47,7 +47,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add collection transaction service/write flow.
 - [x] Update collection entry snapshots from transactions.
 - [x] Add collection page.
-- [ ] Add filters and search MVP.
+- [x] Add filters and search MVP.
 - [ ] Add card detail page.
 
 ## Phase 5 - Binder and availability UI

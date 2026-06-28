@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
+import type { CollectionDisplayRow } from "../domain/collection-display";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 
 type CollectionCardTranslation = {
@@ -26,20 +27,6 @@ export type CollectionCardRecord = {
   };
   translations: CollectionCardTranslation[];
   collectionEntries: CollectionCardEntry[];
-};
-
-export type CollectionDisplayRow = {
-  rowId: string;
-  cardId: string;
-  cardName: string;
-  setCode: string;
-  setName: string;
-  collectorNumber: string;
-  rarity: CardRarity;
-  kind: CardKind;
-  printTreatment: CollectionCardRecord["printTreatment"];
-  variant: CardVariant;
-  ownedQuantity: number;
 };
 
 export type CollectionSummary = {
