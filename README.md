@@ -17,9 +17,7 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Phase 3 is complete. The repository now contains the Next.js / TypeScript / Tailwind foundation, pure domain rules with Vitest coverage, and the Prisma/SQLite schema foundation for official data and local application state.
-
-Phase 4 Collection MVP work has not started yet.
+Phase 4A has started. The repository now contains the Next.js / TypeScript / Tailwind foundation, pure domain rules with Vitest coverage, the Prisma/SQLite schema foundation for official data and local application state, and local mock official-card metadata seed data for development.
 
 ## Local setup
 
@@ -29,8 +27,21 @@ cp .env.example .env
 cp .env.example .env.local
 npm run db:generate
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
+
+## Mock official card seed data
+
+Phase 4A includes a small local seed dataset for development:
+
+```bash
+DATABASE_URL="file:./dev.db" npm run db:seed
+```
+
+The seed data is fictional and test-only. It does not use official Riot card data, official Riot text, official Riot images, Legends of Runeterra assets, or copyrighted card images.
+
+The seed script only inserts or updates official metadata tables: `Set`, `Card`, and `CardTranslation`. It does not seed user collection entries, collection transactions, decks, booster records, price records, or sync logs.
 
 ## Validation
 
