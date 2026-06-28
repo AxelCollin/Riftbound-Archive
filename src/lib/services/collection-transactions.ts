@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
+import { getNextCollectionEntryQuantity } from "../domain/collection";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
 
@@ -123,19 +124,6 @@ export type CollectionTransactionRepository = CollectionTransactionWriteClient &
   $transaction?<T>(callback: (transactionClient: CollectionTransactionWriteClient) => Promise<T>): Promise<T>;
 };
 
-function getNextSnapshotQuantity(input: ValidatedCollectionTransactionInput, currentQuantity: number) {
-  switch (input.type) {
-    case "ADD":
-      return currentQuantity + input.quantity;
-    case "REMOVE":
-      return currentQuantity - input.quantity;
-    case "SET":
-      return input.quantity;
-    case "ADJUST":
-      return currentQuantity + input.quantity;
-  }
-}
-
 async function writeTransactionAndSnapshot(
   input: ValidatedCollectionTransactionInput,
   client: CollectionTransactionWriteClient,
@@ -143,13 +131,20 @@ async function writeTransactionAndSnapshot(
   const existingEntry = await client.collectionEntry.findUnique({
     where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
   });
-  const nextQuantity = getNextSnapshotQuantity(input, existingEntry?.quantity ?? 0);
+  let nextQuantity: number;
 
-  if (nextQuantity < 0) {
-    throw new CollectionTransactionServiceError(
-      "NEGATIVE_COLLECTION_QUANTITY",
-      `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
-    );
+  try {
+    nextQuantity = getNextCollectionEntryQuantity(existingEntry?.quantity ?? 0, input);
+  } catch (error) {
+    if (error instanceof RangeError) {
+      throw new CollectionTransactionServiceError(
+        "NEGATIVE_COLLECTION_QUANTITY",
+        `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
+        error,
+      );
+    }
+
+    throw error;
   }
 
   const transaction = await client.collectionTransaction.create({
