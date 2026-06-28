@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const kpis = [
   { label: "Cartes possédées", value: "0", hint: "Collection locale" },
   { label: "Cartes disponibles", value: "0", hint: "Après réservations" },
@@ -22,6 +24,13 @@ export default function HomePage() {
             manuelles de seed/mock et les flux MVP de collection.
           </p>
         </header>
+
+        <Link
+          className="w-fit rounded-chip border border-[rgba(199,168,102,0.42)] bg-[rgba(16,32,51,0.72)] px-5 py-3 text-sm font-semibold text-archive-gold300 shadow-panel transition hover:border-archive-gold300 hover:text-archive-text100"
+          href="/collection"
+        >
+          Ouvrir la collection →
+        </Link>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
