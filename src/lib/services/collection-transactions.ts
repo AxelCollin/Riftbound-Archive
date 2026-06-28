@@ -51,6 +51,7 @@ export type CollectionTransactionServiceErrorCode =
   | "CARD_NOT_FOUND"
   | "UNTRACKABLE_CARD_KIND"
   | "INVALID_VARIANT_FOR_CARD"
+  | "NEGATIVE_COLLECTION_QUANTITY"
   | "DATABASE_WRITE_FAILED";
 
 export class CollectionTransactionServiceError extends Error {
@@ -83,9 +84,23 @@ export type RecordedCollectionTransaction = {
   createdAt: Date;
 };
 
-export type CollectionTransactionRepository = {
-  card: {
-    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
+export type CollectionEntrySnapshot = {
+  id: string;
+  cardId: string;
+  variant: CardVariant;
+  quantity: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type CollectionTransactionWriteClient = {
+  collectionEntry: {
+    findUnique(args: { where: { cardId_variant: { cardId: string; variant: CardVariant } } }): Promise<CollectionEntrySnapshot | null>;
+    upsert(args: {
+      where: { cardId_variant: { cardId: string; variant: CardVariant } };
+      create: { cardId: string; variant: CardVariant; quantity: number };
+      update: { quantity: number };
+    }): Promise<CollectionEntrySnapshot>;
   };
   collectionTransaction: {
     create(args: {
@@ -100,6 +115,62 @@ export type CollectionTransactionRepository = {
     }): Promise<RecordedCollectionTransaction>;
   };
 };
+
+export type CollectionTransactionRepository = CollectionTransactionWriteClient & {
+  card: {
+    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
+  };
+  $transaction?<T>(callback: (transactionClient: CollectionTransactionWriteClient) => Promise<T>): Promise<T>;
+};
+
+function getNextSnapshotQuantity(input: ValidatedCollectionTransactionInput, currentQuantity: number) {
+  switch (input.type) {
+    case "ADD":
+      return currentQuantity + input.quantity;
+    case "REMOVE":
+      return currentQuantity - input.quantity;
+    case "SET":
+      return input.quantity;
+    case "ADJUST":
+      return currentQuantity + input.quantity;
+  }
+}
+
+async function writeTransactionAndSnapshot(
+  input: ValidatedCollectionTransactionInput,
+  client: CollectionTransactionWriteClient,
+): Promise<RecordedCollectionTransaction> {
+  const existingEntry = await client.collectionEntry.findUnique({
+    where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+  });
+  const nextQuantity = getNextSnapshotQuantity(input, existingEntry?.quantity ?? 0);
+
+  if (nextQuantity < 0) {
+    throw new CollectionTransactionServiceError(
+      "NEGATIVE_COLLECTION_QUANTITY",
+      `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
+    );
+  }
+
+  const transaction = await client.collectionTransaction.create({
+    data: {
+      cardId: input.cardId,
+      variant: input.variant,
+      type: input.type,
+      quantity: input.quantity,
+      note: input.note,
+      source: input.source,
+    },
+  });
+
+  await client.collectionEntry.upsert({
+    where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+    create: { cardId: input.cardId, variant: input.variant, quantity: nextQuantity },
+    update: { quantity: nextQuantity },
+  });
+
+  return transaction;
+}
 
 export async function recordCollectionTransaction(
   input: RecordCollectionTransactionInput,
@@ -138,20 +209,21 @@ export async function recordCollectionTransaction(
   }
 
   try {
-    return await repository.collectionTransaction.create({
-      data: {
-        cardId: parsed.data.cardId,
-        variant: parsed.data.variant,
-        type: parsed.data.type,
-        quantity: parsed.data.quantity,
-        note: parsed.data.note,
-        source: parsed.data.source,
-      },
-    });
+    if (repository.$transaction) {
+      return await repository.$transaction((transactionClient) =>
+        writeTransactionAndSnapshot(parsed.data, transactionClient),
+      );
+    }
+
+    return await writeTransactionAndSnapshot(parsed.data, repository);
   } catch (error) {
+    if (error instanceof CollectionTransactionServiceError) {
+      throw error;
+    }
+
     throw new CollectionTransactionServiceError(
       "DATABASE_WRITE_FAILED",
-      "Failed to record collection transaction",
+      "Failed to record collection transaction and update collection snapshot",
       error,
     );
   }

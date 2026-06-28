@@ -48,7 +48,7 @@ Rules:
 - Showcase cards are never automatically reserved for the binder.
 - Variant support must remain extensible because providers may expose more precise variants later.
 
-Collection transaction recording is an append-only history write. It must validate the card, card kind, variant, transaction type, and quantity, then create a `CollectionTransaction` only. It must not update `CollectionEntry` owned-quantity snapshots until the dedicated snapshot update phase.
+Collection transaction recording writes append-only history and updates the owned snapshot for the same card and variant. It must validate the card, card kind, variant, transaction type, and quantity, then create a `CollectionTransaction` history row and update or create the matching `CollectionEntry` snapshot atomically. `CollectionTransaction` rows remain append-only and must not be overwritten. `CollectionEntry` is the current owned quantity snapshot derived from valid transaction writes, and its quantity must never become negative. Binder reservation, deck allocation, and availability calculations remain separate future work.
 
 ## Binder reservation
 
