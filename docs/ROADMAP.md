@@ -45,7 +45,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 
 - [x] Add manual card seed/mock data support.
 - [x] Add collection transaction service/write flow.
-- [ ] Update collection entry snapshots from transactions.
+- [x] Update collection entry snapshots from transactions.
 - [ ] Add collection page.
 - [ ] Add filters and search MVP.
 - [ ] Add card detail page.

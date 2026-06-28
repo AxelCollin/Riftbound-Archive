@@ -95,6 +95,15 @@ Phase 4B adds the server-side write service for validated collection history rec
 
 `CollectionTransaction` remains append-only user collection history. This phase intentionally does not create `CollectionEntry` rows, update owned-quantity snapshots, recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, call external providers, add API routes, or add UI. Updating `CollectionEntry` snapshots from transactions remains the next separate Phase 4 step.
 
+
+## Phase 4C collection entry snapshots
+
+Phase 4C extends the collection transaction write service so every valid collection transaction also updates the matching `CollectionEntry` row for the same `cardId` and `variant`. `CollectionTransaction` remains append-only user collection history, while `CollectionEntry` represents the current owned quantity snapshot derived from transaction writes.
+
+Snapshot writes apply `ADD`, `REMOVE`, `SET`, and `ADJUST` semantics in the service layer and reject any operation that would make `CollectionEntry.quantity` negative. The real Prisma path uses a database transaction so the history write and snapshot update commit or roll back together.
+
+This phase does not change the Prisma schema, add migrations, delete zero-quantity entries, recalculate availability, reserve binder cards, allocate deck cards, add booster records, add price records, call external providers, add API routes, or add UI. Binder reservation and deck availability calculations remain future work.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.

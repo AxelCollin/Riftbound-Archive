@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
+import { getCollectionEntryQuantityDelta } from "../domain/collection";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
 
@@ -51,6 +52,7 @@ export type CollectionTransactionServiceErrorCode =
   | "CARD_NOT_FOUND"
   | "UNTRACKABLE_CARD_KIND"
   | "INVALID_VARIANT_FOR_CARD"
+  | "NEGATIVE_COLLECTION_QUANTITY"
   | "DATABASE_WRITE_FAILED";
 
 export class CollectionTransactionServiceError extends Error {
@@ -83,9 +85,29 @@ export type RecordedCollectionTransaction = {
   createdAt: Date;
 };
 
-export type CollectionTransactionRepository = {
-  card: {
-    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
+export type CollectionEntrySnapshot = {
+  id: string;
+  cardId: string;
+  variant: CardVariant;
+  quantity: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type CollectionEntryQuantityMutation = number | { increment: number } | { decrement: number };
+
+type CollectionTransactionWriteClient = {
+  collectionEntry: {
+    findUnique(args: { where: { cardId_variant: { cardId: string; variant: CardVariant } } }): Promise<CollectionEntrySnapshot | null>;
+    upsert(args: {
+      where: { cardId_variant: { cardId: string; variant: CardVariant } };
+      create: { cardId: string; variant: CardVariant; quantity: number };
+      update: { quantity: CollectionEntryQuantityMutation };
+    }): Promise<CollectionEntrySnapshot>;
+    updateMany(args: {
+      where: { cardId: string; variant: CardVariant; quantity?: { gte: number } };
+      data: { quantity: CollectionEntryQuantityMutation };
+    }): Promise<{ count: number }>;
   };
   collectionTransaction: {
     create(args: {
@@ -100,6 +122,78 @@ export type CollectionTransactionRepository = {
     }): Promise<RecordedCollectionTransaction>;
   };
 };
+
+export type CollectionTransactionRepository = CollectionTransactionWriteClient & {
+  card: {
+    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
+  };
+  $transaction?<T>(callback: (transactionClient: CollectionTransactionWriteClient) => Promise<T>): Promise<T>;
+};
+
+function toNegativeQuantityError(input: ValidatedCollectionTransactionInput, cause?: unknown) {
+  return new CollectionTransactionServiceError(
+    "NEGATIVE_COLLECTION_QUANTITY",
+    `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
+    cause,
+  );
+}
+
+async function writeCollectionEntrySnapshot(
+  input: ValidatedCollectionTransactionInput,
+  client: CollectionTransactionWriteClient,
+): Promise<void> {
+  const delta = getCollectionEntryQuantityDelta(input);
+
+  if (delta === null) {
+    await client.collectionEntry.upsert({
+      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+      create: { cardId: input.cardId, variant: input.variant, quantity: input.quantity },
+      update: { quantity: input.quantity },
+    });
+    return;
+  }
+
+  if (delta > 0) {
+    await client.collectionEntry.upsert({
+      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+      create: { cardId: input.cardId, variant: input.variant, quantity: delta },
+      update: { quantity: { increment: delta } },
+    });
+    return;
+  }
+
+  const decrementAmount = Math.abs(delta);
+  const updateResult = await client.collectionEntry.updateMany({
+    where: {
+      cardId: input.cardId,
+      variant: input.variant,
+      quantity: { gte: decrementAmount },
+    },
+    data: { quantity: { decrement: decrementAmount } },
+  });
+
+  if (updateResult.count !== 1) {
+    throw toNegativeQuantityError(input);
+  }
+}
+
+async function writeTransactionAndSnapshot(
+  input: ValidatedCollectionTransactionInput,
+  client: CollectionTransactionWriteClient,
+): Promise<RecordedCollectionTransaction> {
+  await writeCollectionEntrySnapshot(input, client);
+
+  return client.collectionTransaction.create({
+    data: {
+      cardId: input.cardId,
+      variant: input.variant,
+      type: input.type,
+      quantity: input.quantity,
+      note: input.note,
+      source: input.source,
+    },
+  });
+}
 
 export async function recordCollectionTransaction(
   input: RecordCollectionTransactionInput,
@@ -138,20 +232,21 @@ export async function recordCollectionTransaction(
   }
 
   try {
-    return await repository.collectionTransaction.create({
-      data: {
-        cardId: parsed.data.cardId,
-        variant: parsed.data.variant,
-        type: parsed.data.type,
-        quantity: parsed.data.quantity,
-        note: parsed.data.note,
-        source: parsed.data.source,
-      },
-    });
+    if (repository.$transaction) {
+      return await repository.$transaction((transactionClient) =>
+        writeTransactionAndSnapshot(parsed.data, transactionClient),
+      );
+    }
+
+    return await writeTransactionAndSnapshot(parsed.data, repository);
   } catch (error) {
+    if (error instanceof CollectionTransactionServiceError) {
+      throw error;
+    }
+
     throw new CollectionTransactionServiceError(
       "DATABASE_WRITE_FAILED",
-      "Failed to record collection transaction",
+      "Failed to record collection transaction and update collection snapshot",
       error,
     );
   }
