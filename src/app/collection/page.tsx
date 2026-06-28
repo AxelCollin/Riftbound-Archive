@@ -86,7 +86,7 @@ export default async function CollectionPage() {
                     <th className="px-5 py-4">Set</th>
                     <th className="px-5 py-4">N°</th>
                     <th className="px-5 py-4">Rareté</th>
-                    <th className="px-5 py-4">Genre</th>
+                    <th className="px-5 py-4">Type</th>
                     <th className="px-5 py-4">Traitement</th>
                     <th className="px-5 py-4">Variante</th>
                     <th className="px-5 py-4 text-right">Possédées</th>
