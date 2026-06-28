@@ -33,15 +33,45 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
   const findUniqueEntry = vi.fn(async ({ where: { cardId_variant } }) => {
     return entries.get(`${cardId_variant.cardId}:${cardId_variant.variant}`) ?? null;
   });
+  const applyQuantityMutation = (currentQuantity: number, mutation: number | { increment: number } | { decrement: number }) => {
+    if (typeof mutation === "number") {
+      return mutation;
+    }
+
+    if ("increment" in mutation) {
+      return currentQuantity + mutation.increment;
+    }
+
+    return currentQuantity - mutation.decrement;
+  };
   const upsertEntry = vi.fn(async ({ where: { cardId_variant }, create, update }) => {
     const key = `${cardId_variant.cardId}:${cardId_variant.variant}`;
     const existing = entries.get(key);
     const entry = existing
-      ? { ...existing, quantity: update.quantity, updatedAt: new Date("2026-06-28T00:00:01.000Z") }
+      ? {
+          ...existing,
+          quantity: applyQuantityMutation(existing.quantity, update.quantity),
+          updatedAt: new Date("2026-06-28T00:00:01.000Z"),
+        }
       : createEntry(create.quantity, create.cardId, create.variant);
 
     entries.set(key, entry);
     return entry;
+  });
+  const updateManyEntry = vi.fn(async ({ where, data }) => {
+    const key = `${where.cardId}:${where.variant}`;
+    const existing = entries.get(key);
+
+    if (!existing || (where.quantity?.gte !== undefined && existing.quantity < where.quantity.gte)) {
+      return { count: 0 };
+    }
+
+    entries.set(key, {
+      ...existing,
+      quantity: applyQuantityMutation(existing.quantity, data.quantity),
+      updatedAt: new Date("2026-06-28T00:00:01.000Z"),
+    });
+    return { count: 1 };
   });
 
   const repository: CollectionTransactionRepository = {
@@ -51,6 +81,7 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
     collectionEntry: {
       findUnique: findUniqueEntry,
       upsert: upsertEntry,
+      updateMany: updateManyEntry,
     },
     collectionTransaction: {
       create: vi.fn(async ({ data }) => {
@@ -106,6 +137,11 @@ describe("recordCollectionTransaction", () => {
     expect(entries.get("card-common:NORMAL")?.quantity).toBe(2);
     expect(repository.collectionTransaction.create).toHaveBeenCalledTimes(1);
     expect(repository.collectionEntry.upsert).toHaveBeenCalledTimes(1);
+    expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
+      where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
+      create: { cardId: "card-common", variant: "NORMAL", quantity: 2 },
+      update: { quantity: { increment: 2 } },
+    });
   });
 
   it("increments an existing CollectionEntry for ADD", async () => {
@@ -114,6 +150,19 @@ describe("recordCollectionTransaction", () => {
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADD", quantity: 2 }, repository);
 
     expect(entries.get("card-common:NORMAL")?.quantity).toBe(5);
+  });
+
+  it("uses an atomic increment mutation for ADD snapshots", async () => {
+    const { repository } = createRepository(baseCard, [createEntry(3)]);
+
+    await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADD", quantity: 2 }, repository);
+
+    expect(repository.collectionEntry.findUnique).not.toHaveBeenCalled();
+    expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
+      where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
+      create: { cardId: "card-common", variant: "NORMAL", quantity: 2 },
+      update: { quantity: { increment: 2 } },
+    });
   });
 
   it("decrements an existing CollectionEntry for REMOVE", async () => {
@@ -135,6 +184,10 @@ describe("recordCollectionTransaction", () => {
 
     expect(transactions).toHaveLength(0);
     expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 2 } },
+      data: { quantity: { decrement: 2 } },
+    });
     expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
   });
 
@@ -148,6 +201,10 @@ describe("recordCollectionTransaction", () => {
     );
 
     expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 1 } },
+      data: { quantity: { decrement: 1 } },
+    });
   });
 
   it("creates or updates a CollectionEntry to the exact SET quantity", async () => {
@@ -197,6 +254,10 @@ describe("recordCollectionTransaction", () => {
 
     expect(transactions).toHaveLength(0);
     expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 2 } },
+      data: { quantity: { decrement: 2 } },
+    });
     expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
   });
 

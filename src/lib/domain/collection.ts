@@ -5,6 +5,19 @@ export interface CollectionQuantityTransaction {
   quantity: number;
 }
 
+export function getCollectionEntryQuantityDelta(transaction: CollectionQuantityTransaction): number | null {
+  switch (transaction.type) {
+    case "ADD":
+      return transaction.quantity;
+    case "REMOVE":
+      return -transaction.quantity;
+    case "SET":
+      return null;
+    case "ADJUST":
+      return transaction.quantity;
+  }
+}
+
 export function getNextCollectionEntryQuantity(
   currentQuantity: number,
   transaction: CollectionQuantityTransaction,

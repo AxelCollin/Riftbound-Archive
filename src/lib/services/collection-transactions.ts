@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
-import { getNextCollectionEntryQuantity } from "../domain/collection";
+import { getCollectionEntryQuantityDelta } from "../domain/collection";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
 
@@ -94,14 +94,20 @@ export type CollectionEntrySnapshot = {
   updatedAt: Date;
 };
 
+type CollectionEntryQuantityMutation = number | { increment: number } | { decrement: number };
+
 type CollectionTransactionWriteClient = {
   collectionEntry: {
     findUnique(args: { where: { cardId_variant: { cardId: string; variant: CardVariant } } }): Promise<CollectionEntrySnapshot | null>;
     upsert(args: {
       where: { cardId_variant: { cardId: string; variant: CardVariant } };
       create: { cardId: string; variant: CardVariant; quantity: number };
-      update: { quantity: number };
+      update: { quantity: CollectionEntryQuantityMutation };
     }): Promise<CollectionEntrySnapshot>;
+    updateMany(args: {
+      where: { cardId: string; variant: CardVariant; quantity?: { gte: number } };
+      data: { quantity: CollectionEntryQuantityMutation };
+    }): Promise<{ count: number }>;
   };
   collectionTransaction: {
     create(args: {
@@ -124,30 +130,60 @@ export type CollectionTransactionRepository = CollectionTransactionWriteClient &
   $transaction?<T>(callback: (transactionClient: CollectionTransactionWriteClient) => Promise<T>): Promise<T>;
 };
 
+function toNegativeQuantityError(input: ValidatedCollectionTransactionInput, cause?: unknown) {
+  return new CollectionTransactionServiceError(
+    "NEGATIVE_COLLECTION_QUANTITY",
+    `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
+    cause,
+  );
+}
+
+async function writeCollectionEntrySnapshot(
+  input: ValidatedCollectionTransactionInput,
+  client: CollectionTransactionWriteClient,
+): Promise<void> {
+  const delta = getCollectionEntryQuantityDelta(input);
+
+  if (delta === null) {
+    await client.collectionEntry.upsert({
+      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+      create: { cardId: input.cardId, variant: input.variant, quantity: input.quantity },
+      update: { quantity: input.quantity },
+    });
+    return;
+  }
+
+  if (delta > 0) {
+    await client.collectionEntry.upsert({
+      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
+      create: { cardId: input.cardId, variant: input.variant, quantity: delta },
+      update: { quantity: { increment: delta } },
+    });
+    return;
+  }
+
+  const decrementAmount = Math.abs(delta);
+  const updateResult = await client.collectionEntry.updateMany({
+    where: {
+      cardId: input.cardId,
+      variant: input.variant,
+      quantity: { gte: decrementAmount },
+    },
+    data: { quantity: { decrement: decrementAmount } },
+  });
+
+  if (updateResult.count !== 1) {
+    throw toNegativeQuantityError(input);
+  }
+}
+
 async function writeTransactionAndSnapshot(
   input: ValidatedCollectionTransactionInput,
   client: CollectionTransactionWriteClient,
 ): Promise<RecordedCollectionTransaction> {
-  const existingEntry = await client.collectionEntry.findUnique({
-    where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-  });
-  let nextQuantity: number;
+  await writeCollectionEntrySnapshot(input, client);
 
-  try {
-    nextQuantity = getNextCollectionEntryQuantity(existingEntry?.quantity ?? 0, input);
-  } catch (error) {
-    if (error instanceof RangeError) {
-      throw new CollectionTransactionServiceError(
-        "NEGATIVE_COLLECTION_QUANTITY",
-        `Collection quantity for ${input.cardId} ${input.variant} cannot become negative`,
-        error,
-      );
-    }
-
-    throw error;
-  }
-
-  const transaction = await client.collectionTransaction.create({
+  return client.collectionTransaction.create({
     data: {
       cardId: input.cardId,
       variant: input.variant,
@@ -157,14 +193,6 @@ async function writeTransactionAndSnapshot(
       source: input.source,
     },
   });
-
-  await client.collectionEntry.upsert({
-    where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-    create: { cardId: input.cardId, variant: input.variant, quantity: nextQuantity },
-    update: { quantity: nextQuantity },
-  });
-
-  return transaction;
 }
 
 export async function recordCollectionTransaction(

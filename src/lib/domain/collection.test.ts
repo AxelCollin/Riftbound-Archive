@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { getNextCollectionEntryQuantity } from "./collection";
+import { getCollectionEntryQuantityDelta, getNextCollectionEntryQuantity } from "./collection";
 
 describe("collection snapshot quantity rules", () => {
+  it("returns signed atomic deltas for delta transaction types", () => {
+    expect(getCollectionEntryQuantityDelta({ type: "ADD", quantity: 2 })).toBe(2);
+    expect(getCollectionEntryQuantityDelta({ type: "REMOVE", quantity: 2 })).toBe(-2);
+    expect(getCollectionEntryQuantityDelta({ type: "ADJUST", quantity: 2 })).toBe(2);
+    expect(getCollectionEntryQuantityDelta({ type: "ADJUST", quantity: -2 })).toBe(-2);
+  });
+
+  it("returns no delta for absolute SET transactions", () => {
+    expect(getCollectionEntryQuantityDelta({ type: "SET", quantity: 4 })).toBeNull();
+  });
+
   it("adds ADD transaction quantity to the current snapshot quantity", () => {
     expect(getNextCollectionEntryQuantity(3, { type: "ADD", quantity: 2 })).toBe(5);
   });
