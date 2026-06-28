@@ -17,6 +17,7 @@ The app must ignore:
 Ignored cards must not appear in:
 
 - collection completion;
+- collection transaction write flows;
 - deckbuilding;
 - availability calculations;
 - binder reservation;
@@ -46,6 +47,8 @@ Rules:
 - A single Showcase variant is tracked separately from regular Foil if present.
 - Showcase cards are never automatically reserved for the binder.
 - Variant support must remain extensible because providers may expose more precise variants later.
+
+Collection transaction recording is an append-only history write. It must validate the card, card kind, variant, transaction type, and quantity, then create a `CollectionTransaction` only. It must not update `CollectionEntry` owned-quantity snapshots until the dedicated snapshot update phase.
 
 ## Binder reservation
 
