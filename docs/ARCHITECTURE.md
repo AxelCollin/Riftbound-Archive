@@ -15,7 +15,7 @@ Default stack:
 - Zod
 - Vitest
 
-A Tauri or Electron wrapper may be added later, but it must not be required for the first working version.
+The current implementation remains a local Next.js web app. The intended final desktop packaging target is Electron for Windows, but Electron should be added only after the current roadmap is substantially complete. Current PRs must remain compatible with future Electron packaging without implementing Electron-specific code early.
 
 ## Architecture principles
 
@@ -27,6 +27,21 @@ A Tauri or Electron wrapper may be added later, but it must not be required for 
 - UI components must consume computed results, not reimplement business logic.
 - External providers must be replaceable.
 - The app must run in degraded mode without Riot or price API credentials.
+
+## Future Electron compatibility
+
+Until the dedicated Electron packaging phase, the app should continue to be developed and validated as the existing local Next.js web app. To preserve a clean path toward a future Windows desktop package:
+
+- Do not access Prisma or SQLite directly from React client components.
+- Keep database access in server-side modules, services, route handlers, or equivalent server-only code.
+- Keep domain and business logic outside UI components.
+- Use relative URLs in app code when possible.
+- Do not hardcode `http://localhost:3000` as an application assumption.
+- Keep `DATABASE_URL` configurable.
+- Avoid dependencies on a specific browser runtime.
+- Keep API keys and provider secrets server-side/local.
+- Do not expose secrets to frontend/client code.
+- Do not add Electron-specific code to current feature PRs until the dedicated Electron phase.
 
 ## Suggested project structure
 
