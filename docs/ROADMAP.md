@@ -100,6 +100,21 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [ ] Add responsive 1080p adaptation.
 - [ ] Add visual QA pass.
 
+## Phase 11 - Desktop packaging Electron
+
+- [ ] Add Electron desktop shell.
+- [ ] Create a Windows desktop application.
+- [ ] Launch the app through an `.exe`.
+- [ ] Open the app in a dedicated desktop window.
+- [ ] Embed or launch the local Next.js server cleanly.
+- [ ] Keep Prisma/SQLite local and server-side.
+- [ ] Move the packaged SQLite database location to an appropriate user data directory, for example `AppData/Roaming/Riftbound Archive/`.
+- [ ] Configure Windows packaging.
+- [ ] Verify SQLite migrations after packaging.
+- [ ] Keep API keys and provider secrets server-side/local.
+- [ ] Ensure secrets are never exposed to frontend/client code.
+- [ ] Prepare a clean base for import/export/backup flows.
+
 ## Merge policy
 
 Each phase should be split into small PRs.
