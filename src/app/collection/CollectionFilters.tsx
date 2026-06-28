@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { getCardDetailHref } from "./card-detail-link";
 import {
   filterCollectionRows,
   type CollectionDisplayRow,
@@ -149,7 +150,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
               {filteredRows.map((row) => (
                 <tr className="text-archive-text300 hover:bg-[rgba(58,123,213,0.08)]" key={row.rowId}>
                   <td className="px-5 py-4 font-medium text-archive-text100">
-                    <Link className="text-archive-text100 underline decoration-archive-gold300/40 underline-offset-4 hover:text-archive-gold300" href={`/cards/${row.cardId}`}>
+                    <Link className="text-archive-text100 underline decoration-archive-gold300/40 underline-offset-4 hover:text-archive-gold300" href={getCardDetailHref(row.cardId)}>
                       {row.cardName}
                     </Link>
                   </td>
