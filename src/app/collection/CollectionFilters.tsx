@@ -6,7 +6,7 @@ import {
   type CollectionDisplayRow,
   type CollectionFilterInput,
   type CollectionOwnedStatusFilter,
-} from "@/lib/queries/collection";
+} from "@/lib/domain/collection-display";
 
 const rarityOptions: Array<{ value: NonNullable<CollectionFilterInput["rarity"]>; label: string }> = [
   { value: "ALL", label: "Toutes les raretés" },

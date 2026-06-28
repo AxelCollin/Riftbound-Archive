@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
+import type { CollectionDisplayRow } from "../domain/collection-display";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 
 type CollectionCardTranslation = {
@@ -26,33 +27,6 @@ export type CollectionCardRecord = {
   };
   translations: CollectionCardTranslation[];
   collectionEntries: CollectionCardEntry[];
-};
-
-export type CollectionDisplayRow = {
-  rowId: string;
-  cardId: string;
-  cardName: string;
-  setCode: string;
-  setName: string;
-  collectorNumber: string;
-  rarity: CardRarity;
-  kind: CardKind;
-  printTreatment: CollectionCardRecord["printTreatment"];
-  variant: CardVariant;
-  ownedQuantity: number;
-};
-
-export type CollectionRarityFilter = CardRarity | "ALL";
-export type CollectionKindFilter = Extract<CardKind, "GAMEPLAY" | "ENERGY"> | "ALL";
-export type CollectionVariantFilter = CardVariant | "ALL";
-export type CollectionOwnedStatusFilter = "ALL" | "OWNED" | "MISSING";
-
-export type CollectionFilterInput = {
-  searchText?: string;
-  rarity?: CollectionRarityFilter;
-  kind?: CollectionKindFilter;
-  variant?: CollectionVariantFilter;
-  ownedStatus?: CollectionOwnedStatusFilter;
 };
 
 export type CollectionSummary = {
@@ -102,40 +76,6 @@ export function createCollectionRows(cards: CollectionCardRecord[]): CollectionD
         ownedQuantity: Math.max(0, entriesByVariant.get(variant) ?? 0),
       }));
     });
-}
-
-export function filterCollectionRows(
-  rows: CollectionDisplayRow[],
-  filters: CollectionFilterInput = {},
-): CollectionDisplayRow[] {
-  const searchText = normalizeSearchText(filters.searchText ?? "");
-  const rarity = filters.rarity ?? "ALL";
-  const kind = filters.kind ?? "ALL";
-  const variant = filters.variant ?? "ALL";
-  const ownedStatus = filters.ownedStatus ?? "ALL";
-
-  return rows.filter((row) => {
-    const matchesSearch =
-      searchText.length === 0 ||
-      [row.cardName, row.setCode, row.collectorNumber].some((value) => normalizeSearchText(value).includes(searchText));
-    const matchesRarity = rarity === "ALL" || row.rarity === rarity;
-    const matchesKind = kind === "ALL" || row.kind === kind;
-    const matchesVariant = variant === "ALL" || row.variant === variant;
-    const matchesOwnedStatus =
-      ownedStatus === "ALL" ||
-      (ownedStatus === "OWNED" && row.ownedQuantity > 0) ||
-      (ownedStatus === "MISSING" && row.ownedQuantity === 0);
-
-    return matchesSearch && matchesRarity && matchesKind && matchesVariant && matchesOwnedStatus;
-  });
-}
-
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("fr-FR")
-    .trim();
 }
 
 export function summarizeCollectionRows(rows: CollectionDisplayRow[]): CollectionSummary {

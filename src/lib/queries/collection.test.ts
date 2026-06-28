@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   createCollectionRows,
-  filterCollectionRows,
   getDisplayCardName,
   summarizeCollectionRows,
   type CollectionCardRecord,
@@ -93,113 +92,5 @@ describe("collection query mapping", () => {
       trackableRows: 3,
       missingRows: 2,
     });
-  });
-});
-
-
-describe("collection filtering", () => {
-  const rows = createCollectionRows([
-    card({
-      id: "ahri",
-      name: "Ahri, Vastayan Renegade",
-      collectorNumber: "001",
-      rarity: "RARE",
-      kind: "GAMEPLAY",
-      hasShowcase: true,
-      set: { code: "ORG", name: "Origins" },
-      translations: [{ locale: "fr-FR", name: "Ahri, vastaya rebelle" }],
-      collectionEntries: [
-        { variant: "FOIL", quantity: 2 },
-        { variant: "SHOWCASE", quantity: 0 },
-      ],
-    }),
-    card({
-      id: "energy",
-      name: "Ionian Energy",
-      collectorNumber: "E12",
-      rarity: "UNKNOWN",
-      kind: "ENERGY",
-      set: { code: "ENE", name: "Energy" },
-      collectionEntries: [{ variant: "FOIL", quantity: 0 }],
-    }),
-    card({
-      id: "common",
-      name: "Brave Recruit",
-      collectorNumber: "042",
-      rarity: "COMMON",
-      kind: "GAMEPLAY",
-      set: { code: "BAS", name: "Base" },
-      collectionEntries: [{ variant: "NORMAL", quantity: 4 }],
-    }),
-  ]);
-
-  it("returns all rows for empty and all filters", () => {
-    expect(filterCollectionRows(rows)).toEqual(rows);
-    expect(
-      filterCollectionRows(rows, {
-        searchText: " ",
-        rarity: "ALL",
-        kind: "ALL",
-        variant: "ALL",
-        ownedStatus: "ALL",
-      }),
-    ).toEqual(rows);
-  });
-
-  it("matches text search by card name", () => {
-    expect(filterCollectionRows(rows, { searchText: "ahri" }).map((row) => row.cardId)).toEqual([
-      "ahri",
-      "ahri",
-    ]);
-  });
-
-  it("matches text search by set code", () => {
-    expect(filterCollectionRows(rows, { searchText: "ene" }).map((row) => row.cardId)).toEqual(["energy"]);
-  });
-
-  it("matches text search by collector number", () => {
-    expect(filterCollectionRows(rows, { searchText: "042" }).map((row) => row.cardId)).toEqual([
-      "common",
-      "common",
-    ]);
-  });
-
-  it("filters by rarity", () => {
-    expect(filterCollectionRows(rows, { rarity: "RARE" }).map((row) => row.cardId)).toEqual(["ahri", "ahri"]);
-  });
-
-  it("filters by kind/type", () => {
-    expect(filterCollectionRows(rows, { kind: "ENERGY" }).map((row) => row.cardId)).toEqual(["energy"]);
-  });
-
-  it("filters by variant", () => {
-    expect(filterCollectionRows(rows, { variant: "NORMAL" }).map((row) => row.cardId)).toEqual(["common"]);
-  });
-
-  it("keeps owned rows when owned-only filter is selected", () => {
-    expect(filterCollectionRows(rows, { ownedStatus: "OWNED" }).map((row) => row.rowId)).toEqual([
-      "ahri:FOIL",
-      "common:NORMAL",
-    ]);
-  });
-
-  it("keeps missing rows when missing-only filter is selected", () => {
-    expect(filterCollectionRows(rows, { ownedStatus: "MISSING" }).map((row) => row.rowId)).toEqual([
-      "ahri:SHOWCASE",
-      "energy:FOIL",
-      "common:FOIL",
-    ]);
-  });
-
-  it("combines filters", () => {
-    expect(
-      filterCollectionRows(rows, {
-        searchText: "org",
-        rarity: "RARE",
-        kind: "GAMEPLAY",
-        variant: "SHOWCASE",
-        ownedStatus: "MISSING",
-      }).map((row) => row.rowId),
-    ).toEqual(["ahri:SHOWCASE"]);
   });
 });
