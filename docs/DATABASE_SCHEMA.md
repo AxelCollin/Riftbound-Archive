@@ -88,6 +88,13 @@ Phase 4A adds a repeatable local seed process for fictional, test-only official-
 
 The Phase 4A seed does not use official Riot card text or images, does not call external providers, and does not create runtime/user-owned data. In this phase, `CollectionEntry`, `CollectionTransaction`, deck, booster, price, and sync tables remain unseeded.
 
+
+## Phase 4B collection transaction write service
+
+Phase 4B adds the server-side write service for validated collection history records. The service records `CollectionTransaction` rows only: it validates input, confirms the target `Card` exists, rejects untrackable TOKEN and RULES cards, enforces the domain allowed-variant rules, and writes the append-only transaction.
+
+`CollectionTransaction` remains append-only user collection history. This phase intentionally does not create `CollectionEntry` rows, update owned-quantity snapshots, recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, call external providers, add API routes, or add UI. Updating `CollectionEntry` snapshots from transactions remains the next separate Phase 4 step.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
