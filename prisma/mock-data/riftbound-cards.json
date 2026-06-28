@@ -1,0 +1,182 @@
+{
+  "notice": "Fictional local mock data for Riftbound Archive development only. Not official Riot data. No official text or images.",
+  "sets": [
+    {
+      "id": "mock-set-rba-001",
+      "code": "RBA-TEST-01",
+      "name": "Riftbound Archive Mock Set One",
+      "releasedAt": "2026-01-01T00:00:00.000Z",
+      "cards": [
+        {
+          "id": "mock-card-rba-001-001",
+          "collectorNumber": "001",
+          "name": "Harbor Scout",
+          "rarity": "COMMON",
+          "kind": "GAMEPLAY",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Éclaireuse du port",
+              "subtitle": "Carte de test commune",
+              "rulesText": "Texte fictif pour vérifier l'affichage des cartes de jeu communes.",
+              "flavorText": "Une carte locale sans source officielle."
+            },
+            {
+              "locale": "en-US",
+              "name": "Harbor Scout",
+              "subtitle": "Common test card",
+              "rulesText": "Fictional text for checking common gameplay card display.",
+              "flavorText": "A local-only card with no official source."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-002",
+          "collectorNumber": "002",
+          "name": "Workshop Improviser",
+          "rarity": "UNCOMMON",
+          "kind": "GAMEPLAY",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Improvisatrice d'atelier",
+              "subtitle": "Carte de test peu commune",
+              "rulesText": "Texte fictif pour valider une rareté intermédiaire.",
+              "flavorText": "Les noms, textes et effets sont inventés."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-003",
+          "collectorNumber": "003",
+          "name": "Valley Duelist",
+          "rarity": "RARE",
+          "kind": "GAMEPLAY",
+          "printTreatment": "REGULAR",
+          "hasShowcase": true,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Duelliste de la vallée",
+              "subtitle": "Carte de test rare",
+              "rulesText": "Texte fictif avec hasShowcase activé pour les futurs tests de variantes.",
+              "flavorText": "Aucune illustration officielle n'est référencée."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-004",
+          "collectorNumber": "004",
+          "name": "Clocktower Sentinel",
+          "rarity": "EPIC",
+          "kind": "GAMEPLAY",
+          "printTreatment": "ALT",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Sentinelle de l'horloge",
+              "subtitle": "Carte de test épique alternative",
+              "rulesText": "Texte fictif pour vérifier le traitement d'impression ALT.",
+              "flavorText": "Données de développement uniquement."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-005",
+          "collectorNumber": "005",
+          "name": "Aurora Vanguard",
+          "rarity": "ULTIMATE",
+          "kind": "GAMEPLAY",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Avant-garde boréale",
+              "subtitle": "Carte de test ultime",
+              "rulesText": "Texte fictif pour exercer les règles futures liées aux cartes ultimes.",
+              "flavorText": "Cette carte n'existe pas dans un produit officiel."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-006",
+          "collectorNumber": "E01",
+          "name": "Practice Energy",
+          "rarity": "COMMON",
+          "kind": "ENERGY",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Énergie d'entraînement",
+              "subtitle": "Carte énergie de test",
+              "rulesText": "Texte fictif pour les tests de suivi des cartes énergie.",
+              "flavorText": "Marqueur local sans mécanique officielle."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-007",
+          "collectorNumber": "T01",
+          "name": "Training Marker",
+          "rarity": "UNKNOWN",
+          "kind": "TOKEN",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Marqueur d'entraînement",
+              "subtitle": "Jeton de test",
+              "rulesText": "Texte fictif pour vérifier que les jetons peuvent exister dans les métadonnées officielles.",
+              "flavorText": "Non destiné au suivi de collection."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-008",
+          "collectorNumber": "R01",
+          "name": "Reference Sheet",
+          "rarity": "UNKNOWN",
+          "kind": "RULES",
+          "printTreatment": "REGULAR",
+          "hasShowcase": false,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Fiche de référence",
+              "subtitle": "Carte règles de test",
+              "rulesText": "Texte fictif pour représenter une carte de règles locale.",
+              "flavorText": "Incluse seulement pour les scénarios de développement."
+            }
+          ]
+        },
+        {
+          "id": "mock-card-rba-001-009",
+          "collectorNumber": "101",
+          "name": "Starlit Cartographer",
+          "rarity": "RARE",
+          "kind": "GAMEPLAY",
+          "printTreatment": "OVERNUMBER",
+          "hasShowcase": true,
+          "translations": [
+            {
+              "locale": "fr-FR",
+              "name": "Cartographe étoilée",
+              "subtitle": "Carte de test surnuméraire",
+              "rulesText": "Texte fictif pour vérifier le traitement d'impression OVERNUMBER.",
+              "flavorText": "Numéro volontairement séparé des cartes régulières."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

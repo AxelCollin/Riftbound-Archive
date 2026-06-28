@@ -82,6 +82,12 @@ This PR intentionally does not add actual sync execution, scheduling, provider c
 
 Phase 3A through Phase 3F now provide the Prisma schema foundation for official data, user collection state, decks, boosters, prices, sync logs, and settings. This closes the Phase 3 database-schema foundation without adding Phase 4 seed data, collection UI, runtime sync logic, schema changes, or migrations in this housekeeping update.
 
+## Phase 4A mock official data seed
+
+Phase 4A adds a repeatable local seed process for fictional, test-only official-card metadata. The seed exists so future Collection MVP work can develop against real `Set`, `Card`, and `CardTranslation` database rows before any Riot/provider synchronization is available.
+
+The Phase 4A seed does not use official Riot card text or images, does not call external providers, and does not create runtime/user-owned data. In this phase, `CollectionEntry`, `CollectionTransaction`, deck, booster, price, and sync tables remain unseeded.
+
 ## Official data and local state
 
 The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
