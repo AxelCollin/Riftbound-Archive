@@ -30,9 +30,6 @@ function createEntry(quantity: number, cardId = "card-common", variant = "NORMAL
 function createRepository(card: TestCard = baseCard, initialEntries: CollectionEntrySnapshot[] = []) {
   const transactions: unknown[] = [];
   const entries = new Map(initialEntries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry]));
-  const findUniqueEntry = vi.fn(async ({ where: { cardId_variant } }) => {
-    return entries.get(`${cardId_variant.cardId}:${cardId_variant.variant}`) ?? null;
-  });
   const applyQuantityMutation = (currentQuantity: number, mutation: number | { increment: number } | { decrement: number }) => {
     if (typeof mutation === "number") {
       return mutation;
@@ -79,7 +76,6 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
       findUnique: vi.fn(async () => card),
     },
     collectionEntry: {
-      findUnique: findUniqueEntry,
       upsert: upsertEntry,
       updateMany: updateManyEntry,
     },
@@ -157,7 +153,6 @@ describe("recordCollectionTransaction", () => {
 
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADD", quantity: 2 }, repository);
 
-    expect(repository.collectionEntry.findUnique).not.toHaveBeenCalled();
     expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
       where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
       create: { cardId: "card-common", variant: "NORMAL", quantity: 2 },

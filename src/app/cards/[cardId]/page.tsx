@@ -1,37 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardVariantLabelsFr } from "@/lib/formatters/cards";
 import { getCardDetailFromRouteParam } from "@/lib/queries/card-detail";
 
 export const dynamic = "force-dynamic";
-
-const variantLabels = {
-  NORMAL: "Normale",
-  FOIL: "Foil",
-  SHOWCASE: "Showcase",
-} as const;
-
-const rarityLabels = {
-  COMMON: "Commune",
-  UNCOMMON: "Peu commune",
-  RARE: "Rare",
-  EPIC: "Épique",
-  ULTIMATE: "Ultime",
-  UNKNOWN: "Inconnue",
-} as const;
-
-const kindLabels = {
-  GAMEPLAY: "Gameplay",
-  ENERGY: "Énergie",
-  TOKEN: "Jeton",
-  RULES: "Règles",
-} as const;
-
-const printTreatmentLabels = {
-  REGULAR: "Régulier",
-  ALT: "Alternatif",
-  OVERNUMBER: "Surnuméroté",
-  UNKNOWN: "Inconnu",
-} as const;
 
 type CardDetailPageProps = {
   params: Promise<{ cardId: string }>;
@@ -86,15 +58,16 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
               <dl className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <Detail label="Set" value={`${card.set.code} — ${card.set.name}`} />
                 <Detail label="Numéro" value={card.collectorNumber} />
-                <Detail label="Rareté" value={rarityLabels[card.rarity]} />
-                <Detail label="Type" value={kindLabels[card.kind]} />
-                <Detail label="Traitement" value={printTreatmentLabels[card.printTreatment]} />
+                <Detail label="Rareté" value={cardRarityLabelsFr[card.rarity]} />
+                <Detail label="Type" value={cardKindLabelsFr[card.kind]} />
+                <Detail label="Traitement" value={cardPrintTreatmentLabelsFr[card.printTreatment]} />
                 <Detail label="Showcase" value={card.hasShowcase ? "Oui" : "Non"} />
               </dl>
             </section>
 
             <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
               <h2 className="text-2xl font-semibold text-archive-text100">Possession</h2>
+              <p className="mt-2 text-sm text-archive-text300">Variantes autorisées et quantités possédées.</p>
               {card.isTrackable ? (
                 <div className="mt-5 overflow-hidden rounded-card border border-[rgba(199,168,102,0.22)]">
                   <table className="min-w-full text-left text-sm">
@@ -107,7 +80,7 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
                     <tbody className="divide-y divide-[rgba(199,168,102,0.14)]">
                       {card.ownershipRows.map((row) => (
                         <tr className="text-archive-text300" key={row.variant}>
-                          <td className="px-5 py-4 text-archive-gold300">{variantLabels[row.variant]}</td>
+                          <td className="px-5 py-4 text-archive-gold300">{cardVariantLabelsFr[row.variant]}</td>
                           <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.ownedQuantity}</td>
                         </tr>
                       ))}
