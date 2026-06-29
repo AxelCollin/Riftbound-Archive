@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterCollectionRows, type CollectionDisplayRow } from "./collection-display";
+import {
+  defaultCollectionDisplayMode,
+  filterCollectionRows,
+  getCollectionDisplayQuantity,
+  type CollectionDisplayRow,
+} from "./collection-display";
 
 function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
   return {
@@ -19,6 +24,19 @@ function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
     ...overrides,
   };
 }
+
+describe("collection display quantities", () => {
+  const displayRow = row({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 3 });
+
+  it("uses owned quantity as the default display mode", () => {
+    expect(defaultCollectionDisplayMode).toBe("OWNED");
+    expect(getCollectionDisplayQuantity(displayRow)).toBe(4);
+  });
+
+  it("selects already-computed available quantity for available display mode", () => {
+    expect(getCollectionDisplayQuantity(displayRow, "AVAILABLE")).toBe(3);
+  });
+});
 
 describe("collection filtering", () => {
   const rows: CollectionDisplayRow[] = [

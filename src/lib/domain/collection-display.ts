@@ -21,6 +21,9 @@ export type CollectionRarityFilter = CardRarity | "ALL";
 export type CollectionKindFilter = Extract<CardKind, "GAMEPLAY" | "ENERGY"> | "ALL";
 export type CollectionVariantFilter = CardVariant | "ALL";
 export type CollectionOwnedStatusFilter = "ALL" | "OWNED" | "MISSING";
+export type CollectionDisplayMode = "OWNED" | "AVAILABLE";
+
+export const defaultCollectionDisplayMode: CollectionDisplayMode = "OWNED";
 
 export type CollectionFilterInput = {
   searchText?: string;
@@ -54,6 +57,10 @@ export function filterCollectionRows(
 
     return matchesSearch && matchesRarity && matchesKind && matchesVariant && matchesOwnedStatus;
   });
+}
+
+export function getCollectionDisplayQuantity(row: CollectionDisplayRow, mode: CollectionDisplayMode = defaultCollectionDisplayMode): number {
+  return mode === "AVAILABLE" ? row.availableQuantity : row.ownedQuantity;
 }
 
 export function normalizeSearchText(value: string): string {

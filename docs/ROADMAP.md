@@ -53,9 +53,9 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 ## Phase 5 - Binder and availability UI
 
 - [x] Add binder reservation calculation to queries. (Phase 5A: server-side binder reservation and availability query composition for collection and card detail rows.)
-- [ ] Add owned versus available toggle. (Future Phase 5 work; Phase 5A only exposes server-side query data.)
-- [ ] Add binder page. (Future Phase 5 work.)
-- [ ] Add availability explanation page. (Future Phase 5 work.)
+- [x] Add owned versus available toggle. (Phase 5B: collection list can switch its main quantity between precomputed owned and available row fields.)
+- [ ] Add binder page. (Future Phase 5 work; not included in Phase 5B.)
+- [ ] Add availability explanation page. (Future Phase 5 work; not included in Phase 5B.)
 
 ## Phase 6 - Deckbuilding MVP
 
