@@ -85,8 +85,72 @@ describe("collection query mapping", () => {
     ]);
 
     expect(rows).toMatchObject([
-      { cardId: "owned-card", variant: "NORMAL", ownedQuantity: 0 },
-      { cardId: "owned-card", variant: "FOIL", ownedQuantity: 3 },
+      { cardId: "owned-card", variant: "NORMAL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { cardId: "owned-card", variant: "FOIL", ownedQuantity: 3, binderReservedQuantity: 1, availableQuantity: 2 },
+    ]);
+  });
+
+  it("reserves foil first for common and uncommon rows, then computes availability", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "common-foil-first",
+        rarity: "COMMON",
+        collectionEntries: [
+          { variant: "NORMAL", quantity: 3 },
+          { variant: "FOIL", quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "NORMAL", ownedQuantity: 3, binderReservedQuantity: 0, availableQuantity: 3 },
+      { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
+    ]);
+  });
+
+  it("reserves normal for common and uncommon cards when only normal is owned", () => {
+    const rows = createCollectionRows([
+      card({ id: "common-normal", rarity: "UNCOMMON", collectionEntries: [{ variant: "NORMAL", quantity: 2 }] }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "NORMAL", ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 },
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+    ]);
+  });
+
+  it("reserves foil for rare, epic, and ultimate foil-only cards", () => {
+    const rows = createCollectionRows([
+      card({ id: "rare-foil", rarity: "RARE", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }),
+      card({ id: "epic-foil", rarity: "EPIC", collectionEntries: [{ variant: "FOIL", quantity: 1 }] }),
+      card({ id: "ultimate-foil", rarity: "ULTIMATE", collectionEntries: [{ variant: "FOIL", quantity: 3 }] }),
+    ]);
+
+    expect(rows.map(({ cardId, variant, ownedQuantity, binderReservedQuantity, availableQuantity }) => ({ cardId, variant, ownedQuantity, binderReservedQuantity, availableQuantity }))).toEqual([
+      { cardId: "rare-foil", variant: "FOIL", ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 },
+      { cardId: "epic-foil", variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
+      { cardId: "ultimate-foil", variant: "FOIL", ownedQuantity: 3, binderReservedQuantity: 1, availableQuantity: 2 },
+    ]);
+  });
+
+  it("never auto-reserves showcase and leaves owned showcase available", () => {
+    const rows = createCollectionRows([
+      card({ id: "showcase-owned", rarity: "EPIC", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }] }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "SHOWCASE", ownedQuantity: 1, binderReservedQuantity: 0, availableQuantity: 1 },
+    ]);
+  });
+
+  it("keeps ENERGY trackable in ownership and availability rows", () => {
+    const rows = createCollectionRows([
+      card({ id: "energy-card", kind: "ENERGY", rarity: "UNKNOWN", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { cardId: "energy-card", variant: "FOIL", ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 },
     ]);
   });
 

@@ -1,8 +1,10 @@
 import { prisma } from "../db";
+import { getCardAvailability } from "../domain/availability";
+import { getBinderReservation } from "../domain/binder";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import type { CollectionDisplayRow } from "../domain/collection-display";
 import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
-import { getAllowedVariants, type CardVariant } from "../domain/variants";
+import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "../domain/variants";
 
 type CollectionCardTranslation = {
   locale: string;
@@ -63,7 +65,9 @@ export function createCollectionRows(cards: CollectionCardRecord[]): CollectionD
       const allowedVariants = getAllowedVariants(card);
       assertOwnedSnapshotVariantsAllowed(card.id, card.collectionEntries, allowedVariants);
 
-      const entriesByVariant = new Map(card.collectionEntries.map((entry) => [entry.variant, entry.quantity]));
+      const ownedCounts = createOwnedVariantCounts(card.id, allowedVariants, card.collectionEntries);
+      const binderReserved = getBinderReservation(card, ownedCounts).reserved;
+      const available = getCardAvailability(card, ownedCounts, [], binderReserved).available;
       const cardName = getDisplayCardName(card);
 
       return allowedVariants.map((variant) => ({
@@ -77,13 +81,34 @@ export function createCollectionRows(cards: CollectionCardRecord[]): CollectionD
         kind: card.kind,
         printTreatment: card.printTreatment,
         variant,
-        ownedQuantity: normalizeOwnedSnapshotQuantity({
-          cardId: card.id,
-          variant,
-          quantity: entriesByVariant.get(variant) ?? 0,
-        }),
+        ownedQuantity: getVariantCount(ownedCounts, variant),
+        binderReservedQuantity: getVariantCount(binderReserved, variant),
+        availableQuantity: getVariantCount(available, variant),
       }));
     });
+}
+
+function createOwnedVariantCounts(
+  cardId: string,
+  allowedVariants: CardVariant[],
+  collectionEntries: CollectionCardEntry[],
+): VariantCounts {
+  const entriesByVariant = new Map(collectionEntries.map((entry) => [entry.variant, entry.quantity]));
+  const ownedCounts: VariantCounts = {};
+
+  for (const variant of allowedVariants) {
+    const ownedQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant,
+      quantity: entriesByVariant.get(variant) ?? 0,
+    });
+
+    if (ownedQuantity > 0) {
+      ownedCounts[variant] = ownedQuantity;
+    }
+  }
+
+  return ownedCounts;
 }
 
 export function summarizeCollectionRows(rows: CollectionDisplayRow[]): CollectionSummary {

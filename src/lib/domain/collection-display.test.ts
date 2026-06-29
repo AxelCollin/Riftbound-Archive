@@ -14,6 +14,8 @@ function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
     printTreatment: "REGULAR",
     variant: "FOIL",
     ownedQuantity: 0,
+    binderReservedQuantity: 0,
+    availableQuantity: 0,
     ...overrides,
   };
 }

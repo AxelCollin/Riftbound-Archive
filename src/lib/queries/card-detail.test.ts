@@ -41,8 +41,8 @@ describe("card detail mapping", () => {
     const detail = createCardDetail(card({ rarity: "COMMON", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }));
 
     expect(detail.ownershipRows).toEqual([
-      { variant: "NORMAL", ownedQuantity: 0 },
-      { variant: "FOIL", ownedQuantity: 2 },
+      { variant: "NORMAL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "FOIL", ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 },
     ]);
   });
 
@@ -59,8 +59,32 @@ describe("card detail mapping", () => {
     );
 
     expect(detail.ownershipRows).toEqual([
-      { variant: "FOIL", ownedQuantity: 1 },
-      { variant: "SHOWCASE", ownedQuantity: 3 },
+      { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
+      { variant: "SHOWCASE", ownedQuantity: 3, binderReservedQuantity: 0, availableQuantity: 3 },
+    ]);
+  });
+
+  it("maps missing valid snapshots to coherent owned, reserved, and available quantities", () => {
+    const detail = createCardDetail(card({ rarity: "COMMON" }));
+
+    expect(detail.ownershipRows).toEqual([
+      { variant: "NORMAL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+    ]);
+  });
+
+  it("keeps showcase available without automatic binder reservation", () => {
+    const detail = createCardDetail(
+      card({
+        rarity: "EPIC",
+        hasShowcase: true,
+        collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
+      }),
+    );
+
+    expect(detail.ownershipRows).toEqual([
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "SHOWCASE", ownedQuantity: 1, binderReservedQuantity: 0, availableQuantity: 1 },
     ]);
   });
 

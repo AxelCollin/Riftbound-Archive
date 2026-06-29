@@ -1,7 +1,9 @@
 import { prisma } from "../db";
+import { getCardAvailability } from "../domain/availability";
+import { getBinderReservation } from "../domain/binder";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
-import { getAllowedVariants, type CardVariant } from "../domain/variants";
+import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
 
@@ -47,6 +49,8 @@ export type CardDetailRecord = {
 export type CardOwnershipVariantRow = {
   variant: CardVariant;
   ownedQuantity: number;
+  binderReservedQuantity: number;
+  availableQuantity: number;
 };
 
 export type CardDetail = {
@@ -73,9 +77,11 @@ export type CardDetail = {
 };
 
 export function createCardDetail(record: CardDetailRecord): CardDetail {
-  const entriesByVariant = new Map(record.collectionEntries.map((entry) => [entry.variant, entry.quantity]));
   const allowedVariants = getAllowedVariants(record);
   assertOwnedSnapshotVariantsAllowed(record.id, record.collectionEntries, allowedVariants);
+  const ownedCounts = createOwnedVariantCounts(record.id, allowedVariants, record.collectionEntries);
+  const binderReserved = getBinderReservation(record, ownedCounts).reserved;
+  const available = getCardAvailability(record, ownedCounts, [], binderReserved).available;
 
   return {
     id: record.id,
@@ -94,15 +100,36 @@ export function createCardDetail(record: CardDetailRecord): CardDetail {
     translations: record.translations,
     ownershipRows: allowedVariants.map((variant) => ({
       variant,
-      ownedQuantity: normalizeOwnedSnapshotQuantity({
-        cardId: record.id,
-        variant,
-        quantity: entriesByVariant.get(variant) ?? 0,
-      }),
+      ownedQuantity: getVariantCount(ownedCounts, variant),
+      binderReservedQuantity: getVariantCount(binderReserved, variant),
+      availableQuantity: getVariantCount(available, variant),
     })),
     isTrackable: isTrackableCard(record),
     userMeta: record.userMeta,
   };
+}
+
+function createOwnedVariantCounts(
+  cardId: string,
+  allowedVariants: CardVariant[],
+  collectionEntries: CardDetailCollectionEntryRecord[],
+): VariantCounts {
+  const entriesByVariant = new Map(collectionEntries.map((entry) => [entry.variant, entry.quantity]));
+  const ownedCounts: VariantCounts = {};
+
+  for (const variant of allowedVariants) {
+    const ownedQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant,
+      quantity: entriesByVariant.get(variant) ?? 0,
+    });
+
+    if (ownedQuantity > 0) {
+      ownedCounts[variant] = ownedQuantity;
+    }
+  }
+
+  return ownedCounts;
 }
 
 export async function getCardDetail(cardId: string): Promise<CardDetail | null> {
