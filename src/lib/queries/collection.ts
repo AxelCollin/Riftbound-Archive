@@ -1,10 +1,25 @@
 import { prisma } from "../db";
-import { getCardAvailability } from "../domain/availability";
+import {
+  getCardAvailability,
+  type DeckAllocationSet,
+} from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
-import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
+import {
+  isTrackableCard,
+  type CardKind,
+  type CardRarity,
+} from "../domain/cards";
 import type { CollectionDisplayRow } from "../domain/collection-display";
-import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
-import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "../domain/variants";
+import {
+  assertOwnedSnapshotVariantsAllowed,
+  normalizeOwnedSnapshotQuantity,
+} from "../domain/collection-quantities";
+import {
+  getAllowedVariants,
+  getVariantCount,
+  type CardVariant,
+  type VariantCounts,
+} from "../domain/variants";
 
 type CollectionCardTranslation = {
   locale: string;
@@ -46,9 +61,13 @@ export type CollectionPageData = {
 
 const localeFallbackOrder = ["fr-FR", "fr-fr", "fr", "en-US", "en"];
 
-export function getDisplayCardName(card: Pick<CollectionCardRecord, "name" | "translations">): string {
+export function getDisplayCardName(
+  card: Pick<CollectionCardRecord, "name" | "translations">,
+): string {
   for (const locale of localeFallbackOrder) {
-    const translation = card.translations.find((candidate) => candidate.locale === locale);
+    const translation = card.translations.find(
+      (candidate) => candidate.locale === locale,
+    );
 
     if (translation?.name) {
       return translation.name;
@@ -58,34 +77,48 @@ export function getDisplayCardName(card: Pick<CollectionCardRecord, "name" | "tr
   return card.name;
 }
 
-export function createCollectionRows(cards: CollectionCardRecord[]): CollectionDisplayRow[] {
-  return cards
-    .filter(isTrackableCard)
-    .flatMap((card) => {
-      const allowedVariants = getAllowedVariants(card);
-      assertOwnedSnapshotVariantsAllowed(card.id, card.collectionEntries, allowedVariants);
+export function createCollectionRows(
+  cards: CollectionCardRecord[],
+  deckAllocationSets: DeckAllocationSet[] = [],
+): CollectionDisplayRow[] {
+  return cards.filter(isTrackableCard).flatMap((card) => {
+    const allowedVariants = getAllowedVariants(card);
+    assertOwnedSnapshotVariantsAllowed(
+      card.id,
+      card.collectionEntries,
+      allowedVariants,
+    );
 
-      const ownedCounts = createOwnedVariantCounts(card.id, allowedVariants, card.collectionEntries);
-      const binderReserved = getBinderReservation(card, ownedCounts).reserved;
-      const available = getCardAvailability(card, ownedCounts, [], binderReserved).available;
-      const cardName = getDisplayCardName(card);
+    const ownedCounts = createOwnedVariantCounts(
+      card.id,
+      allowedVariants,
+      card.collectionEntries,
+    );
+    const binderReserved = getBinderReservation(card, ownedCounts).reserved;
+    const available = getCardAvailability(
+      card,
+      ownedCounts,
+      deckAllocationSets,
+      binderReserved,
+    ).available;
+    const cardName = getDisplayCardName(card);
 
-      return allowedVariants.map((variant) => ({
-        rowId: `${card.id}:${variant}`,
-        cardId: card.id,
-        cardName,
-        setCode: card.set.code,
-        setName: card.set.name,
-        collectorNumber: card.collectorNumber ?? "—",
-        rarity: card.rarity,
-        kind: card.kind,
-        printTreatment: card.printTreatment,
-        variant,
-        ownedQuantity: getVariantCount(ownedCounts, variant),
-        binderReservedQuantity: getVariantCount(binderReserved, variant),
-        availableQuantity: getVariantCount(available, variant),
-      }));
-    });
+    return allowedVariants.map((variant) => ({
+      rowId: `${card.id}:${variant}`,
+      cardId: card.id,
+      cardName,
+      setCode: card.set.code,
+      setName: card.set.name,
+      collectorNumber: card.collectorNumber ?? "—",
+      rarity: card.rarity,
+      kind: card.kind,
+      printTreatment: card.printTreatment,
+      variant,
+      ownedQuantity: getVariantCount(ownedCounts, variant),
+      binderReservedQuantity: getVariantCount(binderReserved, variant),
+      availableQuantity: getVariantCount(available, variant),
+    }));
+  });
 }
 
 function createOwnedVariantCounts(
@@ -93,7 +126,9 @@ function createOwnedVariantCounts(
   allowedVariants: CardVariant[],
   collectionEntries: CollectionCardEntry[],
 ): VariantCounts {
-  const entriesByVariant = new Map(collectionEntries.map((entry) => [entry.variant, entry.quantity]));
+  const entriesByVariant = new Map(
+    collectionEntries.map((entry) => [entry.variant, entry.quantity]),
+  );
   const ownedCounts: VariantCounts = {};
 
   for (const variant of allowedVariants) {
@@ -111,7 +146,9 @@ function createOwnedVariantCounts(
   return ownedCounts;
 }
 
-export function summarizeCollectionRows(rows: CollectionDisplayRow[]): CollectionSummary {
+export function summarizeCollectionRows(
+  rows: CollectionDisplayRow[],
+): CollectionSummary {
   return rows.reduce<CollectionSummary>(
     (summary, row) => ({
       totalOwnedCopies: summary.totalOwnedCopies + row.ownedQuantity,
@@ -129,20 +166,43 @@ export function summarizeCollectionRows(rows: CollectionDisplayRow[]): Collectio
 }
 
 export async function getCollectionPageData(): Promise<CollectionPageData> {
-  const cards = await prisma.card.findMany({
-    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-    orderBy: [{ set: { code: "asc" } }, { collectorNumber: "asc" }, { name: "asc" }],
-    include: {
-      set: { select: { code: true, name: true } },
-      translations: { select: { locale: true, name: true } },
-      collectionEntries: { select: { variant: true, quantity: true } },
-    },
-  });
+  const [cards, deckAllocationSets] = await Promise.all([
+    prisma.card.findMany({
+      where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+      orderBy: [
+        { set: { code: "asc" } },
+        { collectorNumber: "asc" },
+        { name: "asc" },
+      ],
+      include: {
+        set: { select: { code: true, name: true } },
+        translations: { select: { locale: true, name: true } },
+        collectionEntries: { select: { variant: true, quantity: true } },
+      },
+    }),
+    getAssembledDeckAllocationSets(),
+  ]);
 
-  const rows = createCollectionRows(cards);
+  const rows = createCollectionRows(cards, deckAllocationSets);
 
   return {
     rows,
     summary: summarizeCollectionRows(rows),
   };
+}
+
+async function getAssembledDeckAllocationSets(): Promise<DeckAllocationSet[]> {
+  const assembledDecks = await prisma.deck.findMany({
+    where: { status: "ASSEMBLED" },
+    select: {
+      allocations: {
+        select: { cardId: true, variant: true, quantity: true },
+      },
+    },
+  });
+
+  return assembledDecks.map((deck) => ({
+    assembled: true,
+    allocations: deck.allocations,
+  }));
 }
