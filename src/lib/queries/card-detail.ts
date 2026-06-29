@@ -1,7 +1,24 @@
 import { prisma } from "../db";
-import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
-import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
-import { getAllowedVariants, type CardVariant } from "../domain/variants";
+import {
+  getCardAvailability,
+  type DeckAllocationSet,
+} from "../domain/availability";
+import { getBinderReservation } from "../domain/binder";
+import {
+  isTrackableCard,
+  type CardKind,
+  type CardRarity,
+} from "../domain/cards";
+import {
+  assertOwnedSnapshotVariantsAllowed,
+  normalizeOwnedSnapshotQuantity,
+} from "../domain/collection-quantities";
+import {
+  getAllowedVariants,
+  getVariantCount,
+  type CardVariant,
+  type VariantCounts,
+} from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
 
@@ -47,6 +64,8 @@ export type CardDetailRecord = {
 export type CardOwnershipVariantRow = {
   variant: CardVariant;
   ownedQuantity: number;
+  binderReservedQuantity: number;
+  availableQuantity: number;
 };
 
 export type CardDetail = {
@@ -72,10 +91,28 @@ export type CardDetail = {
   userMeta: CardDetailUserMetaRecord;
 };
 
-export function createCardDetail(record: CardDetailRecord): CardDetail {
-  const entriesByVariant = new Map(record.collectionEntries.map((entry) => [entry.variant, entry.quantity]));
+export function createCardDetail(
+  record: CardDetailRecord,
+  deckAllocationSets: DeckAllocationSet[] = [],
+): CardDetail {
   const allowedVariants = getAllowedVariants(record);
-  assertOwnedSnapshotVariantsAllowed(record.id, record.collectionEntries, allowedVariants);
+  assertOwnedSnapshotVariantsAllowed(
+    record.id,
+    record.collectionEntries,
+    allowedVariants,
+  );
+  const ownedCounts = createOwnedVariantCounts(
+    record.id,
+    allowedVariants,
+    record.collectionEntries,
+  );
+  const binderReserved = getBinderReservation(record, ownedCounts).reserved;
+  const available = getCardAvailability(
+    record,
+    ownedCounts,
+    deckAllocationSets,
+    binderReserved,
+  ).available;
 
   return {
     id: record.id,
@@ -94,34 +131,92 @@ export function createCardDetail(record: CardDetailRecord): CardDetail {
     translations: record.translations,
     ownershipRows: allowedVariants.map((variant) => ({
       variant,
-      ownedQuantity: normalizeOwnedSnapshotQuantity({
-        cardId: record.id,
-        variant,
-        quantity: entriesByVariant.get(variant) ?? 0,
-      }),
+      ownedQuantity: getVariantCount(ownedCounts, variant),
+      binderReservedQuantity: getVariantCount(binderReserved, variant),
+      availableQuantity: getVariantCount(available, variant),
     })),
     isTrackable: isTrackableCard(record),
     userMeta: record.userMeta,
   };
 }
 
-export async function getCardDetail(cardId: string): Promise<CardDetail | null> {
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    include: {
-      set: { select: { code: true, name: true } },
-      translations: {
-        orderBy: { locale: "asc" },
-        select: { locale: true, name: true, subtitle: true, rulesText: true, flavorText: true },
+function createOwnedVariantCounts(
+  cardId: string,
+  allowedVariants: CardVariant[],
+  collectionEntries: CardDetailCollectionEntryRecord[],
+): VariantCounts {
+  const entriesByVariant = new Map(
+    collectionEntries.map((entry) => [entry.variant, entry.quantity]),
+  );
+  const ownedCounts: VariantCounts = {};
+
+  for (const variant of allowedVariants) {
+    const ownedQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant,
+      quantity: entriesByVariant.get(variant) ?? 0,
+    });
+
+    if (ownedQuantity > 0) {
+      ownedCounts[variant] = ownedQuantity;
+    }
+  }
+
+  return ownedCounts;
+}
+
+export async function getCardDetail(
+  cardId: string,
+): Promise<CardDetail | null> {
+  const [card, deckAllocationSets] = await Promise.all([
+    prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        set: { select: { code: true, name: true } },
+        translations: {
+          orderBy: { locale: "asc" },
+          select: {
+            locale: true,
+            name: true,
+            subtitle: true,
+            rulesText: true,
+            flavorText: true,
+          },
+        },
+        collectionEntries: { select: { variant: true, quantity: true } },
+        userMeta: { select: { favorite: true, note: true } },
       },
-      collectionEntries: { select: { variant: true, quantity: true } },
-      userMeta: { select: { favorite: true, note: true } },
+    }),
+    getAssembledDeckAllocationSetsForCard(cardId),
+  ]);
+
+  return card ? createCardDetail(card, deckAllocationSets) : null;
+}
+
+export async function getCardDetailFromRouteParam(
+  routeCardId: string,
+): Promise<CardDetail | null> {
+  return getFirstCardDetailLookupResult(routeCardId, getCardDetail);
+}
+
+async function getAssembledDeckAllocationSetsForCard(
+  cardId: string,
+): Promise<DeckAllocationSet[]> {
+  const assembledDecks = await prisma.deck.findMany({
+    where: {
+      status: "ASSEMBLED",
+      allocations: { some: { cardId } },
+    },
+    select: {
+      allocations: {
+        where: { cardId },
+        select: { cardId: true, variant: true, quantity: true },
+      },
     },
   });
 
-  return card ? createCardDetail(card) : null;
-}
-
-export async function getCardDetailFromRouteParam(routeCardId: string): Promise<CardDetail | null> {
-  return getFirstCardDetailLookupResult(routeCardId, getCardDetail);
+  return assembledDecks.map((deck) => ({
+    assembled: true,
+    allocations: deck.allocations,
+  }));
 }

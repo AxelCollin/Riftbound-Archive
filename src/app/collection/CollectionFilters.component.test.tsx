@@ -17,6 +17,8 @@ const rows: CollectionDisplayRow[] = [
     printTreatment: "REGULAR",
     variant: "NORMAL",
     ownedQuantity: 2,
+    binderReservedQuantity: 0,
+    availableQuantity: 2,
   },
   {
     rowId: "rba-002-foil",
@@ -30,6 +32,8 @@ const rows: CollectionDisplayRow[] = [
     printTreatment: "REGULAR",
     variant: "FOIL",
     ownedQuantity: 0,
+    binderReservedQuantity: 0,
+    availableQuantity: 0,
   },
   {
     rowId: "ene-010-foil",
@@ -43,6 +47,8 @@ const rows: CollectionDisplayRow[] = [
     printTreatment: "UNKNOWN",
     variant: "FOIL",
     ownedQuantity: 4,
+    binderReservedQuantity: 1,
+    availableQuantity: 3,
   },
   {
     rowId: "rba-099-showcase",
@@ -56,6 +62,8 @@ const rows: CollectionDisplayRow[] = [
     printTreatment: "ALT",
     variant: "SHOWCASE",
     ownedQuantity: 1,
+    binderReservedQuantity: 0,
+    availableQuantity: 1,
   },
 ];
 

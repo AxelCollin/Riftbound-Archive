@@ -13,6 +13,8 @@ export type CollectionDisplayRow = {
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   variant: CardVariant;
   ownedQuantity: number;
+  binderReservedQuantity: number;
+  availableQuantity: number;
 };
 
 export type CollectionRarityFilter = CardRarity | "ALL";

@@ -116,6 +116,8 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
                 <th className="px-5 py-4">Traitement</th>
                 <th className="px-5 py-4">Variante</th>
                 <th className="px-5 py-4 text-right">Possédées</th>
+                <th className="px-5 py-4 text-right">Réservées binder</th>
+                <th className="px-5 py-4 text-right">Disponibles</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[rgba(199,168,102,0.14)]">
@@ -133,6 +135,8 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
                   <td className="px-5 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
                   <td className="px-5 py-4 text-archive-gold300">{cardVariantLabelsFr[row.variant]}</td>
                   <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.ownedQuantity}</td>
+                  <td className="px-5 py-4 text-right text-lg font-semibold text-archive-gold300">{row.binderReservedQuantity}</td>
+                  <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.availableQuantity}</td>
                 </tr>
               ))}
             </tbody>
