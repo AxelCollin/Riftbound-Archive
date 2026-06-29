@@ -2,8 +2,14 @@ import { describe, expect, it } from "vitest";
 import { getCardDetailHref } from "./card-detail-link";
 
 describe("collection card detail links", () => {
-  it("encodes card ids as a single route-safe segment", () => {
-    expect(getCardDetailHref("set/001?lang=fr#foil")).toBe("/cards/set%2F001%3Flang%3Dfr%23foil");
-    expect(getCardDetailHref("rba%2F001")).toBe("/cards/rba%252F001");
+  it.each([
+    ["slash", "set/001"],
+    ["query", "set?001"],
+    ["hash", "set#001"],
+    ["percent", "set%001"],
+    ["literal encoded slash", "set%2F001"],
+    ["several reserved characters", "set/001?lang=fr#foil"],
+  ])("encodes a card id containing %s as a single route-safe segment", (_caseName, cardId) => {
+    expect(getCardDetailHref(cardId)).toBe(`/cards/${encodeURIComponent(cardId)}`);
   });
 });
