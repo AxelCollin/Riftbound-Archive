@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
+import { getFirstCardDetailLookupResult } from "./card-detail-route";
 
 type CardDetailTranslationRecord = {
   locale: string;
@@ -113,4 +114,8 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
   });
 
   return card ? createCardDetail(card) : null;
+}
+
+export async function getCardDetailFromRouteParam(routeCardId: string): Promise<CardDetail | null> {
+  return getFirstCardDetailLookupResult(routeCardId, getCardDetail);
 }

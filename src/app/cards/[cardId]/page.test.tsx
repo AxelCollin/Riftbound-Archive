@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getCardDetailMock = vi.fn();
+const getCardDetailFromRouteParamMock = vi.fn();
 
 vi.mock("@/lib/queries/card-detail", () => ({
-  getCardDetail: getCardDetailMock,
+  getCardDetailFromRouteParam: getCardDetailFromRouteParamMock,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -14,13 +14,13 @@ vi.mock("next/navigation", () => ({
 
 describe("CardDetailPage route params", () => {
   beforeEach(() => {
-    getCardDetailMock.mockReset();
+    getCardDetailFromRouteParamMock.mockReset();
   });
 
-  it("queries with the cardId value provided by Next without decoding it again", async () => {
+  it("passes the cardId value provided by Next into route-aware lookup", async () => {
     const { default: CardDetailPage } = await import("./page");
 
-    getCardDetailMock.mockResolvedValue(null);
+    getCardDetailFromRouteParamMock.mockResolvedValue(null);
 
     await expect(
       CardDetailPage({
@@ -28,6 +28,6 @@ describe("CardDetailPage route params", () => {
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND");
 
-    expect(getCardDetailMock).toHaveBeenCalledWith("rba%2F001");
+    expect(getCardDetailFromRouteParamMock).toHaveBeenCalledWith("rba%2F001");
   });
 });
