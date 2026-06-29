@@ -1,5 +1,18 @@
 # Database schema
 
+## Current Phase 4 collection state
+
+Phase 4 is complete for the collection MVP persistence behavior:
+
+- `CollectionTransaction` is the append-only ownership history. Valid writes create history rows that are never overwritten.
+- `CollectionEntry` is the current owned quantity snapshot for one official card and one physical `CardVariant`.
+- Valid collection transaction writes update both transaction history and the matching `CollectionEntry` snapshot atomically.
+- Snapshot updates reject any operation that would make the resulting owned quantity negative.
+- TOKEN and RULES cards remain non-trackable for collection ownership and must be rejected by collection write flows.
+- ENERGY cards remain trackable.
+
+The Phase 4B and Phase 4C sections below are historical sub-phase notes. Phase 4B describes the intermediate history-only step before snapshots were added; Phase 4C and this current-state summary describe the final Phase 4 behavior.
+
 ## Phase 3A scope
 
 This schema foundation adds only the first official Riftbound card data tables:
@@ -91,9 +104,9 @@ The Phase 4A seed does not use official Riot card text or images, does not call 
 
 ## Phase 4B collection transaction write service
 
-Phase 4B adds the server-side write service for validated collection history records. The service records `CollectionTransaction` rows only: it validates input, confirms the target `Card` exists, rejects untrackable TOKEN and RULES cards, enforces the domain allowed-variant rules, and writes the append-only transaction.
+Historical sub-phase note: Phase 4B added the first server-side write service for validated collection history records. At that intermediate point, the service recorded `CollectionTransaction` rows only: it validates input, confirms the target `Card` exists, rejects untrackable TOKEN and RULES cards, enforces the domain allowed-variant rules, and writes the append-only transaction.
 
-`CollectionTransaction` remains append-only user collection history. This phase intentionally does not create `CollectionEntry` rows, update owned-quantity snapshots, recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, call external providers, add API routes, or add UI. Updating `CollectionEntry` snapshots from transactions remains the next separate Phase 4 step.
+At the historical Phase 4B checkpoint, `CollectionTransaction` was append-only user collection history and snapshot writes were deliberately deferred. The final Phase 4 behavior is documented above and in Phase 4C: valid transaction writes now also update `CollectionEntry` owned snapshots. Phase 4 still does not recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, call external providers, or implement Phase 5 UI.
 
 
 ## Phase 4C collection entry snapshots
