@@ -17,7 +17,9 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Phase 4A has started. The repository now contains the Next.js / TypeScript / Tailwind foundation, pure domain rules with Vitest coverage, the Prisma/SQLite schema foundation for official data and local application state, and local mock official-card metadata seed data for development.
+Phase 4 is complete. The app now has local mock official card data, a service-layer flow for recording collection transactions, and `CollectionEntry` owned snapshots updated from those transactions. The collection page exists with a filters/search MVP, read-only card detail pages, and route-safe card detail links that support card IDs containing reserved URL characters.
+
+Phase 5 is next. Binder and availability UI are not implemented yet, and binder behavior remains roadmap/future work.
 
 ## Local setup
 
@@ -33,7 +35,7 @@ npm run dev
 
 ## Mock official card seed data
 
-Phase 4A includes a small local seed dataset for development:
+Phase 4 includes a small local seed dataset for development:
 
 ```bash
 DATABASE_URL="file:./dev.db" npm run db:seed
