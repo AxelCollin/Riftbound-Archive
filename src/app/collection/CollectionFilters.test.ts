@@ -12,4 +12,8 @@ describe("collection card detail links", () => {
   ])("encodes a card id containing %s as a single route-safe segment", (_caseName, cardId) => {
     expect(getCardDetailHref(cardId)).toBe(`/cards/${encodeURIComponent(cardId)}`);
   });
+
+  it("double-encodes a literal %2F sequence so it remains one card id segment", () => {
+    expect(getCardDetailHref("set%2F001")).toBe("/cards/set%252F001");
+  });
 });

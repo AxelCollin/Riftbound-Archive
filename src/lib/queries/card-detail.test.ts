@@ -75,6 +75,30 @@ describe("card detail mapping", () => {
     ).toThrow("Invalid negative CollectionEntry quantity for card bad-detail-card variant NORMAL");
   });
 
+  it("surfaces NORMAL snapshots on foil-only cards as invalid persisted data", () => {
+    expect(() =>
+      createCardDetail(
+        card({
+          id: "bad-detail-rare",
+          rarity: "RARE",
+          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+        }),
+      ),
+    ).toThrow("Invalid CollectionEntry variant NORMAL for card bad-detail-rare");
+  });
+
+  it("surfaces SHOWCASE snapshots on non-showcase cards as invalid persisted data", () => {
+    expect(() =>
+      createCardDetail(
+        card({
+          id: "bad-detail-showcase",
+          hasShowcase: false,
+          collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
+        }),
+      ),
+    ).toThrow("Invalid CollectionEntry variant SHOWCASE for card bad-detail-showcase");
+  });
+
   it("marks TOKEN and RULES cards as non-trackable without ownership variants", () => {
     expect(createCardDetail(card({ kind: "TOKEN" })).ownershipRows).toEqual([]);
     expect(createCardDetail(card({ kind: "RULES" })).isTrackable).toBe(false);

@@ -1,7 +1,7 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import type { CollectionDisplayRow } from "../domain/collection-display";
-import { normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
+import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 
 type CollectionCardTranslation = {
@@ -60,10 +60,13 @@ export function createCollectionRows(cards: CollectionCardRecord[]): CollectionD
   return cards
     .filter(isTrackableCard)
     .flatMap((card) => {
+      const allowedVariants = getAllowedVariants(card);
+      assertOwnedSnapshotVariantsAllowed(card.id, card.collectionEntries, allowedVariants);
+
       const entriesByVariant = new Map(card.collectionEntries.map((entry) => [entry.variant, entry.quantity]));
       const cardName = getDisplayCardName(card);
 
-      return getAllowedVariants(card).map((variant) => ({
+      return allowedVariants.map((variant) => ({
         rowId: `${card.id}:${variant}`,
         cardId: card.id,
         cardName,

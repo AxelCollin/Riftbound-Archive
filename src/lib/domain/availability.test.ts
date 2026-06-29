@@ -14,7 +14,11 @@ describe("availability rules", () => {
     expect(getAvailableCount(4, 1, 2)).toBe(1);
   });
 
-  it("never returns availability below zero", () => {
+  it("returns zero from the UI-safe helper when over-reservation would make raw availability negative", () => {
+    expect(getAvailableCount(1, 3, 0)).toBe(0);
+  });
+
+  it("returns zero from the UI-safe helper when over-allocation would make raw availability negative", () => {
     expect(getAvailableCount(1, 1, 5)).toBe(0);
   });
 

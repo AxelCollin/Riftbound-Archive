@@ -20,6 +20,17 @@ export interface CardAvailability {
   available: VariantCounts;
 }
 
+/**
+ * Returns the app-facing available count.
+ *
+ * The raw conceptual formula is:
+ *
+ * available = owned - binderReserved - assembledDeckAllocated
+ *
+ * This helper clamps negative raw results to 0 for UI-safe display. Future
+ * diagnostic/explanation logic should report over-reservation or over-allocation
+ * separately instead of inferring data validity from this clamped value.
+ */
 export function getAvailableCount(owned: number, binderReserved: number, assembledDeckAllocated: number): number {
   return Math.max(0, owned - binderReserved - assembledDeckAllocated);
 }

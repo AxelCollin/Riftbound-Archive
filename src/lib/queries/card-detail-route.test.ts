@@ -7,6 +7,7 @@ describe("card detail route lookup candidates", () => {
     ["encoded slash", "set%2F001", ["set%2F001", "set/001"]],
     ["encoded query and hash characters", "set%3F001%23foil", ["set%3F001%23foil", "set?001#foil"]],
     ["literal percent sequence", "rba%2F001", ["rba%2F001", "rba/001"]],
+    ["double-encoded literal slash sequence", "set%252F001", ["set%252F001", "set%2F001"]],
     ["malformed percent encoding", "bad%zz", ["bad%zz"]],
   ])("returns route lookup candidates for %s", (_caseName, routeCardId, expectedCandidates) => {
     expect(getCardIdRouteLookupCandidates(routeCardId)).toEqual(expectedCandidates);
