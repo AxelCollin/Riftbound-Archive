@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getCardDetailHref } from "./card-detail-link";
+import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardVariantLabelsFr } from "@/lib/formatters/cards";
 import {
   filterCollectionRows,
   type CollectionDisplayRow,
@@ -12,25 +13,25 @@ import {
 
 const rarityOptions: Array<{ value: NonNullable<CollectionFilterInput["rarity"]>; label: string }> = [
   { value: "ALL", label: "Toutes les raretés" },
-  { value: "COMMON", label: "Commune" },
-  { value: "UNCOMMON", label: "Peu commune" },
-  { value: "RARE", label: "Rare" },
-  { value: "EPIC", label: "Épique" },
-  { value: "ULTIMATE", label: "Ultime" },
-  { value: "UNKNOWN", label: "Inconnue" },
+  { value: "COMMON", label: cardRarityLabelsFr.COMMON },
+  { value: "UNCOMMON", label: cardRarityLabelsFr.UNCOMMON },
+  { value: "RARE", label: cardRarityLabelsFr.RARE },
+  { value: "EPIC", label: cardRarityLabelsFr.EPIC },
+  { value: "ULTIMATE", label: cardRarityLabelsFr.ULTIMATE },
+  { value: "UNKNOWN", label: cardRarityLabelsFr.UNKNOWN },
 ];
 
 const kindOptions: Array<{ value: NonNullable<CollectionFilterInput["kind"]>; label: string }> = [
   { value: "ALL", label: "Tous les types" },
-  { value: "GAMEPLAY", label: "Gameplay" },
-  { value: "ENERGY", label: "Énergie" },
+  { value: "GAMEPLAY", label: cardKindLabelsFr.GAMEPLAY },
+  { value: "ENERGY", label: cardKindLabelsFr.ENERGY },
 ];
 
 const variantOptions: Array<{ value: NonNullable<CollectionFilterInput["variant"]>; label: string }> = [
   { value: "ALL", label: "Toutes les variantes" },
-  { value: "NORMAL", label: "Normale" },
-  { value: "FOIL", label: "Foil" },
-  { value: "SHOWCASE", label: "Showcase" },
+  { value: "NORMAL", label: cardVariantLabelsFr.NORMAL },
+  { value: "FOIL", label: cardVariantLabelsFr.FOIL },
+  { value: "SHOWCASE", label: cardVariantLabelsFr.SHOWCASE },
 ];
 
 const ownedStatusOptions: Array<{ value: CollectionOwnedStatusFilter; label: string }> = [
@@ -38,35 +39,6 @@ const ownedStatusOptions: Array<{ value: CollectionOwnedStatusFilter; label: str
   { value: "OWNED", label: "Possédées seulement" },
   { value: "MISSING", label: "Manquantes seulement" },
 ];
-
-const variantLabels = {
-  NORMAL: "Normale",
-  FOIL: "Foil",
-  SHOWCASE: "Showcase",
-} as const;
-
-const rarityLabels = {
-  COMMON: "Commune",
-  UNCOMMON: "Peu commune",
-  RARE: "Rare",
-  EPIC: "Épique",
-  ULTIMATE: "Ultime",
-  UNKNOWN: "Inconnue",
-} as const;
-
-const kindLabels = {
-  GAMEPLAY: "Gameplay",
-  ENERGY: "Énergie",
-  TOKEN: "Jeton",
-  RULES: "Règles",
-} as const;
-
-const printTreatmentLabels = {
-  REGULAR: "Régulier",
-  ALT: "Alternatif",
-  OVERNUMBER: "Surnuméroté",
-  UNKNOWN: "Inconnu",
-} as const;
 
 type CollectionFilterState = {
   searchText: string;
@@ -156,10 +128,10 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
                   </td>
                   <td className="px-5 py-4" title={row.setName}>{row.setCode}</td>
                   <td className="px-5 py-4">{row.collectorNumber}</td>
-                  <td className="px-5 py-4">{rarityLabels[row.rarity]}</td>
-                  <td className="px-5 py-4">{kindLabels[row.kind]}</td>
-                  <td className="px-5 py-4">{printTreatmentLabels[row.printTreatment]}</td>
-                  <td className="px-5 py-4 text-archive-gold300">{variantLabels[row.variant]}</td>
+                  <td className="px-5 py-4">{cardRarityLabelsFr[row.rarity]}</td>
+                  <td className="px-5 py-4">{cardKindLabelsFr[row.kind]}</td>
+                  <td className="px-5 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
+                  <td className="px-5 py-4 text-archive-gold300">{cardVariantLabelsFr[row.variant]}</td>
                   <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.ownedQuantity}</td>
                 </tr>
               ))}

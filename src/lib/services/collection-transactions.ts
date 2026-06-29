@@ -98,7 +98,6 @@ type CollectionEntryQuantityMutation = number | { increment: number } | { decrem
 
 type CollectionTransactionWriteClient = {
   collectionEntry: {
-    findUnique(args: { where: { cardId_variant: { cardId: string; variant: CardVariant } } }): Promise<CollectionEntrySnapshot | null>;
     upsert(args: {
       where: { cardId_variant: { cardId: string; variant: CardVariant } };
       create: { cardId: string; variant: CardVariant; quantity: number };
