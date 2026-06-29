@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCardDetail } from "@/lib/queries/card-detail";
+import { decodeCardIdRouteParam } from "./route-param";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,13 @@ type CardDetailPageProps = {
 
 export default async function CardDetailPage({ params }: CardDetailPageProps) {
   const { cardId } = await params;
-  const card = await getCardDetail(cardId);
+  const decodedCardId = decodeCardIdRouteParam(cardId);
+
+  if (!decodedCardId) {
+    notFound();
+  }
+
+  const card = await getCardDetail(decodedCardId);
 
   if (!card) {
     notFound();
