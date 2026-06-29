@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
-import { normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
+import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
@@ -75,6 +75,7 @@ export type CardDetail = {
 export function createCardDetail(record: CardDetailRecord): CardDetail {
   const entriesByVariant = new Map(record.collectionEntries.map((entry) => [entry.variant, entry.quantity]));
   const allowedVariants = getAllowedVariants(record);
+  assertOwnedSnapshotVariantsAllowed(record.id, record.collectionEntries, allowedVariants);
 
   return {
     id: record.id,

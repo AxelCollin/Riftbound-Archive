@@ -101,6 +101,30 @@ describe("collection query mapping", () => {
     ).toThrow("Invalid negative CollectionEntry quantity for card bad-card variant FOIL");
   });
 
+  it("surfaces NORMAL snapshots on foil-only cards as invalid persisted data", () => {
+    expect(() =>
+      createCollectionRows([
+        card({
+          id: "bad-rare",
+          rarity: "RARE",
+          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+        }),
+      ]),
+    ).toThrow("Invalid CollectionEntry variant NORMAL for card bad-rare");
+  });
+
+  it("surfaces SHOWCASE snapshots on non-showcase cards as invalid persisted data", () => {
+    expect(() =>
+      createCollectionRows([
+        card({
+          id: "bad-showcase",
+          hasShowcase: false,
+          collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
+        }),
+      ]),
+    ).toThrow("Invalid CollectionEntry variant SHOWCASE for card bad-showcase");
+  });
+
   it("uses deterministic translation fallback order", () => {
     expect(
       getDisplayCardName(

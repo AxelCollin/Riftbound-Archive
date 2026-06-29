@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeOwnedSnapshotQuantity } from "./collection-quantities";
+import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "./collection-quantities";
 
 describe("owned snapshot quantity normalization", () => {
   it("returns zero and positive snapshot quantities unchanged", () => {
@@ -11,5 +11,22 @@ describe("owned snapshot quantity normalization", () => {
     expect(() =>
       normalizeOwnedSnapshotQuantity({ cardId: "card-1", variant: "SHOWCASE", quantity: -1 }),
     ).toThrow("Invalid negative CollectionEntry quantity for card card-1 variant SHOWCASE");
+  });
+});
+
+describe("owned snapshot variant validation", () => {
+  it("accepts snapshot variants allowed for the card", () => {
+    expect(() =>
+      assertOwnedSnapshotVariantsAllowed("card-1", [{ variant: "NORMAL" }, { variant: "FOIL" }], [
+        "NORMAL",
+        "FOIL",
+      ]),
+    ).not.toThrow();
+  });
+
+  it("throws a descriptive error for persisted variants unsupported by the card", () => {
+    expect(() => assertOwnedSnapshotVariantsAllowed("card-1", [{ variant: "SHOWCASE" }], ["NORMAL", "FOIL"])).toThrow(
+      "Invalid CollectionEntry variant SHOWCASE for card card-1",
+    );
   });
 });

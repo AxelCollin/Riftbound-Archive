@@ -17,3 +17,21 @@ export function normalizeOwnedSnapshotQuantity({
 
   return quantity;
 }
+
+export function assertOwnedSnapshotVariantsAllowed(
+  cardId: string,
+  entries: Array<Pick<OwnedSnapshotQuantityInput, "variant">>,
+  allowedVariants: CardVariant[],
+): void {
+  const allowedVariantSet = new Set(allowedVariants);
+
+  for (const entry of entries) {
+    if (!allowedVariantSet.has(entry.variant)) {
+      throw new Error(
+        `Invalid CollectionEntry variant ${entry.variant} for card ${cardId}; allowed variants: ${
+          allowedVariants.length > 0 ? allowedVariants.join(", ") : "none"
+        }`,
+      );
+    }
+  }
+}

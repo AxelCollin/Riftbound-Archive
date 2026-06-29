@@ -82,7 +82,11 @@ Availability is always computed per card and per variant:
 available = owned - binderReserved - assembledDeckAllocated
 ```
 
-Never duplicate this formula in UI components.
+This is the raw conceptual formula. The current app-facing available-count helper returns a UI-safe value clamped at `0` when the raw result would be negative because of over-reservation, over-allocation, or invalid persisted data.
+
+Future Phase 5 explanation and diagnostic logic must surface invalid over-reservation or over-allocation separately. It must not rely only on the clamped available count to decide whether the underlying data is valid.
+
+Never duplicate this formula or its clamping policy in UI components.
 
 ## Deck rules
 
