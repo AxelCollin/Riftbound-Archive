@@ -64,6 +64,17 @@ describe("card detail mapping", () => {
     ]);
   });
 
+  it("surfaces negative CollectionEntry snapshots as invalid data", () => {
+    expect(() =>
+      createCardDetail(
+        card({
+          id: "bad-detail-card",
+          collectionEntries: [{ variant: "NORMAL", quantity: -2 }],
+        }),
+      ),
+    ).toThrow("Invalid negative CollectionEntry quantity for card bad-detail-card variant NORMAL");
+  });
+
   it("marks TOKEN and RULES cards as non-trackable without ownership variants", () => {
     expect(createCardDetail(card({ kind: "TOKEN" })).ownershipRows).toEqual([]);
     expect(createCardDetail(card({ kind: "RULES" })).isTrackable).toBe(false);
