@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => ({
+  card: {
+    findMany: vi.fn(),
+  },
+}));
+
+vi.mock("../db", () => ({
+  prisma: prismaMock,
+}));
 import {
   createCollectionRows,
+  getCollectionPageData,
   getDisplayCardName,
   summarizeCollectionRows,
   type CollectionCardRecord,
@@ -21,6 +32,22 @@ function card(overrides: Partial<CollectionCardRecord>): CollectionCardRecord {
     ...overrides,
   };
 }
+
+describe("collection query", () => {
+  it("fetches only trackable GAMEPLAY and ENERGY cards from Prisma", async () => {
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+
+    const { rows, summary } = await getCollectionPageData();
+
+    expect(prismaMock.card.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+      }),
+    );
+    expect(rows).toEqual([]);
+    expect(summary).toEqual({ totalOwnedCopies: 0, ownedRows: 0, trackableRows: 0, missingRows: 0 });
+  });
+});
 
 describe("collection query mapping", () => {
   it("includes trackable cards and excludes TOKEN/RULES cards", () => {
@@ -61,6 +88,17 @@ describe("collection query mapping", () => {
       { cardId: "owned-card", variant: "NORMAL", ownedQuantity: 0 },
       { cardId: "owned-card", variant: "FOIL", ownedQuantity: 3 },
     ]);
+  });
+
+  it("surfaces negative CollectionEntry snapshots as invalid data", () => {
+    expect(() =>
+      createCollectionRows([
+        card({
+          id: "bad-card",
+          collectionEntries: [{ variant: "FOIL", quantity: -1 }],
+        }),
+      ]),
+    ).toThrow("Invalid negative CollectionEntry quantity for card bad-card variant FOIL");
   });
 
   it("uses deterministic translation fallback order", () => {

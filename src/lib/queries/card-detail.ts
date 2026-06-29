@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
+import { normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
@@ -92,7 +93,11 @@ export function createCardDetail(record: CardDetailRecord): CardDetail {
     translations: record.translations,
     ownershipRows: allowedVariants.map((variant) => ({
       variant,
-      ownedQuantity: Math.max(0, entriesByVariant.get(variant) ?? 0),
+      ownedQuantity: normalizeOwnedSnapshotQuantity({
+        cardId: record.id,
+        variant,
+        quantity: entriesByVariant.get(variant) ?? 0,
+      }),
     })),
     isTrackable: isTrackableCard(record),
     userMeta: record.userMeta,

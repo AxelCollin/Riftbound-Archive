@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import type { CollectionDisplayRow } from "../domain/collection-display";
+import { normalizeOwnedSnapshotQuantity } from "../domain/collection-quantities";
 import { getAllowedVariants, type CardVariant } from "../domain/variants";
 
 type CollectionCardTranslation = {
@@ -73,7 +74,11 @@ export function createCollectionRows(cards: CollectionCardRecord[]): CollectionD
         kind: card.kind,
         printTreatment: card.printTreatment,
         variant,
-        ownedQuantity: Math.max(0, entriesByVariant.get(variant) ?? 0),
+        ownedQuantity: normalizeOwnedSnapshotQuantity({
+          cardId: card.id,
+          variant,
+          quantity: entriesByVariant.get(variant) ?? 0,
+        }),
       }));
     });
 }
@@ -97,6 +102,7 @@ export function summarizeCollectionRows(rows: CollectionDisplayRow[]): Collectio
 
 export async function getCollectionPageData(): Promise<CollectionPageData> {
   const cards = await prisma.card.findMany({
+    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
     orderBy: [{ set: { code: "asc" } }, { collectorNumber: "asc" }, { name: "asc" }],
     include: {
       set: { select: { code: true, name: true } },
