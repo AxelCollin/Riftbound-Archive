@@ -27,7 +27,7 @@ Ignored cards must not appear in:
 Implement a configurable function equivalent to:
 
 ```ts
-isTrackableCard(card)
+isTrackableCard(card);
 ```
 
 It must return `false` for tokens and rules cards, and `true` for Energy cards.
@@ -109,6 +109,8 @@ When a deck is disassembled:
 - Remove persisted allocations.
 - Recompute availability.
 
+Phase 6A adds pure domain logic for normalizing deck requirements and calculating missing cards from already-computed availability. It does not persist decks, deck cards, or deck allocations, and it does not add deck CRUD, deck pages, assembly, disassembly, or deckbuilder UI.
+
 Default automatic allocation strategy:
 
 ```text
@@ -125,6 +127,8 @@ For foil-only rarities:
 
 1. Use regular foil copies first.
 2. Use showcase copies only if allowed.
+
+Missing-card calculations must satisfy exact variant requirements before flexible `ANY` requirements for the same card. Flexible `ANY` requirements use remaining availability in preserve-premium order: normal first, foil second, showcase last. One available copy must not satisfy multiple requirements.
 
 ## Booster counter rules
 
