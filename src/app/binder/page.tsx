@@ -58,16 +58,16 @@ export default async function BinderPage() {
               <table className="min-w-full border-collapse text-left text-sm">
                 <thead className="bg-[rgba(16,32,51,0.74)] text-xs uppercase tracking-[0.24em] text-archive-gold300">
                   <tr>
-                    <th className="px-4 py-4">Card</th>
+                    <th className="px-4 py-4">Carte</th>
                     <th className="px-4 py-4">Set</th>
                     <th className="px-4 py-4">N°</th>
-                    <th className="px-4 py-4">Rarity</th>
+                    <th className="px-4 py-4">Rareté</th>
                     <th className="px-4 py-4">Type</th>
-                    <th className="px-4 py-4">Treatment</th>
+                    <th className="px-4 py-4">Traitement</th>
                     <th className="px-4 py-4">Variante réservée</th>
-                    <th className="px-4 py-4 text-right">Owned normal</th>
-                    <th className="px-4 py-4 text-right">Owned foil</th>
-                    <th className="px-4 py-4 text-right">Owned showcase</th>
+                    <th className="px-4 py-4 text-right">Possédées normales</th>
+                    <th className="px-4 py-4 text-right">Possédées foil</th>
+                    <th className="px-4 py-4 text-right">Possédées showcase</th>
                     <th className="px-4 py-4">Statut binder</th>
                   </tr>
                 </thead>
