@@ -108,7 +108,7 @@ export default async function CardAvailabilityPage({ params }: CardAvailabilityP
           {explanation.deckAllocations.length > 0 ? (
             <div className="mt-5 grid gap-3">
               {explanation.deckAllocations.map((allocation) => (
-                <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4" key={`${allocation.deckName}-${allocation.variant}`}>
+                <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4" key={`${allocation.deckId}:${allocation.variant}`}>
                   <p className="text-sm uppercase tracking-[0.22em] text-archive-gold300">{allocation.deckName}</p>
                   <p className="mt-2 text-archive-text100">
                     {allocation.allocatedQuantity} × {cardVariantLabelsFr[allocation.variant]}

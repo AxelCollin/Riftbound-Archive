@@ -1,4 +1,4 @@
-import type { CardVariant } from "./variants";
+import type { CardVariant, VariantCounts } from "./variants";
 
 export type OwnedSnapshotQuantityInput = {
   cardId: string;
@@ -34,4 +34,42 @@ export function assertOwnedSnapshotVariantsAllowed(
       );
     }
   }
+}
+
+export function createOwnedVariantCounts(
+  cardId: string,
+  allowedVariants: CardVariant[],
+  collectionEntries: Array<{ variant: CardVariant; quantity: number }>,
+): VariantCounts {
+  assertOwnedSnapshotVariantsAllowed(
+    cardId,
+    collectionEntries,
+    allowedVariants,
+  );
+
+  const entriesByVariant = new Map<CardVariant, number>();
+
+  for (const entry of collectionEntries) {
+    if (entriesByVariant.has(entry.variant)) {
+      throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${entry.variant}`);
+    }
+
+    entriesByVariant.set(entry.variant, entry.quantity);
+  }
+
+  const ownedCounts: VariantCounts = {};
+
+  for (const variant of allowedVariants) {
+    const ownedQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant,
+      quantity: entriesByVariant.get(variant) ?? 0,
+    });
+
+    if (ownedQuantity > 0) {
+      ownedCounts[variant] = ownedQuantity;
+    }
+  }
+
+  return ownedCounts;
 }

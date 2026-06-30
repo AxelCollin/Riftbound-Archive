@@ -10,14 +10,12 @@ import {
   type CardRarity,
 } from "../domain/cards";
 import {
-  assertOwnedSnapshotVariantsAllowed,
-  normalizeOwnedSnapshotQuantity,
+  createOwnedVariantCounts,
 } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
   getVariantCount,
   type CardVariant,
-  type VariantCounts,
 } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
@@ -96,11 +94,6 @@ export function createCardDetail(
   deckAllocationSets: DeckAllocationSet[] = [],
 ): CardDetail {
   const allowedVariants = getAllowedVariants(record);
-  assertOwnedSnapshotVariantsAllowed(
-    record.id,
-    record.collectionEntries,
-    allowedVariants,
-  );
   const ownedCounts = createOwnedVariantCounts(
     record.id,
     allowedVariants,
@@ -138,31 +131,6 @@ export function createCardDetail(
     isTrackable: isTrackableCard(record),
     userMeta: record.userMeta,
   };
-}
-
-function createOwnedVariantCounts(
-  cardId: string,
-  allowedVariants: CardVariant[],
-  collectionEntries: CardDetailCollectionEntryRecord[],
-): VariantCounts {
-  const entriesByVariant = new Map(
-    collectionEntries.map((entry) => [entry.variant, entry.quantity]),
-  );
-  const ownedCounts: VariantCounts = {};
-
-  for (const variant of allowedVariants) {
-    const ownedQuantity = normalizeOwnedSnapshotQuantity({
-      cardId,
-      variant,
-      quantity: entriesByVariant.get(variant) ?? 0,
-    });
-
-    if (ownedQuantity > 0) {
-      ownedCounts[variant] = ownedQuantity;
-    }
-  }
-
-  return ownedCounts;
 }
 
 export async function getCardDetail(

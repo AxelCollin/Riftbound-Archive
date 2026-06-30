@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { assertOwnedSnapshotVariantsAllowed, normalizeOwnedSnapshotQuantity } from "./collection-quantities";
+import { getVariantCount } from "./variants";
+import {
+  assertOwnedSnapshotVariantsAllowed,
+  createOwnedVariantCounts,
+  normalizeOwnedSnapshotQuantity,
+} from "./collection-quantities";
 
 describe("owned snapshot quantity normalization", () => {
   it("returns zero and positive snapshot quantities unchanged", () => {
@@ -28,5 +33,55 @@ describe("owned snapshot variant validation", () => {
     expect(() => assertOwnedSnapshotVariantsAllowed("card-1", [{ variant: "SHOWCASE" }], ["NORMAL", "FOIL"])).toThrow(
       "Invalid CollectionEntry variant SHOWCASE for card card-1",
     );
+  });
+});
+
+describe("owned variant count composition", () => {
+  it("treats missing allowed variant snapshots as zero counts", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], []);
+
+    expect(counts).toEqual({});
+    expect(getVariantCount(counts, "NORMAL")).toBe(0);
+    expect(getVariantCount(counts, "FOIL")).toBe(0);
+  });
+
+  it("converts positive valid entries into VariantCounts", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", quantity: 2 },
+      { variant: "FOIL", quantity: 1 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 2, FOIL: 1 });
+  });
+
+  it("omits zero entries from returned VariantCounts", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", quantity: 0 },
+      { variant: "FOIL", quantity: 3 },
+    ]);
+
+    expect(counts).toEqual({ FOIL: 3 });
+    expect(getVariantCount(counts, "NORMAL")).toBe(0);
+  });
+
+  it("throws the existing negative CollectionEntry error for negative quantities", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "FOIL", quantity: -1 }]),
+    ).toThrow("Invalid negative CollectionEntry quantity for card card-1 variant FOIL");
+  });
+
+  it("throws the existing invalid variant error for persisted variants unsupported by the card", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "SHOWCASE", quantity: 1 }]),
+    ).toThrow("Invalid CollectionEntry variant SHOWCASE for card card-1");
+  });
+
+  it("throws a clear error for duplicate snapshot rows for the same variant", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+        { variant: "NORMAL", quantity: 1 },
+        { variant: "NORMAL", quantity: 2 },
+      ]),
+    ).toThrow("Duplicate CollectionEntry snapshot for card card-1 variant NORMAL");
   });
 });
