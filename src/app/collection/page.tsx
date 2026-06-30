@@ -17,9 +17,14 @@ export default async function CollectionPage() {
     <main className="min-h-screen px-8 py-6">
       <section className="mx-auto grid max-w-[var(--content-max)] gap-6">
         <header className="rounded-panel border border-[rgba(199,168,102,0.42)] bg-[rgba(8,17,27,0.88)] p-8 shadow-panel backdrop-blur">
-          <Link className="text-sm text-archive-gold300 hover:text-archive-text100" href="/">
-            ← Accueil
-          </Link>
+          <nav className="flex flex-wrap gap-4 text-sm text-archive-gold300">
+            <Link className="hover:text-archive-text100" href="/">
+              ← Accueil
+            </Link>
+            <Link className="hover:text-archive-text100" href="/binder">
+              Binder →
+            </Link>
+          </nav>
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Collection</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Collection</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
