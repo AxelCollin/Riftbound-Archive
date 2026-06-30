@@ -1,0 +1,106 @@
+import Link from "next/link";
+import { deckAllocationStrategyLabelsFr, deckStatusLabelsFr } from "@/lib/formatters/decks";
+import { getDeckListPageData } from "@/lib/queries/decks";
+
+export const dynamic = "force-dynamic";
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+export default async function DecksPage() {
+  const { rows, summary } = await getDeckListPageData();
+  const kpis = [
+    { label: "Decks", value: summary.totalDecks },
+    { label: "Théoriques", value: summary.theoreticalDecks },
+    { label: "Assemblés", value: summary.assembledDecks },
+    { label: "Archivés", value: summary.archivedDecks },
+    { label: "Cartes requises", value: summary.totalRequiredCards },
+    { label: "Cartes allouées", value: summary.totalAllocatedCards },
+  ];
+
+  return (
+    <main className="min-h-screen px-8 py-6">
+      <section className="mx-auto grid max-w-[var(--content-max)] gap-6">
+        <header className="rounded-panel border border-[rgba(199,168,102,0.42)] bg-[rgba(8,17,27,0.88)] p-8 shadow-panel backdrop-blur">
+          <nav className="flex flex-wrap gap-4 text-sm text-archive-gold300">
+            <Link className="hover:text-archive-text100" href="/">← Accueil</Link>
+            <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
+            <Link className="hover:text-archive-text100" href="/binder">Binder →</Link>
+          </nav>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6B</p>
+          <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Decks</h1>
+          <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
+            Liste en lecture seule des decks enregistrés.
+          </p>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
+            La création et l’édition de decks arriveront dans une prochaine étape.
+          </p>
+        </header>
+
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          {kpis.map((kpi) => (
+            <article className="rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(16,32,51,0.72)] p-5 shadow-panel" key={kpi.label}>
+              <p className="text-sm text-archive-text300">{kpi.label}</p>
+              <p className="mt-3 text-4xl font-semibold text-archive-gold300">{kpi.value}</p>
+            </article>
+          ))}
+        </div>
+
+        <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
+          <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
+            <h2 className="text-2xl font-semibold text-archive-text100">Decks enregistrés</h2>
+            <p className="mt-2 text-sm text-archive-text300">
+              Cette vue ne crée, ne modifie et ne supprime aucun deck, requirement ou allocation.
+            </p>
+          </div>
+          {rows.length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="text-xl font-semibold text-archive-gold300">Aucun deck enregistré.</p>
+              <p className="mt-3 text-archive-text300">
+                La création et l’édition de decks arriveront dans une prochaine étape.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse text-left text-sm">
+                <thead className="bg-[rgba(16,32,51,0.74)] text-xs uppercase tracking-[0.24em] text-archive-gold300">
+                  <tr>
+                    <th className="px-4 py-4">Deck</th>
+                    <th className="px-4 py-4">Statut</th>
+                    <th className="px-4 py-4">Stratégie</th>
+                    <th className="px-4 py-4 text-right">Lignes</th>
+                    <th className="px-4 py-4 text-right">Cartes requises</th>
+                    <th className="px-4 py-4 text-right">Allocations</th>
+                    <th className="px-4 py-4 text-right">Cartes allouées</th>
+                    <th className="px-4 py-4">Mis à jour</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[rgba(199,168,102,0.16)]">
+                  {rows.map((row) => (
+                    <tr className="text-archive-text300 hover:bg-[rgba(58,123,213,0.08)]" key={row.deckId}>
+                      <td className="px-4 py-4">
+                        <p className="font-semibold text-archive-text100">{row.name}</p>
+                        {row.description ? <p className="mt-1 max-w-xl text-xs text-archive-text500">{row.description}</p> : null}
+                      </td>
+                      <td className="px-4 py-4">{deckStatusLabelsFr[row.status]}</td>
+                      <td className="px-4 py-4">{deckAllocationStrategyLabelsFr[row.allocationStrategy]}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.deckCardLineCount}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.requiredCardQuantity}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.allocationLineCount}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.allocatedCardQuantity}</td>
+                      <td className="px-4 py-4">{formatDateTime(row.updatedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </section>
+    </main>
+  );
+}
