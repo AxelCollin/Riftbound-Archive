@@ -75,6 +75,28 @@ function visibleBodyRows() {
   return screen.queryAllByRole("row").slice(1);
 }
 
+function rowForCard(cardName: string) {
+  const link = screen.getByRole("link", { name: cardName });
+  const row = link.closest("tr");
+
+  if (row === null) {
+    throw new Error(`Expected ${cardName} to render inside a table row.`);
+  }
+
+  return row;
+}
+
+function quantityCellsForCard(cardName: string) {
+  const cells = within(rowForCard(cardName)).getAllByRole("cell");
+
+  return {
+    selected: cells[7],
+    owned: cells[8],
+    binderReserved: cells[9],
+    available: cells[10],
+  };
+}
+
 function expectVisibleCards(cardNames: string[]) {
   const renderedRows = visibleBodyRows();
 
@@ -91,6 +113,35 @@ describe("CollectionFilters", () => {
 
     expect(screen.getByText("4 résultats affichés / 4")).toBeTruthy();
     expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Énergie prismatique", "Lux dorée"]);
+  });
+
+  it("defaults to displaying owned quantities as the main row quantity", () => {
+    renderFilters();
+
+    expect(screen.getByLabelText("Affichage")).toHaveProperty("value", "OWNED");
+    expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
+
+    const energyQuantities = quantityCellsForCard("Énergie prismatique");
+
+    expect(energyQuantities.selected.textContent).toBe("4");
+    expect(energyQuantities.owned.textContent).toBe("4");
+    expect(energyQuantities.binderReserved.textContent).toBe("1");
+    expect(energyQuantities.available.textContent).toBe("3");
+  });
+
+  it("switches the main row quantity to available quantities and back to owned quantities", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+
+    expect(screen.getByText("Quantité affichée (Disponibles)")).toBeTruthy();
+    expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
+    expect(quantityCellsForCard("Énergie prismatique").binderReserved.textContent).toBe("1");
+
+    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "OWNED" } });
+
+    expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
+    expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("4");
   });
 
   it("filters rows by card name from the search input", () => {
@@ -144,6 +195,16 @@ describe("CollectionFilters", () => {
     fireEvent.change(screen.getByLabelText("Statut"), { target: { value: "OWNED" } });
 
     expectVisibleCards(["Lux dorée"]);
+  });
+
+  it("keeps search filtering stable after switching display modes", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "énergie" } });
+
+    expectVisibleCards(["Énergie prismatique"]);
+    expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
   });
 
   it("shows the French empty state when filters match no rows", () => {

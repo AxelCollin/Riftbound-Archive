@@ -86,7 +86,7 @@ This is the raw conceptual formula. The current app-facing available-count helpe
 
 Future Phase 5 explanation and diagnostic logic must surface invalid over-reservation or over-allocation separately. It must not rely only on the clamped available count to decide whether the underlying data is valid.
 
-Never duplicate this formula or its clamping policy in UI components. Phase 5A composes owned, binder-reserved, and app-facing available quantities server-side for collection and card-detail query rows; the binder page, owned-versus-available toggle, and availability explanation UI remain future Phase 5 work.
+Never duplicate this formula or its clamping policy in UI components. Phase 5A composes owned, binder-reserved, and app-facing available quantities server-side for collection and card-detail query rows. Phase 5B adds a collection UI toggle that selects between those already-computed owned and available row fields. The binder page and availability explanation UI remain future Phase 5 work.
 
 ## Deck rules
 

@@ -5,7 +5,10 @@ import { useMemo, useState } from "react";
 import { getCardDetailHref } from "./card-detail-link";
 import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardVariantLabelsFr } from "@/lib/formatters/cards";
 import {
+  defaultCollectionDisplayMode,
   filterCollectionRows,
+  getCollectionDisplayQuantity,
+  type CollectionDisplayMode,
   type CollectionDisplayRow,
   type CollectionFilterInput,
   type CollectionOwnedStatusFilter,
@@ -34,6 +37,11 @@ const variantOptions: Array<{ value: NonNullable<CollectionFilterInput["variant"
   { value: "SHOWCASE", label: cardVariantLabelsFr.SHOWCASE },
 ];
 
+const displayModeOptions: Array<{ value: CollectionDisplayMode; label: string }> = [
+  { value: "OWNED", label: "Possédées" },
+  { value: "AVAILABLE", label: "Disponibles" },
+];
+
 const ownedStatusOptions: Array<{ value: CollectionOwnedStatusFilter; label: string }> = [
   { value: "ALL", label: "Toutes les lignes" },
   { value: "OWNED", label: "Possédées seulement" },
@@ -46,6 +54,7 @@ type CollectionFilterState = {
   kind: NonNullable<CollectionFilterInput["kind"]>;
   variant: NonNullable<CollectionFilterInput["variant"]>;
   ownedStatus: CollectionOwnedStatusFilter;
+  displayMode: CollectionDisplayMode;
 };
 
 type CollectionFiltersProps = {
@@ -59,9 +68,11 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
     kind: "ALL",
     variant: "ALL",
     ownedStatus: "ALL",
+    displayMode: defaultCollectionDisplayMode,
   });
 
   const filteredRows = useMemo(() => filterCollectionRows(rows, filters), [rows, filters]);
+  const selectedQuantityLabel = filters.displayMode === "AVAILABLE" ? "Disponibles" : "Possédées";
 
   function updateFilter<Key extends keyof CollectionFilterState>(key: Key, value: CollectionFilterState[Key]) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -80,7 +91,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="grid gap-2 text-sm text-archive-text300 xl:col-span-2">
             Recherche
             <input
@@ -95,6 +106,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
           <SelectFilter label="Type" onChange={(value) => updateFilter("kind", value)} options={kindOptions} value={filters.kind} />
           <SelectFilter label="Variante" onChange={(value) => updateFilter("variant", value)} options={variantOptions} value={filters.variant} />
           <SelectFilter label="Statut" onChange={(value) => updateFilter("ownedStatus", value)} options={ownedStatusOptions} value={filters.ownedStatus} />
+          <SelectFilter label="Affichage" onChange={(value) => updateFilter("displayMode", value)} options={displayModeOptions} value={filters.displayMode} />
         </div>
       </div>
 
@@ -115,6 +127,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
                 <th className="px-5 py-4">Type</th>
                 <th className="px-5 py-4">Traitement</th>
                 <th className="px-5 py-4">Variante</th>
+                <th className="px-5 py-4 text-right">Quantité affichée ({selectedQuantityLabel})</th>
                 <th className="px-5 py-4 text-right">Possédées</th>
                 <th className="px-5 py-4 text-right">Réservées binder</th>
                 <th className="px-5 py-4 text-right">Disponibles</th>
@@ -134,6 +147,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
                   <td className="px-5 py-4">{cardKindLabelsFr[row.kind]}</td>
                   <td className="px-5 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
                   <td className="px-5 py-4 text-archive-gold300">{cardVariantLabelsFr[row.variant]}</td>
+                  <td className="px-5 py-4 text-right text-xl font-semibold text-archive-gold300">{getCollectionDisplayQuantity(row, filters.displayMode)}</td>
                   <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.ownedQuantity}</td>
                   <td className="px-5 py-4 text-right text-lg font-semibold text-archive-gold300">{row.binderReservedQuantity}</td>
                   <td className="px-5 py-4 text-right text-lg font-semibold text-archive-text100">{row.availableQuantity}</td>
