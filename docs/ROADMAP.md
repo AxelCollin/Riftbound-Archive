@@ -59,12 +59,14 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 
 ## Phase 6 - Deckbuilding MVP
 
+- [x] Add Phase 6A pure deck requirement normalization and missing-card domain logic.
 - [ ] Add deck CRUD.
-- [ ] Add deck card requirements.
-- [ ] Add missing-card calculation.
+- [ ] Add deck card requirements persistence and write flows.
 - [ ] Add assembled deck allocation.
 - [ ] Add disassemble flow.
 - [ ] Add deckbuilder UI.
+
+Phase 6A is domain-only groundwork for later deckbuilding work. It does not add deck CRUD, deck pages, deckbuilder UI, assembly allocation writes, disassembly, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 ## Phase 7 - Booster opening
 
