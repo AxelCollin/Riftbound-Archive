@@ -68,6 +68,9 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
             <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
               <h2 className="text-2xl font-semibold text-archive-text100">Possession</h2>
               <p className="mt-2 text-sm text-archive-text300">Variantes autorisées et quantités possédées.</p>
+              <Link className="mt-3 inline-flex text-sm font-semibold text-archive-gold300 hover:text-archive-text100" href={`/cards/${encodeURIComponent(card.id)}/availability`}>
+                Voir l’explication de disponibilité →
+              </Link>
               {card.isTrackable ? (
                 <div className="mt-5 overflow-hidden rounded-card border border-[rgba(199,168,102,0.22)]">
                   <table className="min-w-full text-left text-sm">
