@@ -10,15 +10,11 @@ import {
   type CardRarity,
 } from "../domain/cards";
 import type { CollectionDisplayRow } from "../domain/collection-display";
-import {
-  assertOwnedSnapshotVariantsAllowed,
-  normalizeOwnedSnapshotQuantity,
-} from "../domain/collection-quantities";
+import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
   getVariantCount,
   type CardVariant,
-  type VariantCounts,
 } from "../domain/variants";
 
 type CollectionCardTranslation = {
@@ -83,12 +79,6 @@ export function createCollectionRows(
 ): CollectionDisplayRow[] {
   return cards.filter(isTrackableCard).flatMap((card) => {
     const allowedVariants = getAllowedVariants(card);
-    assertOwnedSnapshotVariantsAllowed(
-      card.id,
-      card.collectionEntries,
-      allowedVariants,
-    );
-
     const ownedCounts = createOwnedVariantCounts(
       card.id,
       allowedVariants,
@@ -119,31 +109,6 @@ export function createCollectionRows(
       availableQuantity: getVariantCount(available, variant),
     }));
   });
-}
-
-function createOwnedVariantCounts(
-  cardId: string,
-  allowedVariants: CardVariant[],
-  collectionEntries: CollectionCardEntry[],
-): VariantCounts {
-  const entriesByVariant = new Map(
-    collectionEntries.map((entry) => [entry.variant, entry.quantity]),
-  );
-  const ownedCounts: VariantCounts = {};
-
-  for (const variant of allowedVariants) {
-    const ownedQuantity = normalizeOwnedSnapshotQuantity({
-      cardId,
-      variant,
-      quantity: entriesByVariant.get(variant) ?? 0,
-    });
-
-    if (ownedQuantity > 0) {
-      ownedCounts[variant] = ownedQuantity;
-    }
-  }
-
-  return ownedCounts;
 }
 
 export function summarizeCollectionRows(

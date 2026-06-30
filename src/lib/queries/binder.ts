@@ -6,8 +6,7 @@ import {
   type CardRarity,
 } from "../domain/cards";
 import {
-  assertOwnedSnapshotVariantsAllowed,
-  normalizeOwnedSnapshotQuantity,
+  createOwnedVariantCounts,
 } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
@@ -78,12 +77,6 @@ export type BinderPageData = {
 export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
   return cards.filter(isTrackableCard).map((card) => {
     const allowedVariants = getAllowedVariants(card);
-    assertOwnedSnapshotVariantsAllowed(
-      card.id,
-      card.collectionEntries,
-      allowedVariants,
-    );
-
     const owned = createOwnedVariantCounts(
       card.id,
       allowedVariants,
@@ -116,31 +109,6 @@ export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
       binderStatus: reservedQuantity > 0 ? "RESERVED" : "MISSING",
     };
   });
-}
-
-function createOwnedVariantCounts(
-  cardId: string,
-  allowedVariants: CardVariant[],
-  collectionEntries: BinderCollectionEntry[],
-): VariantCounts {
-  const entriesByVariant = new Map(
-    collectionEntries.map((entry) => [entry.variant, entry.quantity]),
-  );
-  const ownedCounts: VariantCounts = {};
-
-  for (const variant of allowedVariants) {
-    const ownedQuantity = normalizeOwnedSnapshotQuantity({
-      cardId,
-      variant,
-      quantity: entriesByVariant.get(variant) ?? 0,
-    });
-
-    if (ownedQuantity > 0) {
-      ownedCounts[variant] = ownedQuantity;
-    }
-  }
-
-  return ownedCounts;
 }
 
 export function summarizeBinderRows(rows: BinderRow[]): BinderSummary {

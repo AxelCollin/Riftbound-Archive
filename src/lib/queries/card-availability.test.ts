@@ -58,6 +58,7 @@ describe("card availability explanation query", () => {
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({
       where: { allocations: { some: { cardId: "query-card" } } },
       select: {
+        id: true,
         name: true,
         status: true,
         allocations: {
@@ -118,7 +119,7 @@ describe("card availability explanation mapping", () => {
   it("explains assembled deck allocations and reduced availability", () => {
     const explanation = createCardAvailabilityExplanation(
       card({ id: "deck-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }),
-      [{ deckName: "Deck Alpha", assembled: true, allocations: [{ cardId: "deck-card", variant: "NORMAL", quantity: 2 }] }],
+      [{ deckId: "deck-alpha", deckName: "Deck Alpha", assembled: true, allocations: [{ cardId: "deck-card", variant: "NORMAL", quantity: 2 }] }],
     );
 
     expect(explanation.rows[0]).toMatchObject({
@@ -128,23 +129,48 @@ describe("card availability explanation mapping", () => {
       assembledDeckAllocatedQuantity: 2,
       rawAvailableQuantity: 1,
       availableQuantity: 1,
-      deckAllocations: [{ deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 2 }],
+      deckAllocations: [{ deckId: "deck-alpha", deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 2 }],
     });
   });
 
   it("does not reduce availability for theoretical deck allocations", () => {
     const explanation = createCardAvailabilityExplanation(
       card({ id: "theory", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }),
-      [{ deckName: "Theory", assembled: false, allocations: [{ cardId: "theory", variant: "NORMAL", quantity: 3 }] }],
+      [{ deckId: "theory-deck", deckName: "Theory", assembled: false, allocations: [{ cardId: "theory", variant: "NORMAL", quantity: 3 }] }],
     );
 
     expect(explanation.rows[0]).toMatchObject({ assembledDeckAllocatedQuantity: 0, availableQuantity: 3, deckAllocations: [] });
   });
 
+  it("keeps duplicate deck names with the same variant distinguishable by deck id", () => {
+    const explanation = createCardAvailabilityExplanation(
+      card({ id: "duplicate-name-card", collectionEntries: [{ variant: "NORMAL", quantity: 5 }] }),
+      [
+        {
+          deckId: "deck-1",
+          deckName: "Même nom",
+          assembled: true,
+          allocations: [{ cardId: "duplicate-name-card", variant: "NORMAL", quantity: 1 }],
+        },
+        {
+          deckId: "deck-2",
+          deckName: "Même nom",
+          assembled: true,
+          allocations: [{ cardId: "duplicate-name-card", variant: "NORMAL", quantity: 2 }],
+        },
+      ],
+    );
+
+    expect(explanation.rows[0]?.deckAllocations).toMatchObject([
+      { deckId: "deck-1", deckName: "Même nom", variant: "NORMAL", allocatedQuantity: 1 },
+      { deckId: "deck-2", deckName: "Même nom", variant: "NORMAL", allocatedQuantity: 2 },
+    ]);
+  });
+
   it("clamps app-facing availability to 0 when reservation and allocation exceed owned", () => {
     const explanation = createCardAvailabilityExplanation(
       card({ id: "over", collectionEntries: [{ variant: "NORMAL", quantity: 1 }] }),
-      [{ deckName: "Over", assembled: true, allocations: [{ cardId: "over", variant: "NORMAL", quantity: 2 }] }],
+      [{ deckId: "over-deck", deckName: "Over", assembled: true, allocations: [{ cardId: "over", variant: "NORMAL", quantity: 2 }] }],
     );
 
     expect(explanation.rows[0]).toMatchObject({ rawAvailableQuantity: -2, availableQuantity: 0, status: "UNAVAILABLE" });
@@ -154,7 +180,7 @@ describe("card availability explanation mapping", () => {
   it("does not binder-reserve showcase owned copies but allows assembled decks to reduce them", () => {
     const explanation = createCardAvailabilityExplanation(
       card({ id: "show", rarity: "EPIC", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", quantity: 2 }] }),
-      [{ deckName: "Premium", assembled: true, allocations: [{ cardId: "show", variant: "SHOWCASE", quantity: 1 }] }],
+      [{ deckId: "premium-deck", deckName: "Premium", assembled: true, allocations: [{ cardId: "show", variant: "SHOWCASE", quantity: 1 }] }],
     );
 
     expect(explanation.rows.find((row) => row.variant === "SHOWCASE")).toMatchObject({

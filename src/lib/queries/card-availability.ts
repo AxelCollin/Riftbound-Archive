@@ -6,15 +6,11 @@ import {
 } from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
-import {
-  assertOwnedSnapshotVariantsAllowed,
-  normalizeOwnedSnapshotQuantity,
-} from "../domain/collection-quantities";
+import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
   getVariantCount,
   type CardVariant,
-  type VariantCounts,
 } from "../domain/variants";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
 import { getDisplayCardName } from "./collection";
@@ -45,6 +41,7 @@ export type CardAvailabilityRecord = {
 };
 
 export type CardAvailabilityDeckAllocationBreakdown = {
+  deckId: string;
   deckName: string;
   variant: CardVariant;
   allocatedQuantity: number;
@@ -82,6 +79,7 @@ export type CardAvailabilityExplanation = {
 };
 
 type NamedDeckAllocationSet = DeckAllocationSet & {
+  deckId: string;
   deckName: string;
 };
 
@@ -90,8 +88,6 @@ export function createCardAvailabilityExplanation(
   deckAllocationSets: NamedDeckAllocationSet[] = [],
 ): CardAvailabilityExplanation {
   const allowedVariants = getAllowedVariants(record);
-  assertOwnedSnapshotVariantsAllowed(record.id, record.collectionEntries, allowedVariants);
-
   const ownedCounts = createOwnedVariantCounts(record.id, allowedVariants, record.collectionEntries);
   const binderReserved = getBinderReservation(record, ownedCounts).reserved;
   const appFacingAvailable = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
@@ -149,29 +145,6 @@ export function createCardAvailabilityExplanation(
   };
 }
 
-function createOwnedVariantCounts(
-  cardId: string,
-  allowedVariants: CardVariant[],
-  collectionEntries: AvailabilityCollectionEntryRecord[],
-): VariantCounts {
-  const entriesByVariant = new Map(collectionEntries.map((entry) => [entry.variant, entry.quantity]));
-  const ownedCounts: VariantCounts = {};
-
-  for (const variant of allowedVariants) {
-    const ownedQuantity = normalizeOwnedSnapshotQuantity({
-      cardId,
-      variant,
-      quantity: entriesByVariant.get(variant) ?? 0,
-    });
-
-    if (ownedQuantity > 0) {
-      ownedCounts[variant] = ownedQuantity;
-    }
-  }
-
-  return ownedCounts;
-}
-
 function getDeckAllocationBreakdown(
   cardId: string,
   variant: CardVariant,
@@ -183,6 +156,7 @@ function getDeckAllocationBreakdown(
       deckAllocationSet.allocations
         .filter((allocation) => allocation.cardId === cardId && allocation.variant === variant && allocation.quantity > 0)
         .map((allocation) => ({
+          deckId: deckAllocationSet.deckId,
           deckName: deckAllocationSet.deckName,
           variant: allocation.variant,
           allocatedQuantity: allocation.quantity,
@@ -218,6 +192,7 @@ async function getDeckAllocationSetsForCard(cardId: string): Promise<NamedDeckAl
   const decks = await prisma.deck.findMany({
     where: { allocations: { some: { cardId } } },
     select: {
+      id: true,
       name: true,
       status: true,
       allocations: {
@@ -228,6 +203,7 @@ async function getDeckAllocationSetsForCard(cardId: string): Promise<NamedDeckAl
   });
 
   return decks.map((deck) => ({
+    deckId: deck.id,
     deckName: deck.name,
     assembled: deck.status === "ASSEMBLED",
     allocations: deck.allocations,
