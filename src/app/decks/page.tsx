@@ -1,15 +1,9 @@
 import Link from "next/link";
+import { formatDateTimeFr } from "@/lib/formatters/dates";
 import { deckAllocationStrategyLabelsFr, deckStatusLabelsFr } from "@/lib/formatters/decks";
 import { getDeckListPageData } from "@/lib/queries/decks";
 
 export const dynamic = "force-dynamic";
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
 
 export default async function DecksPage() {
   const { rows, summary } = await getDeckListPageData();
@@ -92,7 +86,7 @@ export default async function DecksPage() {
                       <td className="px-4 py-4 text-right tabular-nums">{row.requiredCardQuantity}</td>
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocationLineCount}</td>
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocatedCardQuantity}</td>
-                      <td className="px-4 py-4">{formatDateTime(row.updatedAt)}</td>
+                      <td className="px-4 py-4">{formatDateTimeFr(row.updatedAt)}</td>
                     </tr>
                   ))}
                 </tbody>
