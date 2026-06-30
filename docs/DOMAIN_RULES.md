@@ -111,6 +111,8 @@ When a deck is disassembled:
 
 Phase 6A adds pure domain logic for normalizing deck requirements and calculating missing cards from already-computed availability. It does not persist decks, deck cards, or deck allocations, and it does not add deck CRUD, deck pages, assembly, disassembly, or deckbuilder UI.
 
+Phase 6B adds a read-only deck list page backed by a server-side query over existing deck tables. It may display saved deck metadata, requirement line counts, required card totals, allocation line counts, and allocated card totals. It must not create, edit, delete, assemble, disassemble, allocate, or persist deck data, and missing-card query composition remains future work.
+
 Default automatic allocation strategy:
 
 ```text
