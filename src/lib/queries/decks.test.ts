@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   deck: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
   },
 }));
 
@@ -137,6 +138,52 @@ describe("deck list query", () => {
       requiredCardQuantity: 0,
       allocationLineCount: 0,
       allocatedCardQuantity: 0,
+    });
+  });
+});
+
+describe("deck edit query", () => {
+  it("returns serializable edit data", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce({
+      id: "deck-1",
+      name: "Deck Alpha",
+      description: "Test",
+      allocationStrategy: "ANY_VARIANT",
+      status: "ASSEMBLED",
+    });
+
+    const { getDeckEditData } = await import("./decks");
+    await expect(getDeckEditData("deck-1")).resolves.toEqual({
+      deckId: "deck-1",
+      name: "Deck Alpha",
+      description: "Test",
+      allocationStrategy: "ANY_VARIANT",
+      status: "ASSEMBLED",
+    });
+  });
+
+  it("returns null when edit deck is not found", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(null);
+
+    const { getDeckEditData } = await import("./decks");
+    await expect(getDeckEditData("missing")).resolves.toBeNull();
+  });
+
+  it("selects only needed edit fields", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(null);
+
+    const { getDeckEditData } = await import("./decks");
+    await getDeckEditData("deck-1");
+
+    expect(prismaMock.deck.findUnique).toHaveBeenCalledWith({
+      where: { id: "deck-1" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        allocationStrategy: true,
+        status: true,
+      },
     });
   });
 });

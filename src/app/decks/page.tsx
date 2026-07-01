@@ -24,14 +24,15 @@ export default async function DecksPage() {
             <Link className="hover:text-archive-text100" href="/">← Accueil</Link>
             <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
             <Link className="hover:text-archive-text100" href="/binder">Binder →</Link>
+            <Link className="hover:text-archive-text100" href="/decks/new">Créer un deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6B</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6C</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Decks</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Liste en lecture seule des decks enregistrés.
+            Liste des decks enregistrés avec création et modification des métadonnées.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
-            La création et l’édition de decks arriveront dans une prochaine étape.
+            Les cartes, allocations, assemblage et désassemblage arriveront dans une prochaine étape.
           </p>
         </header>
 
@@ -48,15 +49,16 @@ export default async function DecksPage() {
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
             <h2 className="text-2xl font-semibold text-archive-text100">Decks enregistrés</h2>
             <p className="mt-2 text-sm text-archive-text300">
-              Cette vue ne crée, ne modifie et ne supprime aucun deck, requirement ou allocation.
+              Cette vue reste centrée sur la liste : seules les métadonnées du deck sont modifiables en Phase 6C.
             </p>
           </div>
           {rows.length === 0 ? (
             <div className="p-10 text-center">
               <p className="text-xl font-semibold text-archive-gold300">Aucun deck enregistré.</p>
               <p className="mt-3 text-archive-text300">
-                La création et l’édition de decks arriveront dans une prochaine étape.
+                Les cartes, allocations, assemblage et désassemblage arriveront dans une prochaine étape.
               </p>
+              <Link className="mt-5 inline-flex rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" href="/decks/new">Créer un deck →</Link>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -71,6 +73,7 @@ export default async function DecksPage() {
                     <th className="px-4 py-4 text-right">Allocations</th>
                     <th className="px-4 py-4 text-right">Cartes allouées</th>
                     <th className="px-4 py-4">Mis à jour</th>
+                    <th className="px-4 py-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[rgba(199,168,102,0.16)]">
@@ -87,6 +90,7 @@ export default async function DecksPage() {
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocationLineCount}</td>
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocatedCardQuantity}</td>
                       <td className="px-4 py-4">{formatDateTimeFr(row.updatedAt)}</td>
+                      <td className="px-4 py-4"><Link className="font-semibold text-archive-gold300 hover:text-archive-text100" href={`/decks/${row.deckId}/edit`}>Modifier →</Link></td>
                     </tr>
                   ))}
                 </tbody>

@@ -127,3 +127,36 @@ export async function getDeckListPageData(): Promise<DeckListPageData> {
     summary: summarizeDeckListRows(rows),
   };
 }
+
+export type DeckEditData = {
+  deckId: string;
+  name: string;
+  description: string | null;
+  allocationStrategy: DeckAllocationStrategy;
+  status: DeckStatus;
+};
+
+export async function getDeckEditData(deckId: string): Promise<DeckEditData | null> {
+  const deck = await prisma.deck.findUnique({
+    where: { id: deckId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      allocationStrategy: true,
+      status: true,
+    },
+  });
+
+  if (!deck) {
+    return null;
+  }
+
+  return {
+    deckId: deck.id,
+    name: deck.name,
+    description: deck.description,
+    allocationStrategy: deck.allocationStrategy,
+    status: deck.status,
+  };
+}
