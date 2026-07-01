@@ -164,6 +164,7 @@ export async function getDeckEditData(deckId: string): Promise<DeckEditData | nu
 import type { CardKind, CardRarity } from "../domain/cards";
 import type { CardPrintTreatment } from "../formatters/cards";
 import type { CardVariant } from "../domain/variants";
+import { getAllowedVariants } from "../domain/variants";
 import type { DeckCardVariantPreference } from "@prisma/client";
 import { getDisplayCardName } from "./collection";
 
@@ -238,6 +239,10 @@ export type DeckDetailSummary = {
   allocatedCardQuantity: number;
 };
 
+export type DeckRequirementCardOption = DeckDetailCardDisplay & {
+  allowedPreferences: DeckCardVariantPreference[];
+};
+
 export type DeckDetailPageData = {
   deckId: string;
   name: string;
@@ -249,6 +254,7 @@ export type DeckDetailPageData = {
   requirements: DeckRequirementRow[];
   allocations: DeckAllocationRow[];
   summary: DeckDetailSummary;
+  cardOptions: DeckRequirementCardOption[];
 };
 
 const deckDetailCardSelect = {
@@ -286,7 +292,17 @@ function compareDeckDetailCardRows(
     || left.displayName.localeCompare(right.displayName, "fr");
 }
 
-export function createDeckDetailPageData(deck: DeckDetailRecord): DeckDetailPageData {
+
+export function createDeckRequirementCardOptions(cards: DeckDetailCardRecord[]): DeckRequirementCardOption[] {
+  return cards
+    .map((card) => ({
+      ...mapDeckDetailCard(card),
+      allowedPreferences: ["ANY", ...getAllowedVariants(card)] as DeckCardVariantPreference[],
+    }))
+    .sort(compareDeckDetailCardRows);
+}
+
+export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: DeckRequirementCardOption[] = []): DeckDetailPageData {
   const requirements = deck.deckCards
     .map((row) => ({
       deckCardId: row.id,
@@ -323,6 +339,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord): DeckDetailPage
       allocationLineCount: allocations.length,
       allocatedCardQuantity: allocations.reduce((total, row) => total + row.quantity, 0),
     },
+    cardOptions,
   };
 }
 
@@ -358,5 +375,14 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
     },
   });
 
-  return deck ? createDeckDetailPageData(deck) : null;
+  if (!deck) {
+    return null;
+  }
+
+  const cards = await prisma.card.findMany({
+    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+    select: deckDetailCardSelect,
+  });
+
+  return createDeckDetailPageData(deck, createDeckRequirementCardOptions(cards));
 }

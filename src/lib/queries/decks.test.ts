@@ -5,6 +5,9 @@ const prismaMock = vi.hoisted(() => ({
     findMany: vi.fn(),
     findUnique: vi.fn(),
   },
+  card: {
+    findMany: vi.fn(),
+  },
 }));
 
 vi.mock("../db", () => ({
@@ -248,6 +251,7 @@ describe("deck detail query", () => {
   });
 
   it("maps metadata, requirements, allocations, and summary totals", async () => {
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
     prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
       deckCards: [
         { id: "dc-1", cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: cardRecord({ translations: [{ locale: "fr-FR", name: "Carte française" }] }) },
@@ -271,6 +275,7 @@ describe("deck detail query", () => {
   });
 
   it("handles empty requirements and allocations", async () => {
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
     prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
     const { getDeckDetailPageData } = await import("./decks");
 
@@ -282,6 +287,7 @@ describe("deck detail query", () => {
   });
 
   it("sorts requirements and allocations deterministically", async () => {
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
     prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
       deckCards: [
         { id: "dc-b", cardId: "card-b", quantity: 1, preferredVariant: "FOIL", card: cardRecord({ id: "card-b", name: "B", collectorNumber: "010", set: { code: "SET2", name: "Set Two" } }) },
@@ -298,4 +304,23 @@ describe("deck detail query", () => {
     expect(data?.requirements.map((row) => row.deckCardId)).toEqual(["dc-a", "dc-b"]);
     expect(data?.allocations.map((row) => row.allocationId)).toEqual(["alloc-a", "alloc-b"]);
   });
+
+  it("includes sorted serializable cardOptions for trackable cards", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardRecord({ id: "card-b", name: "Beta", collectorNumber: "010", set: { code: "SET2", name: "Set Two" }, kind: "ENERGY", rarity: "RARE" }),
+      cardRecord({ id: "card-a", name: "Alpha", collectorNumber: "002", translations: [{ locale: "fr-FR", name: "Alpha FR" }] }),
+    ]);
+    const { getDeckDetailPageData } = await import("./decks");
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(prismaMock.card.findMany).toHaveBeenCalledWith({
+      where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+      select: expect.any(Object),
+    });
+    expect(data?.cardOptions.map((option) => option.cardId)).toEqual(["card-a", "card-b"]);
+    expect(data?.cardOptions[0]).toMatchObject({ displayName: "Alpha FR", allowedPreferences: ["ANY", "NORMAL", "FOIL"] });
+    expect(JSON.parse(JSON.stringify(data?.cardOptions))).toEqual(data?.cardOptions);
+  });
+
 });

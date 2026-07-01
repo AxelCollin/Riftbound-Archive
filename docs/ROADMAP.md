@@ -63,7 +63,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add Phase 6B read-only deck list page backed by a server-side query.
 - [x] Add deck CRUD. (Phase 6C: minimal deck metadata create, edit, and delete flows only.)
 - [x] Add read-only deck detail page. (Phase 6D: server-rendered `/decks/[deckId]` view over persisted DeckCard requirements and DeckCardAllocation rows only.)
-- [ ] Add deck card requirements persistence and write flows.
+- [x] Add deck card requirements persistence and write flows. (Phase 6E: minimal DeckCard requirement add/edit/remove flows from the deck detail page only.)
 - [ ] Add assembled deck allocation.
 - [ ] Add disassemble flow.
 - [ ] Add deckbuilder UI.
@@ -75,6 +75,8 @@ Phase 6B exposes the first deck surface as a read-only `/decks` list page. It re
 Phase 6C adds minimal Deck metadata CRUD only: creating empty theoretical decks, editing deck name, description, and allocation strategy, and deleting deck rows. It does not add DeckCard persistence/write flows, DeckCardAllocation writes, card editing UI, missing-card UI, assembly allocation writes, disassembly, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 Phase 6D adds a read-only `/decks/[deckId]` detail page backed by a server-side query. It displays deck metadata, already-persisted DeckCard requirements, already-persisted DeckCardAllocation rows, and read-only totals. It does not add deck card requirement write flows, card search/add/remove UI, missing-card UI, assembled allocation writes, disassembly, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
+
+Phase 6E adds minimal DeckCard requirement write flows from `/decks/[deckId]`: add a required card line, edit an existing line quantity/preferred variant, and remove a line. It validates trackable cards and supported preferred variants, merges duplicate deck/card/preference requirements, and leaves DeckCardAllocation rows untouched. It does not add assembled allocation writes, disassembly, missing-card UI, automatic allocation persistence, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 ## Phase 7 - Booster opening
 

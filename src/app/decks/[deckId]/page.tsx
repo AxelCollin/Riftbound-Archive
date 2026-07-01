@@ -5,6 +5,7 @@ import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardV
 import { formatDateTimeFr } from "@/lib/formatters/dates";
 import { deckAllocationStrategyLabelsFr, deckCardVariantPreferenceLabelsFr, deckStatusLabelsFr } from "@/lib/formatters/decks";
 import { getDeckDetailPageData } from "@/lib/queries/decks";
+import { addDeckRequirementAction, deleteDeckRequirementAction, updateDeckRequirementAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +31,10 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
             <Link className="hover:text-archive-text100" href="/decks">← Retour aux decks</Link>
             <Link className="hover:text-archive-text100" href={editHref}>Modifier le deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6D</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6E</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">{deck.name}</h1>
-          <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">Détail en lecture seule du deck.</p>
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">L’ajout et l’édition des cartes du deck arriveront dans une prochaine étape.</p>
+          <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">Gestion minimale des cartes requises du deck.</p>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">Cette page permet de gérer les cartes requises du deck. Les allocations et l’assemblage arriveront dans une prochaine étape.</p>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-4">
@@ -62,13 +63,78 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-5 shadow-panel">
           <h2 className="text-2xl font-semibold text-archive-text100">Résumé</h2>
-          <p className="mt-2 text-sm text-archive-text300">Vue de consultation des exigences et allocations déjà enregistrées.</p>
+          <p className="mt-2 text-sm text-archive-text300">Vue de gestion des exigences DeckCard uniquement ; les allocations restent en lecture seule.</p>
         </section>
 
         <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
-          <div className="border-b border-[rgba(199,168,102,0.22)] p-5"><h2 className="text-2xl font-semibold text-archive-text100">Cartes requises</h2></div>
+          <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
+            <h2 className="text-2xl font-semibold text-archive-text100">Cartes requises</h2>
+            <p className="mt-2 text-sm text-archive-text300">Édition des exigences uniquement, sans allocation automatique.</p>
+          </div>
+          <form action={addDeckRequirementAction.bind(null, deck.deckId)} className="grid gap-4 border-b border-[rgba(199,168,102,0.16)] p-5 lg:grid-cols-[minmax(260px,1fr)_180px_120px_auto]">
+            <label className="grid gap-2 text-sm text-archive-text300">
+              Carte
+              <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" name="cardId" required>
+                <option value="">Choisir une carte…</option>
+                {deck.cardOptions.map((card) => (
+                  <option key={card.cardId} value={card.cardId}>{card.set.code} {card.collectorNumber} — {card.displayName}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-archive-text300">
+              Préférence
+              <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" name="preferredVariant" defaultValue="ANY">
+                {Object.entries(deckCardVariantPreferenceLabelsFr).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm text-archive-text300">
+              Quantité
+              <input className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" min={1} name="quantity" step={1} type="number" defaultValue={1} required />
+            </label>
+            <button className="self-end rounded-chip border border-[rgba(199,168,102,0.48)] px-5 py-2 text-sm font-semibold text-archive-gold300 hover:bg-[rgba(199,168,102,0.12)]" type="submit">Ajouter</button>
+          </form>
           {deck.requirements.length === 0 ? <p className="p-8 text-archive-text300">Aucune carte requise dans ce deck.</p> : (
-            <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-[rgba(16,32,51,0.74)] text-xs uppercase tracking-[0.24em] text-archive-gold300"><tr>{["Carte","Set","N°","Rareté","Type","Traitement","Préférence","Quantité"].map((h)=><th className="px-4 py-4" key={h}>{h}</th>)}</tr></thead><tbody className="divide-y divide-[rgba(199,168,102,0.16)]">{deck.requirements.map((row)=><tr className="text-archive-text300" key={row.deckCardId}><td className="px-4 py-4 font-semibold text-archive-text100">{row.displayName}</td><td className="px-4 py-4">{row.set.code}</td><td className="px-4 py-4">{row.collectorNumber}</td><td className="px-4 py-4">{cardRarityLabelsFr[row.rarity]}</td><td className="px-4 py-4">{cardKindLabelsFr[row.kind]}</td><td className="px-4 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td><td className="px-4 py-4">{deckCardVariantPreferenceLabelsFr[row.preferredVariant]}</td><td className="px-4 py-4 text-right tabular-nums">{row.quantity}</td></tr>)}</tbody></table></div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[rgba(16,32,51,0.74)] text-xs uppercase tracking-[0.24em] text-archive-gold300">
+                  <tr>{["Carte", "Set", "N°", "Rareté", "Type", "Traitement", "Préférence", "Quantité", "Actions"].map((h) => <th className="px-4 py-4" key={h}>{h}</th>)}</tr>
+                </thead>
+                <tbody className="divide-y divide-[rgba(199,168,102,0.16)]">
+                  {deck.requirements.map((row) => {
+                    const editFormId = `edit-${row.deckCardId}`;
+                    return (
+                      <tr className="text-archive-text300" key={row.deckCardId}>
+                        <td className="px-4 py-4 font-semibold text-archive-text100">{row.displayName}</td>
+                        <td className="px-4 py-4">{row.set.code}</td>
+                        <td className="px-4 py-4">{row.collectorNumber}</td>
+                        <td className="px-4 py-4">{cardRarityLabelsFr[row.rarity]}</td>
+                        <td className="px-4 py-4">{cardKindLabelsFr[row.kind]}</td>
+                        <td className="px-4 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
+                        <td className="px-4 py-4">
+                          <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-2 py-1 text-archive-text100" form={editFormId} name="preferredVariant" defaultValue={row.preferredVariant}>
+                            {Object.entries(deckCardVariantPreferenceLabelsFr).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-4">
+                          <input className="w-20 rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-2 py-1 text-right text-archive-text100" form={editFormId} min={1} name="quantity" step={1} type="number" defaultValue={row.quantity} required />
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex gap-2">
+                            <form action={updateDeckRequirementAction.bind(null, deck.deckId, row.deckCardId)} id={editFormId}>
+                              <input name="cardId" type="hidden" value={row.cardId} />
+                              <button className="rounded-chip border border-[rgba(199,168,102,0.42)] px-3 py-1 text-xs text-archive-gold300" type="submit">Modifier</button>
+                            </form>
+                            <form action={deleteDeckRequirementAction.bind(null, deck.deckId, row.deckCardId)}>
+                              <button className="rounded-chip border border-[rgba(217,74,74,0.45)] px-3 py-1 text-xs text-red-200" type="submit">Retirer</button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 

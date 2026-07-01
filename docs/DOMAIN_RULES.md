@@ -117,6 +117,8 @@ Phase 6C adds minimal Deck metadata writes. A new deck is always created with st
 
 Phase 6D adds read-only deck detail display. The `/decks/[deckId]` page may read and display persisted `Deck`, `DeckCard`, and `DeckCardAllocation` data with totals, but it must not create, update, or delete deck card requirements or allocations. Card search/add/remove UI, missing-card UI, assembly, disassembly, and deckbuilder editing remain future work.
 
+Phase 6E adds DeckCard requirement writes only. Requirement write input must trim and require `cardId`, require a positive integer quantity, and accept only `ANY`, `NORMAL`, `FOIL`, or `SHOWCASE` preferred variants. Requirement services may create, increment, update, merge, or delete `DeckCard` rows for trackable GAMEPLAY and ENERGY cards only. Exact preferred variants must match the selected card's supported variants, while `ANY` is allowed for any trackable card. Phase 6E must not create, update, delete, or clean up `DeckCardAllocation` rows; allocation cleanup, missing-card UI, assembled allocation writes, disassembly, automatic allocation persistence, and full deckbuilder UI remain future work.
+
 Default automatic allocation strategy:
 
 ```text
