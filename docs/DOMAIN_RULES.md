@@ -115,6 +115,8 @@ Phase 6B adds a read-only deck list page backed by a server-side query over exis
 
 Phase 6C adds minimal Deck metadata writes. A new deck is always created with status `THEORETICAL`; status editing, assembly, and disassembly are not exposed. Metadata writes may only normalize and persist the deck name, optional description, and allocation strategy. They must not create, update, or delete `DeckCard` or `DeckCardAllocation` rows. Deck card requirement persistence, deck card editing UI, missing-card UI, assembled allocation writes, disassembly, and deckbuilder UI remain future work.
 
+Phase 6D adds read-only deck detail display. The `/decks/[deckId]` page may read and display persisted `Deck`, `DeckCard`, and `DeckCardAllocation` data with totals, but it must not create, update, or delete deck card requirements or allocations. Card search/add/remove UI, missing-card UI, assembly, disassembly, and deckbuilder editing remain future work.
+
 Default automatic allocation strategy:
 
 ```text

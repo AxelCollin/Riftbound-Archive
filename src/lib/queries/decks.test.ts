@@ -187,3 +187,115 @@ describe("deck edit query", () => {
     });
   });
 });
+
+describe("deck detail query", () => {
+  function cardRecord(overrides = {}) {
+    return {
+      id: "card-1",
+      name: "Official Card",
+      collectorNumber: "001",
+      rarity: "COMMON" as const,
+      kind: "GAMEPLAY" as const,
+      printTreatment: "REGULAR" as const,
+      hasShowcase: false,
+      set: { code: "SET1", name: "Set One" },
+      translations: [],
+      ...overrides,
+    };
+  }
+
+  function detailDeck(overrides = {}) {
+    return {
+      id: "deck-detail",
+      name: "Deck Detail",
+      description: "Lecture seule",
+      status: "THEORETICAL" as const,
+      allocationStrategy: "PRESERVE_PREMIUM_VARIANTS" as const,
+      createdAt: new Date("2026-06-01T10:00:00.000Z"),
+      updatedAt: new Date("2026-06-02T10:00:00.000Z"),
+      deckCards: [],
+      allocations: [],
+      ...overrides,
+    };
+  }
+
+  it("returns null when deck detail is not found", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(null);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    await expect(getDeckDetailPageData("missing")).resolves.toBeNull();
+  });
+
+  it("fetches only needed deck detail fields", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(null);
+    const { getDeckDetailPageData } = await import("./decks");
+    await getDeckDetailPageData("deck-detail");
+
+    expect(prismaMock.deck.findUnique).toHaveBeenCalledWith({
+      where: { id: "deck-detail" },
+      select: expect.objectContaining({
+        id: true,
+        name: true,
+        description: true,
+        status: true,
+        allocationStrategy: true,
+        createdAt: true,
+        updatedAt: true,
+        deckCards: expect.objectContaining({ select: expect.any(Object) }),
+        allocations: expect.objectContaining({ select: expect.any(Object) }),
+      }),
+    });
+  });
+
+  it("maps metadata, requirements, allocations, and summary totals", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
+      deckCards: [
+        { id: "dc-1", cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: cardRecord({ translations: [{ locale: "fr-FR", name: "Carte française" }] }) },
+      ],
+      allocations: [
+        { id: "alloc-1", cardId: "card-1", variant: "FOIL", quantity: 2, card: cardRecord() },
+      ],
+    }));
+    const { getDeckDetailPageData } = await import("./decks");
+
+    await expect(getDeckDetailPageData("deck-detail")).resolves.toMatchObject({
+      deckId: "deck-detail",
+      name: "Deck Detail",
+      description: "Lecture seule",
+      createdAt: "2026-06-01T10:00:00.000Z",
+      updatedAt: "2026-06-02T10:00:00.000Z",
+      requirements: [{ deckCardId: "dc-1", cardId: "card-1", displayName: "Carte française", quantity: 3, preferredVariant: "ANY" }],
+      allocations: [{ allocationId: "alloc-1", cardId: "card-1", variant: "FOIL", quantity: 2 }],
+      summary: { requirementLineCount: 1, requiredCardQuantity: 3, allocationLineCount: 1, allocatedCardQuantity: 2 },
+    });
+  });
+
+  it("handles empty requirements and allocations", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    const { getDeckDetailPageData } = await import("./decks");
+
+    await expect(getDeckDetailPageData("deck-detail")).resolves.toMatchObject({
+      requirements: [],
+      allocations: [],
+      summary: { requirementLineCount: 0, requiredCardQuantity: 0, allocationLineCount: 0, allocatedCardQuantity: 0 },
+    });
+  });
+
+  it("sorts requirements and allocations deterministically", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
+      deckCards: [
+        { id: "dc-b", cardId: "card-b", quantity: 1, preferredVariant: "FOIL", card: cardRecord({ id: "card-b", name: "B", collectorNumber: "010", set: { code: "SET2", name: "Set Two" } }) },
+        { id: "dc-a", cardId: "card-a", quantity: 1, preferredVariant: "ANY", card: cardRecord({ id: "card-a", name: "A", collectorNumber: "002" }) },
+      ],
+      allocations: [
+        { id: "alloc-b", cardId: "card-b", variant: "SHOWCASE", quantity: 1, card: cardRecord({ id: "card-b", name: "B", collectorNumber: "010", set: { code: "SET2", name: "Set Two" } }) },
+        { id: "alloc-a", cardId: "card-a", variant: "NORMAL", quantity: 1, card: cardRecord({ id: "card-a", name: "A", collectorNumber: "002" }) },
+      ],
+    }));
+    const { getDeckDetailPageData } = await import("./decks");
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(data?.requirements.map((row) => row.deckCardId)).toEqual(["dc-a", "dc-b"]);
+    expect(data?.allocations.map((row) => row.allocationId)).toEqual(["alloc-a", "alloc-b"]);
+  });
+});

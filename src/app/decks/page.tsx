@@ -26,10 +26,10 @@ export default async function DecksPage() {
             <Link className="hover:text-archive-text100" href="/binder">Binder →</Link>
             <Link className="hover:text-archive-text100" href="/decks/new">Créer un deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6C</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6D</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Decks</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Liste des decks enregistrés avec création et modification des métadonnées.
+            Liste des decks enregistrés avec détail en lecture seule et modification des métadonnées.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
             Les cartes, allocations, assemblage et désassemblage arriveront dans une prochaine étape.
@@ -49,7 +49,7 @@ export default async function DecksPage() {
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
             <h2 className="text-2xl font-semibold text-archive-text100">Decks enregistrés</h2>
             <p className="mt-2 text-sm text-archive-text300">
-              Cette vue reste centrée sur la liste : seules les métadonnées du deck sont modifiables en Phase 6C.
+              Cette vue donne accès au détail en lecture seule ; seules les métadonnées du deck sont modifiables pour le moment.
             </p>
           </div>
           {rows.length === 0 ? (
@@ -80,7 +80,7 @@ export default async function DecksPage() {
                   {rows.map((row) => (
                     <tr className="text-archive-text300 hover:bg-[rgba(58,123,213,0.08)]" key={row.deckId}>
                       <td className="px-4 py-4">
-                        <p className="font-semibold text-archive-text100">{row.name}</p>
+                        <Link className="font-semibold text-archive-text100 hover:text-archive-gold300" href={`/decks/${encodeURIComponent(row.deckId)}`}>{row.name}</Link>
                         {row.description ? <p className="mt-1 max-w-xl text-xs text-archive-text500">{row.description}</p> : null}
                       </td>
                       <td className="px-4 py-4">{deckStatusLabelsFr[row.status]}</td>
@@ -90,7 +90,7 @@ export default async function DecksPage() {
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocationLineCount}</td>
                       <td className="px-4 py-4 text-right tabular-nums">{row.allocatedCardQuantity}</td>
                       <td className="px-4 py-4">{formatDateTimeFr(row.updatedAt)}</td>
-                      <td className="px-4 py-4"><Link className="font-semibold text-archive-gold300 hover:text-archive-text100" href={`/decks/${row.deckId}/edit`}>Modifier →</Link></td>
+                      <td className="px-4 py-4"><Link className="font-semibold text-archive-gold300 hover:text-archive-text100" href={`/decks/${encodeURIComponent(row.deckId)}/edit`}>Modifier →</Link></td>
                     </tr>
                   ))}
                 </tbody>

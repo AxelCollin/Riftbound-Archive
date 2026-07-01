@@ -160,3 +160,203 @@ export async function getDeckEditData(deckId: string): Promise<DeckEditData | nu
     status: deck.status,
   };
 }
+
+import type { CardKind, CardRarity } from "../domain/cards";
+import type { CardPrintTreatment } from "../formatters/cards";
+import type { CardVariant } from "../domain/variants";
+import type { DeckCardVariantPreference } from "@prisma/client";
+import { getDisplayCardName } from "./collection";
+
+type DeckDetailCardRecord = {
+  id: string;
+  name: string;
+  collectorNumber: string | null;
+  rarity: CardRarity;
+  kind: CardKind;
+  printTreatment: CardPrintTreatment;
+  hasShowcase: boolean;
+  set: { code: string; name: string };
+  translations: { locale: string; name: string }[];
+};
+
+type DeckDetailRequirementRecord = {
+  id: string;
+  cardId: string;
+  quantity: number;
+  preferredVariant: DeckCardVariantPreference;
+  card: DeckDetailCardRecord;
+};
+
+type DeckDetailAllocationRecord = {
+  id: string;
+  cardId: string;
+  variant: CardVariant;
+  quantity: number;
+  card: DeckDetailCardRecord;
+};
+
+type DeckDetailRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: DeckStatus;
+  allocationStrategy: DeckAllocationStrategy;
+  createdAt: Date;
+  updatedAt: Date;
+  deckCards: DeckDetailRequirementRecord[];
+  allocations: DeckDetailAllocationRecord[];
+};
+
+export type DeckDetailCardDisplay = {
+  cardId: string;
+  displayName: string;
+  officialName: string;
+  collectorNumber: string;
+  rarity: CardRarity;
+  kind: CardKind;
+  printTreatment: CardPrintTreatment;
+  hasShowcase: boolean;
+  set: { code: string; name: string };
+};
+
+export type DeckRequirementRow = DeckDetailCardDisplay & {
+  deckCardId: string;
+  preferredVariant: DeckCardVariantPreference;
+  quantity: number;
+};
+
+export type DeckAllocationRow = DeckDetailCardDisplay & {
+  allocationId: string;
+  variant: CardVariant;
+  quantity: number;
+};
+
+export type DeckDetailSummary = {
+  requirementLineCount: number;
+  requiredCardQuantity: number;
+  allocationLineCount: number;
+  allocatedCardQuantity: number;
+};
+
+export type DeckDetailPageData = {
+  deckId: string;
+  name: string;
+  description: string | null;
+  status: DeckStatus;
+  allocationStrategy: DeckAllocationStrategy;
+  createdAt: string;
+  updatedAt: string;
+  requirements: DeckRequirementRow[];
+  allocations: DeckAllocationRow[];
+  summary: DeckDetailSummary;
+};
+
+const deckDetailCardSelect = {
+  id: true,
+  name: true,
+  collectorNumber: true,
+  rarity: true,
+  kind: true,
+  printTreatment: true,
+  hasShowcase: true,
+  set: { select: { code: true, name: true } },
+  translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
+} as const;
+
+function mapDeckDetailCard(card: DeckDetailCardRecord): DeckDetailCardDisplay {
+  return {
+    cardId: card.id,
+    displayName: getDisplayCardName(card),
+    officialName: card.name,
+    collectorNumber: card.collectorNumber ?? "—",
+    rarity: card.rarity,
+    kind: card.kind,
+    printTreatment: card.printTreatment,
+    hasShowcase: card.hasShowcase,
+    set: card.set,
+  };
+}
+
+function compareDeckDetailCardRows(
+  left: DeckDetailCardDisplay,
+  right: DeckDetailCardDisplay,
+): number {
+  return left.set.code.localeCompare(right.set.code, "fr")
+    || left.collectorNumber.localeCompare(right.collectorNumber, "fr", { numeric: true })
+    || left.displayName.localeCompare(right.displayName, "fr");
+}
+
+export function createDeckDetailPageData(deck: DeckDetailRecord): DeckDetailPageData {
+  const requirements = deck.deckCards
+    .map((row) => ({
+      deckCardId: row.id,
+      ...mapDeckDetailCard(row.card),
+      preferredVariant: row.preferredVariant,
+      quantity: row.quantity,
+    }))
+    .sort((left, right) => compareDeckDetailCardRows(left, right)
+      || left.preferredVariant.localeCompare(right.preferredVariant, "fr"));
+
+  const allocations = deck.allocations
+    .map((row) => ({
+      allocationId: row.id,
+      ...mapDeckDetailCard(row.card),
+      variant: row.variant,
+      quantity: row.quantity,
+    }))
+    .sort((left, right) => compareDeckDetailCardRows(left, right)
+      || left.variant.localeCompare(right.variant, "fr"));
+
+  return {
+    deckId: deck.id,
+    name: deck.name,
+    description: deck.description,
+    status: deck.status,
+    allocationStrategy: deck.allocationStrategy,
+    createdAt: deck.createdAt.toISOString(),
+    updatedAt: deck.updatedAt.toISOString(),
+    requirements,
+    allocations,
+    summary: {
+      requirementLineCount: requirements.length,
+      requiredCardQuantity: requirements.reduce((total, row) => total + row.quantity, 0),
+      allocationLineCount: allocations.length,
+      allocatedCardQuantity: allocations.reduce((total, row) => total + row.quantity, 0),
+    },
+  };
+}
+
+export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailPageData | null> {
+  const deck = await prisma.deck.findUnique({
+    where: { id: deckId },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      status: true,
+      allocationStrategy: true,
+      createdAt: true,
+      updatedAt: true,
+      deckCards: {
+        select: {
+          id: true,
+          cardId: true,
+          quantity: true,
+          preferredVariant: true,
+          card: { select: deckDetailCardSelect },
+        },
+      },
+      allocations: {
+        select: {
+          id: true,
+          cardId: true,
+          variant: true,
+          quantity: true,
+          card: { select: deckDetailCardSelect },
+        },
+      },
+    },
+  });
+
+  return deck ? createDeckDetailPageData(deck) : null;
+}

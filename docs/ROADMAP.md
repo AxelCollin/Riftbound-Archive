@@ -62,6 +62,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add Phase 6A pure deck requirement normalization and missing-card domain logic.
 - [x] Add Phase 6B read-only deck list page backed by a server-side query.
 - [x] Add deck CRUD. (Phase 6C: minimal deck metadata create, edit, and delete flows only.)
+- [x] Add read-only deck detail page. (Phase 6D: server-rendered `/decks/[deckId]` view over persisted DeckCard requirements and DeckCardAllocation rows only.)
 - [ ] Add deck card requirements persistence and write flows.
 - [ ] Add assembled deck allocation.
 - [ ] Add disassemble flow.
@@ -72,6 +73,8 @@ Phase 6A is domain-only groundwork for later deckbuilding work. It does not add 
 Phase 6B exposes the first deck surface as a read-only `/decks` list page. It reads existing `Deck`, `DeckCard`, and `DeckCardAllocation` rows for table counts and summary totals, but it does not add deck CRUD, deck card requirement writes, assembled allocation writes, disassembly flows, a deck detail page, deckbuilder editing UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 Phase 6C adds minimal Deck metadata CRUD only: creating empty theoretical decks, editing deck name, description, and allocation strategy, and deleting deck rows. It does not add DeckCard persistence/write flows, DeckCardAllocation writes, card editing UI, missing-card UI, assembly allocation writes, disassembly, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
+
+Phase 6D adds a read-only `/decks/[deckId]` detail page backed by a server-side query. It displays deck metadata, already-persisted DeckCard requirements, already-persisted DeckCardAllocation rows, and read-only totals. It does not add deck card requirement write flows, card search/add/remove UI, missing-card UI, assembled allocation writes, disassembly, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 ## Phase 7 - Booster opening
 

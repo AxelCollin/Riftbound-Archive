@@ -1,4 +1,4 @@
-import type { DeckAllocationStrategy, DeckStatus } from "@prisma/client";
+import type { DeckAllocationStrategy, DeckCardVariantPreference, DeckStatus } from "@prisma/client";
 
 export const deckStatusLabelsFr: Record<DeckStatus, string> = {
   THEORETICAL: "Théorique",
@@ -10,4 +10,11 @@ export const deckAllocationStrategyLabelsFr: Record<DeckAllocationStrategy, stri
   PRESERVE_PREMIUM_VARIANTS: "Préserver les variantes premium",
   EXACT_VARIANT: "Variante exacte",
   ANY_VARIANT: "Toute variante",
+};
+
+export const deckCardVariantPreferenceLabelsFr: Record<DeckCardVariantPreference, string> = {
+  ANY: "Toute variante",
+  NORMAL: "Normale",
+  FOIL: "Foil",
+  SHOWCASE: "Showcase",
 };
