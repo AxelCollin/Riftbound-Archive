@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
   deck: {
@@ -14,10 +14,17 @@ vi.mock("../db", () => ({
   prisma: prismaMock,
 }));
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  prismaMock.deck.findMany.mockResolvedValue([]);
+  prismaMock.card.findMany.mockResolvedValue([]);
+});
+
 import {
   createDeckListRows,
   getDeckListPageData,
   summarizeDeckListRows,
+  type DeckRequirementRow,
 } from "./decks";
 
 function deck(overrides = {}) {
@@ -361,4 +368,99 @@ describe("deck detail query", () => {
     ]));
   });
 
+});
+
+
+describe("deck missing detail composition", () => {
+  function baseRequirement(overrides: Partial<DeckRequirementRow> = {}): DeckRequirementRow {
+    return {
+      deckCardId: "dc-1",
+      cardId: "card-1",
+      displayName: "Carte Un",
+      officialName: "Card One",
+      collectorNumber: "001",
+      rarity: "COMMON" as const,
+      kind: "GAMEPLAY" as const,
+      printTreatment: "REGULAR" as const,
+      hasShowcase: true,
+      set: { code: "SET1", name: "Set One" },
+      preferredVariant: "ANY" as const,
+      allowedPreferences: ["ANY", "NORMAL", "FOIL", "SHOWCASE"],
+      quantity: 2,
+      collectionEntries: [],
+      ...overrides,
+    };
+  }
+
+  it("returns empty missing rows and a complete summary for a deck with no requirements", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+
+    expect(createDeckMissingDetail([])).toEqual({
+      rows: [],
+      summary: {
+        requirementLineCount: 0,
+        completeLineCount: 0,
+        missingLineCount: 0,
+        requiredCardQuantity: 0,
+        satisfiedCardQuantity: 0,
+        missingCardQuantity: 0,
+        isComplete: true,
+      },
+    });
+  });
+
+  it("marks a fully satisfied deck complete and surfaces used variants read-only", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ quantity: 2, collectionEntries: [{ variant: "NORMAL", quantity: 3 }] })]);
+
+    expect(data.summary).toMatchObject({ missingCardQuantity: 0, satisfiedCardQuantity: 2, isComplete: true });
+    expect(data.rows[0]).toMatchObject({ cardId: "card-1", displayName: "Carte Un", requiredQuantity: 2, satisfiedQuantity: 2, missingQuantity: 0, usedVariants: [{ variant: "NORMAL", quantity: 2 }] });
+  });
+
+  it("shows correct partial missing quantities and summary totals", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ quantity: 4, collectionEntries: [{ variant: "NORMAL", quantity: 2 }] })]);
+
+    expect(data.summary).toEqual({ requirementLineCount: 1, completeLineCount: 0, missingLineCount: 1, requiredCardQuantity: 4, satisfiedCardQuantity: 1, missingCardQuantity: 3, isComplete: false });
+    expect(data.rows[0]).toMatchObject({ requiredQuantity: 4, satisfiedQuantity: 1, missingQuantity: 3 });
+  });
+
+  it("uses only the exact preferred variant for exact requirements", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ preferredVariant: "FOIL", quantity: 2, collectionEntries: [{ variant: "NORMAL", quantity: 10 }, { variant: "FOIL", quantity: 2 }] })]);
+
+    expect(data.rows[0]).toMatchObject({ satisfiedQuantity: 1, missingQuantity: 1, usedVariants: [{ variant: "FOIL", quantity: 1 }] });
+  });
+
+  it("lets ANY use availability in preserve-premium order after binder reservation", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ quantity: 3, collectionEntries: [{ variant: "NORMAL", quantity: 2 }, { variant: "FOIL", quantity: 2 }, { variant: "SHOWCASE", quantity: 2 }] })]);
+
+    expect(data.rows[0].usedVariants).toEqual([{ variant: "NORMAL", quantity: 2 }, { variant: "FOIL", quantity: 1 }]);
+  });
+
+  it("includes card display data in missing rows", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ displayName: "Nom FR", set: { code: "ORG", name: "Origines" }, collectorNumber: "123" })]);
+
+    expect(data.rows[0]).toMatchObject({ displayName: "Nom FR", set: { code: "ORG", name: "Origines" }, collectorNumber: "123" });
+  });
+
+  it("uses current available counts instead of owned counts by subtracting assembled allocations", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail(
+      [baseRequirement({ quantity: 2, collectionEntries: [{ variant: "NORMAL", quantity: 4 }] })],
+      [{ assembled: true, allocations: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }] }],
+    );
+
+    expect(data.rows[0]).toMatchObject({ satisfiedQuantity: 1, missingQuantity: 1 });
+  });
+
+  it("does not require persisted allocations to exist and does not call Prisma writes", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([baseRequirement({ collectionEntries: [{ variant: "NORMAL", quantity: 2 }] })]);
+
+    expect(data.summary.isComplete).toBe(false);
+    expect(Object.keys(prismaMock.deck)).toEqual(["findMany", "findUnique"]);
+  });
 });

@@ -64,6 +64,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add deck CRUD. (Phase 6C: minimal deck metadata create, edit, and delete flows only.)
 - [x] Add read-only deck detail page. (Phase 6D: server-rendered `/decks/[deckId]` view over persisted DeckCard requirements and DeckCardAllocation rows only.)
 - [x] Add deck card requirements persistence and write flows. (Phase 6E: minimal DeckCard requirement add/edit/remove flows from the deck detail page only.)
+- [x] Add read-only deck missing-card UI. (Phase 6F: `/decks/[deckId]` compares persisted requirements against current app-facing available collection counts using Phase 6A missing-card domain logic; no allocation writes or assembly/disassembly.)
 - [ ] Add assembled deck allocation.
 - [ ] Add disassemble flow.
 - [ ] Add deckbuilder UI.
@@ -77,6 +78,8 @@ Phase 6C adds minimal Deck metadata CRUD only: creating empty theoretical decks,
 Phase 6D adds a read-only `/decks/[deckId]` detail page backed by a server-side query. It displays deck metadata, already-persisted DeckCard requirements, already-persisted DeckCardAllocation rows, and read-only totals. It does not add deck card requirement write flows, card search/add/remove UI, missing-card UI, assembled allocation writes, disassembly, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
 Phase 6E adds minimal DeckCard requirement write flows from `/decks/[deckId]`: add a required card line, edit an existing line quantity/preferred variant, and remove a line. It validates trackable cards and supported preferred variants, merges duplicate deck/card/preference requirements, and leaves DeckCardAllocation rows untouched. It does not add assembled allocation writes, disassembly, missing-card UI, automatic allocation persistence, deckbuilder UI, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
+
+Phase 6F adds a read-only missing-card and availability section to `/decks/[deckId]`. It composes current DeckCard requirements with app-facing available collection counts and delegates missing-card calculation to the Phase 6A domain logic. It does not create, update, or delete DeckCardAllocation rows; persist automatic allocation planning; assemble or disassemble decks; mutate collection data; change deck status; add pricing, booster, sync, Electron, schema, or migration work.
 
 ## Phase 7 - Booster opening
 

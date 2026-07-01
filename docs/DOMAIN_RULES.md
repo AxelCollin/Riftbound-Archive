@@ -119,6 +119,8 @@ Phase 6D adds read-only deck detail display. The `/decks/[deckId]` page may read
 
 Phase 6E adds DeckCard requirement writes only. Requirement write input must trim and require `cardId`, require a positive integer quantity, and accept only `ANY`, `NORMAL`, `FOIL`, or `SHOWCASE` preferred variants. Requirement services may create, increment, update, merge, or delete `DeckCard` rows for trackable GAMEPLAY and ENERGY cards only. Exact preferred variants must match the selected card's supported variants, while `ANY` is allowed for any trackable card. Phase 6E must not create, update, delete, or clean up `DeckCardAllocation` rows; allocation cleanup, missing-card UI, assembled allocation writes, disassembly, automatic allocation persistence, and full deckbuilder UI remain future work.
 
+Phase 6F adds read-only missing-card UI on the deck detail page. It must compare persisted DeckCard requirements against current app-facing available counts, where available means owned minus binder-reserved copies minus assembled deck allocations with the existing UI-safe clamping semantics. Phase 6F must reuse the Phase 6A missing-card domain logic and must not persist `usedVariants`, write DeckCardAllocation rows, assemble or disassemble decks, mutate collection entries or transactions, change deck status, or add purchase/pricing integration. Assembled allocation writes, automatic allocation persistence, disassembly, deckbuilder UI, and missing-card purchase/pricing integration remain future work.
+
 Default automatic allocation strategy:
 
 ```text
