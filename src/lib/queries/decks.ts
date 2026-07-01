@@ -1,5 +1,13 @@
-import type { DeckAllocationStrategy, DeckStatus } from "@prisma/client";
+import type { DeckAllocationStrategy, DeckCardVariantPreference, DeckStatus } from "@prisma/client";
 import { prisma } from "../db";
+import { getCardAvailability, type DeckAllocationSet } from "../domain/availability";
+import { getBinderReservation } from "../domain/binder";
+import type { CardKind, CardRarity } from "../domain/cards";
+import { createOwnedVariantCounts } from "../domain/collection-quantities";
+import { calculateDeckMissingCards } from "../domain/deck-missing";
+import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "../domain/variants";
+import type { CardPrintTreatment } from "../formatters/cards";
+import { getDisplayCardName } from "./collection";
 
 export type DeckListRow = {
   deckId: string;
@@ -161,12 +169,6 @@ export async function getDeckEditData(deckId: string): Promise<DeckEditData | nu
   };
 }
 
-import type { CardKind, CardRarity } from "../domain/cards";
-import type { CardPrintTreatment } from "../formatters/cards";
-import type { CardVariant } from "../domain/variants";
-import { getAllowedVariants } from "../domain/variants";
-import type { DeckCardVariantPreference } from "@prisma/client";
-import { getDisplayCardName } from "./collection";
 
 type DeckDetailCardRecord = {
   id: string;
@@ -178,6 +180,7 @@ type DeckDetailCardRecord = {
   hasShowcase: boolean;
   set: { code: string; name: string };
   translations: { locale: string; name: string }[];
+  collectionEntries?: { variant: CardVariant; quantity: number }[];
 };
 
 type DeckDetailRequirementRecord = {
@@ -225,12 +228,36 @@ export type DeckRequirementRow = DeckDetailCardDisplay & {
   preferredVariant: DeckCardVariantPreference;
   allowedPreferences: DeckCardVariantPreference[];
   quantity: number;
+  collectionEntries?: { variant: CardVariant; quantity: number }[];
 };
 
 export type DeckAllocationRow = DeckDetailCardDisplay & {
   allocationId: string;
   variant: CardVariant;
   quantity: number;
+};
+
+export type DeckMissingSummary = {
+  requirementLineCount: number;
+  completeLineCount: number;
+  missingLineCount: number;
+  requiredCardQuantity: number;
+  satisfiedCardQuantity: number;
+  missingCardQuantity: number;
+  isComplete: boolean;
+};
+
+export type DeckMissingRow = DeckDetailCardDisplay & {
+  preferredVariant: DeckCardVariantPreference;
+  requiredQuantity: number;
+  satisfiedQuantity: number;
+  missingQuantity: number;
+  usedVariants: Array<{ variant: CardVariant; quantity: number }>;
+};
+
+export type DeckMissingDetail = {
+  summary: DeckMissingSummary;
+  rows: DeckMissingRow[];
 };
 
 export type DeckDetailSummary = {
@@ -254,6 +281,7 @@ export type DeckDetailPageData = {
   updatedAt: string;
   requirements: DeckRequirementRow[];
   allocations: DeckAllocationRow[];
+  missing: DeckMissingDetail;
   summary: DeckDetailSummary;
   cardOptions: DeckRequirementCardOption[];
 };
@@ -268,6 +296,11 @@ const deckDetailCardSelect = {
   hasShowcase: true,
   set: { select: { code: true, name: true } },
   translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
+} as const;
+
+const deckDetailCardWithCollectionSelect = {
+  ...deckDetailCardSelect,
+  collectionEntries: { select: { variant: true, quantity: true } },
 } as const;
 
 function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "hasShowcase">): DeckCardVariantPreference[] {
@@ -297,7 +330,6 @@ function compareDeckDetailCardRows(
     || left.displayName.localeCompare(right.displayName, "fr");
 }
 
-
 export function createDeckRequirementCardOptions(cards: DeckDetailCardRecord[]): DeckRequirementCardOption[] {
   return cards
     .map((card) => ({
@@ -306,8 +338,84 @@ export function createDeckRequirementCardOptions(cards: DeckDetailCardRecord[]):
     }))
     .sort(compareDeckDetailCardRows);
 }
+function variantCountsToUsedRows(usedVariants: VariantCounts): Array<{ variant: CardVariant; quantity: number }> {
+  return (["NORMAL", "FOIL", "SHOWCASE"] as const)
+    .map((variant) => ({ variant, quantity: getVariantCount(usedVariants, variant) }))
+    .filter((row) => row.quantity > 0);
+}
 
-export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: DeckRequirementCardOption[] = []): DeckDetailPageData {
+function createDeckAvailabilityInputs(
+  requirements: DeckRequirementRow[],
+  deckAllocationSets: DeckAllocationSet[] = [],
+) {
+  const requirementByCardId = new Map(requirements.map((requirement) => [requirement.cardId, requirement]));
+
+  return [...requirementByCardId.values()].map((requirement) => {
+    const card = { id: requirement.cardId, kind: requirement.kind, rarity: requirement.rarity, hasShowcase: requirement.hasShowcase };
+    const allowedVariants = getAllowedVariants(card);
+    const ownedCounts = createOwnedVariantCounts(
+      requirement.cardId,
+      allowedVariants,
+      requirement.collectionEntries ?? [],
+    );
+    const binderReserved = getBinderReservation(card, ownedCounts).reserved;
+
+    return getCardAvailability(card, ownedCounts, deckAllocationSets, binderReserved);
+  });
+}
+
+export function createDeckMissingDetail(
+  requirements: DeckRequirementRow[],
+  deckAllocationSets: DeckAllocationSet[] = [],
+): DeckMissingDetail {
+  const missingResults = calculateDeckMissingCards(
+    requirements.map((requirement) => ({
+      cardId: requirement.cardId,
+      quantity: requirement.quantity,
+      preferredVariant: requirement.preferredVariant,
+    })),
+    createDeckAvailabilityInputs(requirements, deckAllocationSets),
+  );
+  const requirementByKey = new Map(
+    requirements.map((requirement) => [`${requirement.cardId}::${requirement.preferredVariant}`, requirement]),
+  );
+  const rows = missingResults.map((result) => {
+    const requirement = requirementByKey.get(`${result.cardId}::${result.preferredVariant}`);
+    if (!requirement) {
+      throw new Error(`Missing deck requirement display data for ${result.cardId}`);
+    }
+
+    return {
+      ...requirement,
+      requiredQuantity: result.requiredQuantity,
+      satisfiedQuantity: result.satisfiedQuantity,
+      missingQuantity: result.missingQuantity,
+      usedVariants: variantCountsToUsedRows(result.usedVariants),
+    };
+  });
+
+  const summary = rows.reduce<DeckMissingSummary>((acc, row) => ({
+    requirementLineCount: acc.requirementLineCount + 1,
+    completeLineCount: acc.completeLineCount + (row.missingQuantity === 0 ? 1 : 0),
+    missingLineCount: acc.missingLineCount + (row.missingQuantity > 0 ? 1 : 0),
+    requiredCardQuantity: acc.requiredCardQuantity + row.requiredQuantity,
+    satisfiedCardQuantity: acc.satisfiedCardQuantity + row.satisfiedQuantity,
+    missingCardQuantity: acc.missingCardQuantity + row.missingQuantity,
+    isComplete: false,
+  }), {
+    requirementLineCount: 0,
+    completeLineCount: 0,
+    missingLineCount: 0,
+    requiredCardQuantity: 0,
+    satisfiedCardQuantity: 0,
+    missingCardQuantity: 0,
+    isComplete: true,
+  });
+
+  return { summary: { ...summary, isComplete: summary.missingCardQuantity === 0 }, rows };
+}
+
+export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: DeckRequirementCardOption[] = [], deckAllocationSets: DeckAllocationSet[] = []): DeckDetailPageData {
   const requirements = deck.deckCards
     .map((row) => ({
       deckCardId: row.id,
@@ -315,6 +423,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
       preferredVariant: row.preferredVariant,
       allowedPreferences: getAllowedDeckCardPreferences(row.card),
       quantity: row.quantity,
+      collectionEntries: row.card.collectionEntries,
     }))
     .sort((left, right) => compareDeckDetailCardRows(left, right)
       || left.preferredVariant.localeCompare(right.preferredVariant, "fr"));
@@ -329,6 +438,9 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
     .sort((left, right) => compareDeckDetailCardRows(left, right)
       || left.variant.localeCompare(right.variant, "fr"));
 
+
+  const missing = createDeckMissingDetail(requirements, deckAllocationSets);
+
   return {
     deckId: deck.id,
     name: deck.name,
@@ -339,6 +451,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
     updatedAt: deck.updatedAt.toISOString(),
     requirements,
     allocations,
+    missing,
     summary: {
       requirementLineCount: requirements.length,
       requiredCardQuantity: requirements.reduce((total, row) => total + row.quantity, 0),
@@ -366,7 +479,7 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
           cardId: true,
           quantity: true,
           preferredVariant: true,
-          card: { select: deckDetailCardSelect },
+          card: { select: deckDetailCardWithCollectionSelect },
         },
       },
       allocations: {
@@ -385,10 +498,20 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
     return null;
   }
 
-  const cards = await prisma.card.findMany({
-    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-    select: deckDetailCardSelect,
-  });
+  const [cards, assembledDecks] = await Promise.all([
+    prisma.card.findMany({
+      where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+      select: deckDetailCardSelect,
+    }),
+    prisma.deck.findMany({
+      where: { status: "ASSEMBLED", id: { not: deckId } },
+      select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
+    }),
+  ]);
 
-  return createDeckDetailPageData(deck, createDeckRequirementCardOptions(cards));
+  return createDeckDetailPageData(
+    deck,
+    createDeckRequirementCardOptions(cards),
+    assembledDecks.map((assembledDeck) => ({ assembled: true, allocations: assembledDeck.allocations })),
+  );
 }

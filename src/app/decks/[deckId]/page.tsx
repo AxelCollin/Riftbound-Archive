@@ -32,9 +32,9 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
             <Link className="hover:text-archive-text100" href="/decks">← Retour aux decks</Link>
             <Link className="hover:text-archive-text100" href={editHref}>Modifier le deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6E</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6F</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">{deck.name}</h1>
-          <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">Gestion minimale des cartes requises du deck.</p>
+          <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">Gestion minimale des cartes requises et disponibilité en lecture seule.</p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">Cette page permet de gérer les cartes requises du deck. Les allocations et l’assemblage arriveront dans une prochaine étape.</p>
         </header>
 
@@ -112,6 +112,58 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
+          <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-semibold text-archive-text100">Disponibilité du deck</h2>
+                <p className="mt-2 text-sm text-archive-text300">Lecture seule : cette section compare les cartes requises avec les cartes actuellement disponibles.</p>
+              </div>
+              <p className={`rounded-chip border px-4 py-2 text-sm ${deck.missing.summary.isComplete ? "border-[rgba(121,184,90,0.45)] text-green-200" : "border-[rgba(217,164,65,0.5)] text-amber-200"}`}>
+                {deck.missing.summary.isComplete ? "Deck complet avec les cartes disponibles." : "Deck incomplet avec les cartes disponibles."}
+              </p>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Lignes complètes", deck.missing.summary.completeLineCount],
+                ["Lignes manquantes", deck.missing.summary.missingLineCount],
+                ["Cartes satisfaites", deck.missing.summary.satisfiedCardQuantity],
+                ["Cartes manquantes", deck.missing.summary.missingCardQuantity],
+              ].map(([label, value]) => (
+                <article className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.62)] p-4" key={label}>
+                  <p className="text-xs uppercase tracking-[0.2em] text-archive-text500">{label}</p>
+                  <p className="mt-2 text-3xl font-semibold text-archive-gold300">{value}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+          {deck.missing.rows.length === 0 ? <p className="p-8 text-archive-text300">Aucune carte requise à vérifier.</p> : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-[rgba(16,32,51,0.74)] text-xs uppercase tracking-[0.24em] text-archive-gold300">
+                  <tr>{["Carte", "Set", "N°", "Préférence", "Requis", "Satisfait", "Manquant", "Variantes utilisées"].map((h) => <th className="px-4 py-4" key={h}>{h}</th>)}</tr>
+                </thead>
+                <tbody className="divide-y divide-[rgba(199,168,102,0.16)]">
+                  {deck.missing.rows.map((row) => (
+                    <tr className="text-archive-text300" key={`${row.cardId}-${row.preferredVariant}`}>
+                      <td className="px-4 py-4 font-semibold text-archive-text100">{row.displayName}</td>
+                      <td className="px-4 py-4">{row.set.code}</td>
+                      <td className="px-4 py-4">{row.collectorNumber}</td>
+                      <td className="px-4 py-4">{deckCardVariantPreferenceLabelsFr[row.preferredVariant]}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.requiredQuantity}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.satisfiedQuantity}</td>
+                      <td className="px-4 py-4 text-right tabular-nums">{row.missingQuantity}</td>
+                      <td className="px-4 py-4">
+                        {row.usedVariants.length === 0 ? "—" : row.usedVariants.map((usedVariant) => `${cardVariantLabelsFr[usedVariant.variant]} × ${usedVariant.quantity}`).join(", ")}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
