@@ -53,7 +53,7 @@ export default async function EditDeckPage({ params }: EditDeckPageProps) {
         </form>
         <section className="rounded-panel border border-[rgba(217,74,74,0.42)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
           <h2 className="text-2xl font-semibold text-archive-text100">Suppression</h2>
-          <p className="mt-3 text-sm leading-6 text-archive-text300">Cette action supprime le deck. Les cartes de deck et allocations seront gérées dans une prochaine étape.</p>
+          <p className="mt-3 text-sm leading-6 text-archive-text300">Cette action supprime uniquement un deck vide. La suppression est autorisée seulement si le deck ne contient aucune exigence de carte et aucune allocation ; la Phase 6C ne gère pas la suppression des cartes de deck ni des allocations.</p>
           <form action={deleteAction} className="mt-5">
             <button className="rounded-chip border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.16)] px-5 py-3 font-semibold text-red-200 hover:text-white" type="submit">Supprimer le deck</button>
           </form>

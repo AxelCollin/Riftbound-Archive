@@ -30,5 +30,26 @@ export async function updateDeck(deckId: string, input: DeckMetadataInput): Prom
 }
 
 export async function deleteDeck(deckId: string): Promise<void> {
+  const deck = await prisma.deck.findUnique({
+    where: { id: deckId },
+    select: {
+      id: true,
+      _count: {
+        select: {
+          deckCards: true,
+          allocations: true,
+        },
+      },
+    },
+  });
+
+  if (!deck) {
+    throw new Error("Deck not found.");
+  }
+
+  if (deck._count.deckCards > 0 || deck._count.allocations > 0) {
+    throw new Error("Cannot delete a deck that contains card requirements or allocations.");
+  }
+
   await prisma.deck.delete({ where: { id: deckId } });
 }
