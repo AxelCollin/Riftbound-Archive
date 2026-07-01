@@ -351,6 +351,99 @@ describe("deck detail query", () => {
     expect(preferencesByCardId.get("showcase")).toEqual(["ANY", "FOIL", "SHOWCASE"]);
   });
 
+
+  it("excludes the current assembled deck from missing-card availability subtraction", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
+      status: "ASSEMBLED",
+      deckCards: [
+        {
+          id: "dc-current",
+          cardId: "card-1",
+          quantity: 2,
+          preferredVariant: "ANY",
+          card: cardRecord({ collectionEntries: [{ variant: "NORMAL", quantity: 3 }] }),
+        },
+      ],
+      allocations: [
+        { id: "alloc-current", cardId: "card-1", variant: "NORMAL", quantity: 2, card: cardRecord() },
+      ],
+    }));
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(data?.missing.rows[0]).toMatchObject({
+      cardId: "card-1",
+      requiredQuantity: 2,
+      satisfiedQuantity: 2,
+      missingQuantity: 0,
+      usedVariants: [{ variant: "NORMAL", quantity: 2 }],
+    });
+  });
+
+  it("still subtracts other assembled deck allocations from missing-card availability", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
+      status: "ASSEMBLED",
+      deckCards: [
+        {
+          id: "dc-current",
+          cardId: "card-1",
+          quantity: 2,
+          preferredVariant: "ANY",
+          card: cardRecord({ collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }),
+        },
+      ],
+      allocations: [
+        { id: "alloc-current", cardId: "card-1", variant: "NORMAL", quantity: 2, card: cardRecord() },
+      ],
+    }));
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+    prismaMock.deck.findMany.mockResolvedValueOnce([
+      { allocations: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }] },
+    ]);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(data?.missing.rows[0]).toMatchObject({
+      cardId: "card-1",
+      requiredQuantity: 2,
+      satisfiedQuantity: 1,
+      missingQuantity: 1,
+      usedVariants: [{ variant: "NORMAL", quantity: 1 }],
+    });
+  });
+
+  it("filters assembled-deck allocation reads by excluding the current deck id", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    await getDeckDetailPageData("deck-detail");
+
+    expect(prismaMock.deck.findMany).toHaveBeenLastCalledWith({
+      where: { status: "ASSEMBLED", id: { not: "deck-detail" } },
+      select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
+    });
+  });
+
+  it("keeps deck detail missing-card composition read-only with no Prisma writes", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    await getDeckDetailPageData("deck-detail");
+
+    expect(prismaMock.deck).not.toHaveProperty("create");
+    expect(prismaMock.deck).not.toHaveProperty("update");
+    expect(prismaMock.deck).not.toHaveProperty("delete");
+    expect(prismaMock).not.toHaveProperty("deckCardAllocation");
+  });
+
   it("includes allowedPreferences on requirement rows", async () => {
     prismaMock.card.findMany.mockResolvedValueOnce([]);
     prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({

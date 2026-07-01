@@ -504,7 +504,7 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
       select: deckDetailCardSelect,
     }),
     prisma.deck.findMany({
-      where: { status: "ASSEMBLED" },
+      where: { status: "ASSEMBLED", id: { not: deckId } },
       select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
     }),
   ]);
