@@ -113,6 +113,8 @@ Phase 6A adds pure domain logic for normalizing deck requirements and calculatin
 
 Phase 6B adds a read-only deck list page backed by a server-side query over existing deck tables. It may display saved deck metadata, requirement line counts, required card totals, allocation line counts, and allocated card totals. It must not create, edit, delete, assemble, disassemble, allocate, or persist deck data, and missing-card query composition remains future work.
 
+Phase 6C adds minimal Deck metadata writes. A new deck is always created with status `THEORETICAL`; status editing, assembly, and disassembly are not exposed. Metadata writes may only normalize and persist the deck name, optional description, and allocation strategy. They must not create, update, or delete `DeckCard` or `DeckCardAllocation` rows. Deck card requirement persistence, deck card editing UI, missing-card UI, assembled allocation writes, disassembly, and deckbuilder UI remain future work.
+
 Default automatic allocation strategy:
 
 ```text
