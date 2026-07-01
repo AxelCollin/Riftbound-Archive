@@ -320,7 +320,45 @@ describe("deck detail query", () => {
     });
     expect(data?.cardOptions.map((option) => option.cardId)).toEqual(["card-a", "card-b"]);
     expect(data?.cardOptions[0]).toMatchObject({ displayName: "Alpha FR", allowedPreferences: ["ANY", "NORMAL", "FOIL"] });
+    expect(data?.cardOptions[1]).toMatchObject({ displayName: "Beta", allowedPreferences: ["ANY", "FOIL"] });
     expect(JSON.parse(JSON.stringify(data?.cardOptions))).toEqual(data?.cardOptions);
+  });
+
+  it("computes card option preferences from trackable card capabilities", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardRecord({ id: "common", name: "Common", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false }),
+      cardRecord({ id: "uncommon", name: "Uncommon", rarity: "UNCOMMON", kind: "GAMEPLAY", hasShowcase: false }),
+      cardRecord({ id: "rare", name: "Rare", rarity: "RARE", kind: "GAMEPLAY", hasShowcase: false }),
+      cardRecord({ id: "energy", name: "Energy", rarity: "UNKNOWN", kind: "ENERGY", hasShowcase: false }),
+      cardRecord({ id: "showcase", name: "Showcase", rarity: "EPIC", kind: "GAMEPLAY", hasShowcase: true }),
+    ]);
+    const { getDeckDetailPageData } = await import("./decks");
+    const data = await getDeckDetailPageData("deck-detail");
+    const preferencesByCardId = new Map(data?.cardOptions.map((option) => [option.cardId, option.allowedPreferences]));
+
+    expect(preferencesByCardId.get("common")).toEqual(["ANY", "NORMAL", "FOIL"]);
+    expect(preferencesByCardId.get("uncommon")).toEqual(["ANY", "NORMAL", "FOIL"]);
+    expect(preferencesByCardId.get("rare")).toEqual(["ANY", "FOIL"]);
+    expect(preferencesByCardId.get("energy")).toEqual(["ANY", "FOIL"]);
+    expect(preferencesByCardId.get("showcase")).toEqual(["ANY", "FOIL", "SHOWCASE"]);
+  });
+
+  it("includes allowedPreferences on requirement rows", async () => {
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck({
+      deckCards: [
+        { id: "dc-common", cardId: "common", quantity: 1, preferredVariant: "NORMAL", card: cardRecord({ id: "common", rarity: "COMMON", hasShowcase: false }) },
+        { id: "dc-showcase", cardId: "showcase", quantity: 1, preferredVariant: "SHOWCASE", card: cardRecord({ id: "showcase", rarity: "RARE", hasShowcase: true }) },
+      ],
+    }));
+    const { getDeckDetailPageData } = await import("./decks");
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(data?.requirements).toEqual(expect.arrayContaining([
+      expect.objectContaining({ deckCardId: "dc-common", allowedPreferences: ["ANY", "NORMAL", "FOIL"] }),
+      expect.objectContaining({ deckCardId: "dc-showcase", allowedPreferences: ["ANY", "FOIL", "SHOWCASE"] }),
+    ]));
   });
 
 });

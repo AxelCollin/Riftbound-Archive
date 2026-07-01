@@ -6,6 +6,7 @@ import { formatDateTimeFr } from "@/lib/formatters/dates";
 import { deckAllocationStrategyLabelsFr, deckCardVariantPreferenceLabelsFr, deckStatusLabelsFr } from "@/lib/formatters/decks";
 import { getDeckDetailPageData } from "@/lib/queries/decks";
 import { addDeckRequirementAction, deleteDeckRequirementAction, updateDeckRequirementAction } from "../actions";
+import { AddDeckRequirementForm } from "./AddDeckRequirementForm";
 
 export const dynamic = "force-dynamic";
 
@@ -71,28 +72,7 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
             <h2 className="text-2xl font-semibold text-archive-text100">Cartes requises</h2>
             <p className="mt-2 text-sm text-archive-text300">Édition des exigences uniquement, sans allocation automatique.</p>
           </div>
-          <form action={addDeckRequirementAction.bind(null, deck.deckId)} className="grid gap-4 border-b border-[rgba(199,168,102,0.16)] p-5 lg:grid-cols-[minmax(260px,1fr)_180px_120px_auto]">
-            <label className="grid gap-2 text-sm text-archive-text300">
-              Carte
-              <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" name="cardId" required>
-                <option value="">Choisir une carte…</option>
-                {deck.cardOptions.map((card) => (
-                  <option key={card.cardId} value={card.cardId}>{card.set.code} {card.collectorNumber} — {card.displayName}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm text-archive-text300">
-              Préférence
-              <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" name="preferredVariant" defaultValue="ANY">
-                {Object.entries(deckCardVariantPreferenceLabelsFr).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm text-archive-text300">
-              Quantité
-              <input className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-3 py-2 text-archive-text100" min={1} name="quantity" step={1} type="number" defaultValue={1} required />
-            </label>
-            <button className="self-end rounded-chip border border-[rgba(199,168,102,0.48)] px-5 py-2 text-sm font-semibold text-archive-gold300 hover:bg-[rgba(199,168,102,0.12)]" type="submit">Ajouter</button>
-          </form>
+          <AddDeckRequirementForm action={addDeckRequirementAction.bind(null, deck.deckId)} cardOptions={deck.cardOptions} preferenceLabels={deckCardVariantPreferenceLabelsFr} />
           {deck.requirements.length === 0 ? <p className="p-8 text-archive-text300">Aucune carte requise dans ce deck.</p> : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -112,7 +92,7 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
                         <td className="px-4 py-4">{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
                         <td className="px-4 py-4">
                           <select className="rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-2 py-1 text-archive-text100" form={editFormId} name="preferredVariant" defaultValue={row.preferredVariant}>
-                            {Object.entries(deckCardVariantPreferenceLabelsFr).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                            {row.allowedPreferences.map((value) => <option key={value} value={value}>{deckCardVariantPreferenceLabelsFr[value]}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-4">

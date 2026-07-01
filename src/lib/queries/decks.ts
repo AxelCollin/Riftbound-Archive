@@ -223,6 +223,7 @@ export type DeckDetailCardDisplay = {
 export type DeckRequirementRow = DeckDetailCardDisplay & {
   deckCardId: string;
   preferredVariant: DeckCardVariantPreference;
+  allowedPreferences: DeckCardVariantPreference[];
   quantity: number;
 };
 
@@ -269,6 +270,10 @@ const deckDetailCardSelect = {
   translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
 } as const;
 
+function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "hasShowcase">): DeckCardVariantPreference[] {
+  return ["ANY", ...getAllowedVariants(card)] as DeckCardVariantPreference[];
+}
+
 function mapDeckDetailCard(card: DeckDetailCardRecord): DeckDetailCardDisplay {
   return {
     cardId: card.id,
@@ -297,7 +302,7 @@ export function createDeckRequirementCardOptions(cards: DeckDetailCardRecord[]):
   return cards
     .map((card) => ({
       ...mapDeckDetailCard(card),
-      allowedPreferences: ["ANY", ...getAllowedVariants(card)] as DeckCardVariantPreference[],
+      allowedPreferences: getAllowedDeckCardPreferences(card),
     }))
     .sort(compareDeckDetailCardRows);
 }
@@ -308,6 +313,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
       deckCardId: row.id,
       ...mapDeckDetailCard(row.card),
       preferredVariant: row.preferredVariant,
+      allowedPreferences: getAllowedDeckCardPreferences(row.card),
       quantity: row.quantity,
     }))
     .sort((left, right) => compareDeckDetailCardRows(left, right)
