@@ -108,3 +108,23 @@ export async function assembleDeck(deckId: string): Promise<void> {
 function uniqueCards(cards: AssemblyCardRecord[]): AssemblyCardRecord[] {
   return Array.from(new Map(cards.map((card) => [card.id, card])).values());
 }
+
+export async function disassembleDeck(deckId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const deck = await tx.deck.findUnique({
+      where: { id: deckId },
+      select: { status: true },
+    });
+
+    if (!deck) {
+      throw new Error("Deck not found.");
+    }
+
+    if (deck.status !== "ASSEMBLED") {
+      throw new Error("Only assembled decks can be disassembled.");
+    }
+
+    await tx.deckCardAllocation.deleteMany({ where: { deckId } });
+    await tx.deck.update({ where: { id: deckId }, data: { status: "THEORETICAL" } });
+  });
+}

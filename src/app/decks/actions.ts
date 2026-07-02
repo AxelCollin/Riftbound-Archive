@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { DEFAULT_DECK_ALLOCATION_STRATEGY } from "@/lib/domain/deck-write";
 import { createDeck, deleteDeck, updateDeck } from "@/lib/services/decks";
 import { addDeckRequirement, deleteDeckRequirement, updateDeckRequirement } from "@/lib/services/deck-requirements";
-import { assembleDeck } from "@/lib/services/deck-assembly";
+import { assembleDeck, disassembleDeck } from "@/lib/services/deck-assembly";
 
 function getDeckMetadataFormInput(formData: FormData) {
   return {
@@ -68,4 +68,15 @@ export async function assembleDeckAction(deckId: string): Promise<void> {
   }
 
   redirect(`/decks/${encodeURIComponent(deckId)}?assembled=1`);
+}
+
+export async function disassembleDeckAction(deckId: string): Promise<void> {
+  try {
+    await disassembleDeck(deckId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Disassembly failed.";
+    redirect(`/decks/${encodeURIComponent(deckId)}?disassemblyError=${encodeURIComponent(message)}`);
+  }
+
+  redirect(`/decks/${encodeURIComponent(deckId)}?disassembled=1`);
 }
