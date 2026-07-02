@@ -117,12 +117,14 @@ describe("DeckDetailPage deckbuilder catalog", () => {
 
     await renderPage();
 
-    expect(screen.getByText("Deckbuilder — Phase 6J")).toBeInTheDocument();
+    expect(screen.getByText("Deckbuilder — Phase 6K")).toBeInTheDocument();
     expect(screen.getByText("Statut et actions")).toBeInTheDocument();
     expect(screen.getByText("Synthèse du deck")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Rechercher et ajouter une exigence" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Regroupement par set")).toBeInTheDocument();
+    expect(screen.getByText("Set OGN")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Exigences du deck" }),
     ).toBeInTheDocument();
@@ -144,6 +146,7 @@ describe("DeckDetailPage deckbuilder catalog", () => {
     await renderPage();
 
     expect(screen.getAllByRole("button", { name: "Ajouter" })[0]).toBeEnabled();
+    expect(screen.getByText("Édition active — deck théorique")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Modifier" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retirer" })).toBeInTheDocument();
   });
@@ -160,6 +163,7 @@ describe("DeckDetailPage deckbuilder catalog", () => {
     expect(
       screen.getByText(/lecture seule et ne peuvent pas être modifiées/),
     ).toBeInTheDocument();
+    expect(screen.getByText("Lecture seule — deck assemblé")).toBeInTheDocument();
     expect(screen.getByText("Lecture seule")).toBeInTheDocument();
   });
 
@@ -211,7 +215,47 @@ describe("DeckDetailPage deckbuilder catalog", () => {
     await renderPage();
 
     expect(screen.getByText(/Lecture seule : cette section compare/)).toBeInTheDocument();
+    expect(screen.getByText("Disponible")).toBeInTheDocument();
+    expect(screen.getAllByText("OK").length).toBeGreaterThan(0);
     expect(screen.getByText("Variantes utilisées")).toBeInTheDocument();
+  });
+
+
+  it("renders set grouping and missing density labels when cards are unavailable", async () => {
+    getDeckDetailPageDataMock.mockResolvedValueOnce(
+      deck({
+        missing: {
+          summary: {
+            requirementLineCount: 1,
+            completeLineCount: 0,
+            missingLineCount: 1,
+            requiredCardQuantity: 2,
+            satisfiedCardQuantity: 1,
+            missingCardQuantity: 1,
+            isComplete: false,
+          },
+          rows: [
+            {
+              cardId: "card-1",
+              displayName: "Aatrox",
+              set: { code: "OGN" },
+              collectorNumber: "001",
+              preferredVariant: "ANY" as const,
+              requiredQuantity: 2,
+              satisfiedQuantity: 1,
+              missingQuantity: 1,
+              usedVariants: [{ variant: "NORMAL" as const, quantity: 1 }],
+            },
+          ],
+        },
+      }),
+    );
+
+    await renderPage();
+
+    expect(screen.getByText("1 carte manquante")).toBeInTheDocument();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(screen.getByText("Manque 1")).toBeInTheDocument();
   });
 
   it("shows French assembly and disassembly success and error feedback", async () => {

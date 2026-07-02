@@ -35,6 +35,59 @@ type DeckDetailPageProps = {
   }>;
 };
 
+type RequirementAvailability = {
+  satisfiedQuantity: number;
+  missingQuantity: number;
+};
+
+function getRequirementAvailabilityByKey(deck: Awaited<ReturnType<typeof getDeckDetailPageData>>) {
+  const availabilityByKey = new Map<string, RequirementAvailability>();
+
+  if (!deck) {
+    return availabilityByKey;
+  }
+
+  for (const row of deck.missing.rows) {
+    availabilityByKey.set(`${row.cardId}::${row.preferredVariant}`, {
+      satisfiedQuantity: row.satisfiedQuantity,
+      missingQuantity: row.missingQuantity,
+    });
+  }
+
+  return availabilityByKey;
+}
+
+function getRequirementSetGroups(deck: Awaited<ReturnType<typeof getDeckDetailPageData>>) {
+  if (!deck) {
+    return [];
+  }
+
+  const availabilityByKey = getRequirementAvailabilityByKey(deck);
+  const groups = new Map<string, {
+    setCode: string;
+    lineCount: number;
+    requiredQuantity: number;
+    missingQuantity: number;
+  }>();
+
+  for (const row of deck.requirements) {
+    const group = groups.get(row.set.code) ?? {
+      setCode: row.set.code,
+      lineCount: 0,
+      requiredQuantity: 0,
+      missingQuantity: 0,
+    };
+    const availability = availabilityByKey.get(`${row.cardId}::${row.preferredVariant}`);
+
+    group.lineCount += 1;
+    group.requiredQuantity += row.quantity;
+    group.missingQuantity += availability?.missingQuantity ?? 0;
+    groups.set(row.set.code, group);
+  }
+
+  return [...groups.values()].sort((left, right) => left.setCode.localeCompare(right.setCode, "fr"));
+}
+
 export default async function DeckDetailPage({
   params,
   searchParams,
@@ -49,6 +102,8 @@ export default async function DeckDetailPage({
 
   const editHref = `/decks/${encodeURIComponent(deck.deckId)}/edit`;
   const canEditRequirements = deck.status === "THEORETICAL";
+  const requirementAvailabilityByKey = getRequirementAvailabilityByKey(deck);
+  const requirementSetGroups = getRequirementSetGroups(deck);
 
   return (
     <main className="min-h-screen px-8 py-6">
@@ -63,14 +118,14 @@ export default async function DeckDetailPage({
             </Link>
           </nav>
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">
-            Deckbuilder — Phase 6J
+            Deckbuilder — Phase 6K
           </p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">
             {deck.name}
           </h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Deckbuilder avec catalogue de cartes recherchable, exigences,
-            disponibilité et allocations regroupées en panneaux lisibles.
+            Deckbuilder avec catalogue recherchable, exigences groupées par set,
+            indicateurs de disponibilité renforcés et allocations en lecture claire.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
             Cette page conserve les règles existantes : les exigences restent
@@ -229,12 +284,37 @@ export default async function DeckDetailPage({
 
         <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
-            <h2 className="text-2xl font-semibold text-archive-text100">
-              Exigences du deck
-            </h2>
-            <p className="mt-2 text-sm text-archive-text300">
-              Les exigences DeckCard existantes restent éditables uniquement en mode théorique.
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.26em] text-archive-gold300">
+                  Regroupement par set
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-archive-text100">
+                  Exigences du deck
+                </h2>
+                <p className="mt-2 text-sm text-archive-text300">
+                  Liste densifiée : chaque ligne affiche le besoin, la quantité satisfaite et le manque calculés côté domaine.
+                </p>
+              </div>
+              <p className="rounded-chip border border-[rgba(199,168,102,0.34)] bg-[rgba(16,32,51,0.62)] px-4 py-2 text-sm text-archive-text300">
+                {canEditRequirements ? "Édition active — deck théorique" : "Lecture seule — deck assemblé"}
+              </p>
+            </div>
+            {requirementSetGroups.length > 0 ? (
+              <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {requirementSetGroups.map((group) => (
+                  <article className={`rounded-card border px-3 py-2 ${group.missingQuantity > 0 ? "border-[rgba(217,164,65,0.44)] bg-[rgba(217,164,65,0.08)]" : "border-[rgba(121,184,90,0.32)] bg-[rgba(121,184,90,0.07)]"}`} key={group.setCode}>
+                    <p className="text-xs uppercase tracking-[0.18em] text-archive-gold300">Set {group.setCode}</p>
+                    <p className="mt-1 text-sm text-archive-text300">
+                      {group.lineCount} ligne{group.lineCount > 1 ? "s" : ""} · {group.requiredQuantity} requise{group.requiredQuantity > 1 ? "s" : ""}
+                    </p>
+                    <p className={`mt-1 text-xs font-semibold ${group.missingQuantity > 0 ? "text-amber-200" : "text-green-200"}`}>
+                      {group.missingQuantity > 0 ? `${group.missingQuantity} carte${group.missingQuantity > 1 ? "s" : ""} manquante${group.missingQuantity > 1 ? "s" : ""}` : "Set complet"}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
           {!canEditRequirements ? (
             <p className="border-b border-[rgba(199,168,102,0.18)] bg-[rgba(217,164,65,0.10)] px-5 py-4 text-sm text-amber-100">
@@ -260,7 +340,9 @@ export default async function DeckDetailPage({
                       "Type",
                       "Traitement",
                       "Préférence",
-                      "Quantité",
+                      "Besoin",
+                      "Disponible",
+                      "Manque",
                       "Actions",
                     ].map((h) => (
                       <th className="px-4 py-4" key={h}>
@@ -272,6 +354,7 @@ export default async function DeckDetailPage({
                 <tbody className="divide-y divide-[rgba(199,168,102,0.16)]">
                   {deck.requirements.map((row) => {
                     const editFormId = `edit-${row.deckCardId}`;
+                    const availability = requirementAvailabilityByKey.get(`${row.cardId}::${row.preferredVariant}`) ?? { satisfiedQuantity: 0, missingQuantity: row.quantity };
                     return (
                       <tr className="text-archive-text300" key={row.deckCardId}>
                         <td className="px-4 py-4 font-semibold text-archive-text100">
@@ -308,7 +391,7 @@ export default async function DeckDetailPage({
                             ]
                           )}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3">
                           {canEditRequirements ? (
                             <input
                               className="w-20 rounded-card border border-[rgba(199,168,102,0.34)] bg-[rgba(8,17,27,0.95)] px-2 py-1 text-right text-archive-text100"
@@ -326,7 +409,15 @@ export default async function DeckDetailPage({
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3 text-right tabular-nums text-green-200">
+                          {availability.satisfiedQuantity}/{row.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          <span className={`rounded-chip border px-3 py-1 text-xs font-semibold ${availability.missingQuantity > 0 ? "border-[rgba(217,164,65,0.48)] bg-[rgba(217,164,65,0.12)] text-amber-200" : "border-[rgba(121,184,90,0.38)] bg-[rgba(121,184,90,0.10)] text-green-200"}`}>
+                            {availability.missingQuantity > 0 ? `Manque ${availability.missingQuantity}` : "OK"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
                           {canEditRequirements ? (
                             <div className="flex gap-2">
                               <form
