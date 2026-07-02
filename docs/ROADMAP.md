@@ -69,7 +69,7 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add disassemble flow. (Phase 6H: delete a deck’s persisted allocations atomically and return it to THEORETICAL.)
 - [x] Add deckbuilder UI foundation. (Phase 6I: improve `/decks/[deckId]` layout and split UI sections without changing business rules.)
 - [x] Add deckbuilder card catalog/search. (Phase 6J: searchable card catalog/add-card UX using existing DeckCard requirement writes.)
-- [ ] Add deckbuilder UX polish. (Phase 6K: denser deck list, requirement grouping, clearer availability/missing indicators.)
+- [x] Add deckbuilder UX polish. (Phase 6K: denser deck list, requirement grouping, clearer availability/missing indicators.)
 
 Phase 6A is domain-only groundwork for later deckbuilding work. It does not add deck CRUD, deck pages, deckbuilder UI, assembly allocation writes, disassembly, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
 
@@ -91,7 +91,7 @@ Phase 6I adds the deckbuilder UI foundation only. It should improve the `/decks/
 
 Phase 6J adds a searchable card catalog and add-card UX to `/decks/[deckId]`. It uses the existing server-side trackable card option query and existing DeckCard requirement write flows from Phase 6E, keeps catalog filtering client-side by card name, set code, collector number, rarity, and kind, disables catalog add controls for assembled decks, and keeps allocation, missing-card, and availability calculations centralized in the established domain and server-side query layers. It does not add new business rules, automatic allocation changes, pricing, booster, sync, Electron, schema, or migration work.
 
-Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in place. It may make the deck list denser, group requirement rows more clearly, and improve availability and missing-card indicators without changing business rules or persistence behavior. It must not add pricing, booster, sync, Electron, schema, or migration work.
+Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in place. It densifies the `/decks/[deckId]` requirement table, groups requirements by set with complete/missing scan labels, and surfaces per-line satisfied and missing quantities from the existing missing-card query data without changing business rules or persistence behavior. With Phase 6K complete, the Phase 6 Deckbuilding MVP is complete and the next roadmap focus remains Phase 7 booster opening. It does not add pricing, booster, sync, Electron, schema, or migration work.
 
 ## Phase 7 - Booster opening
 
