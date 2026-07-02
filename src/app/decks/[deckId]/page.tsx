@@ -5,17 +5,19 @@ import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardV
 import { formatDateTimeFr } from "@/lib/formatters/dates";
 import { deckAllocationStrategyLabelsFr, deckCardVariantPreferenceLabelsFr, deckStatusLabelsFr } from "@/lib/formatters/decks";
 import { getDeckDetailPageData } from "@/lib/queries/decks";
-import { addDeckRequirementAction, deleteDeckRequirementAction, updateDeckRequirementAction } from "../actions";
+import { addDeckRequirementAction, assembleDeckAction, deleteDeckRequirementAction, updateDeckRequirementAction } from "../actions";
 import { AddDeckRequirementForm } from "./AddDeckRequirementForm";
 
 export const dynamic = "force-dynamic";
 
 type DeckDetailPageProps = {
   params: Promise<{ deckId: string }>;
+  searchParams?: Promise<{ assemblyError?: string; assembled?: string }>;
 };
 
-export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
+export default async function DeckDetailPage({ params, searchParams }: DeckDetailPageProps) {
   const { deckId } = await params;
+  const statusMessage = await searchParams;
   const deck = await getDeckDetailPageData(deckId);
 
   if (!deck) {
@@ -32,10 +34,18 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
             <Link className="hover:text-archive-text100" href="/decks">← Retour aux decks</Link>
             <Link className="hover:text-archive-text100" href={editHref}>Modifier le deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6F</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6G</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">{deck.name}</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">Gestion minimale des cartes requises et disponibilité en lecture seule.</p>
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">Cette page permet de gérer les cartes requises du deck. Les allocations et l’assemblage arriveront dans une prochaine étape.</p>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">Cette page permet de gérer les cartes requises du deck. L’assemblage crée des allocations persistées quand toute la liste peut être satisfaite.</p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <form action={assembleDeckAction.bind(null, deck.deckId)}>
+              <button className="rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100 disabled:cursor-not-allowed disabled:opacity-50" disabled={deck.status !== "THEORETICAL"} type="submit">Assembler le deck</button>
+            </form>
+            {deck.status !== "THEORETICAL" ? <p className="text-sm text-archive-text500">Seuls les decks théoriques peuvent être assemblés.</p> : null}
+          </div>
+          {statusMessage?.assembled ? <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">Deck assemblé avec succès.</p> : null}
+          {statusMessage?.assemblyError ? <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">Assemblage impossible : {statusMessage.assemblyError}</p> : null}
         </header>
 
         <section className="grid gap-4 lg:grid-cols-4">
@@ -64,7 +74,7 @@ export default async function DeckDetailPage({ params }: DeckDetailPageProps) {
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-5 shadow-panel">
           <h2 className="text-2xl font-semibold text-archive-text100">Résumé</h2>
-          <p className="mt-2 text-sm text-archive-text300">Vue de gestion des exigences DeckCard uniquement ; les allocations restent en lecture seule.</p>
+          <p className="mt-2 text-sm text-archive-text300">Vue de gestion des exigences DeckCard avec assemblage atomique ; les allocations enregistrées restent en lecture seule.</p>
         </section>
 
         <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
