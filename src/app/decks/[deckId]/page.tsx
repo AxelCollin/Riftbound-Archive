@@ -21,7 +21,7 @@ import {
   disassembleDeckAction,
   updateDeckRequirementAction,
 } from "../actions";
-import { AddDeckRequirementForm } from "./AddDeckRequirementForm";
+import { DeckCardCatalog } from "./DeckCardCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -63,13 +63,13 @@ export default async function DeckDetailPage({
             </Link>
           </nav>
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">
-            Deckbuilder — Phase 6I
+            Deckbuilder — Phase 6J
           </p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">
             {deck.name}
           </h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Fondation de deckbuilder avec identité, actions, exigences,
+            Deckbuilder avec catalogue de cartes recherchable, exigences,
             disponibilité et allocations regroupées en panneaux lisibles.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
@@ -220,29 +220,29 @@ export default async function DeckDetailPage({
           </article>
         </section>
 
+        <DeckCardCatalog
+          action={addDeckRequirementAction.bind(null, deck.deckId)}
+          canAddCards={canEditRequirements}
+          cardOptions={deck.cardOptions}
+          preferenceLabels={deckCardVariantPreferenceLabelsFr}
+        />
+
         <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
             <h2 className="text-2xl font-semibold text-archive-text100">
               Exigences du deck
             </h2>
             <p className="mt-2 text-sm text-archive-text300">
-              Zone d’édition des exigences DeckCard existantes. Aucun catalogue ni
-              recherche de carte n’est ajouté dans cette phase.
+              Les exigences DeckCard existantes restent éditables uniquement en mode théorique.
             </p>
           </div>
-          {canEditRequirements ? (
-            <AddDeckRequirementForm
-              action={addDeckRequirementAction.bind(null, deck.deckId)}
-              cardOptions={deck.cardOptions}
-              preferenceLabels={deckCardVariantPreferenceLabelsFr}
-            />
-          ) : (
+          {!canEditRequirements ? (
             <p className="border-b border-[rgba(199,168,102,0.18)] bg-[rgba(217,164,65,0.10)] px-5 py-4 text-sm text-amber-100">
               Ce deck n’est plus théorique : ses exigences sont affichées en
               lecture seule et ne peuvent pas être modifiées tant que le deck
               reste assemblé.
             </p>
-          )}
+          ) : null}
           {deck.requirements.length === 0 ? (
             <p className="p-8 text-archive-text300">
               Aucune carte requise dans ce deck.

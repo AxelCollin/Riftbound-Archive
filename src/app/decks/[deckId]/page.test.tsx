@@ -57,8 +57,13 @@ function deck(overrides = {}) {
       {
         cardId: "card-1",
         displayName: "Aatrox",
-        set: { code: "OGN" },
+        officialName: "Aatrox",
+        set: { code: "OGN", name: "Origines" },
         collectorNumber: "001",
+        rarity: "COMMON" as const,
+        kind: "GAMEPLAY" as const,
+        printTreatment: "REGULAR" as const,
+        hasShowcase: false,
         allowedPreferences: ["ANY", "NORMAL", "FOIL"] as const,
       },
     ],
@@ -104,17 +109,20 @@ async function renderPage(searchParams = {}) {
   render(ui);
 }
 
-describe("DeckDetailPage deckbuilder foundation", () => {
-  it("renders the key French deckbuilder foundation sections", async () => {
+describe("DeckDetailPage deckbuilder catalog", () => {
+  it("renders the key French deckbuilder catalog sections", async () => {
     getDeckDetailPageDataMock.mockResolvedValueOnce(
       deck({ status: "THEORETICAL" }),
     );
 
     await renderPage();
 
-    expect(screen.getByText("Deckbuilder — Phase 6I")).toBeInTheDocument();
+    expect(screen.getByText("Deckbuilder — Phase 6J")).toBeInTheDocument();
     expect(screen.getByText("Statut et actions")).toBeInTheDocument();
     expect(screen.getByText("Synthèse du deck")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Rechercher et ajouter une exigence" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Exigences du deck" }),
     ).toBeInTheDocument();
@@ -135,7 +143,7 @@ describe("DeckDetailPage deckbuilder foundation", () => {
 
     await renderPage();
 
-    expect(screen.getByRole("button", { name: "Ajouter" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Ajouter" })[0]).toBeEnabled();
     expect(screen.getByRole("button", { name: "Modifier" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retirer" })).toBeInTheDocument();
   });
@@ -145,9 +153,10 @@ describe("DeckDetailPage deckbuilder foundation", () => {
 
     await renderPage();
 
+    expect(screen.getAllByRole("button", { name: "Ajouter" })[0]).toBeDisabled();
     expect(
-      screen.queryByRole("button", { name: "Ajouter" }),
-    ).not.toBeInTheDocument();
+      screen.getByText(/doit être désassemblé avant d’ajouter des cartes/),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/lecture seule et ne peuvent pas être modifiées/),
     ).toBeInTheDocument();
