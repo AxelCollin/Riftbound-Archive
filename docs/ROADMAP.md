@@ -67,8 +67,8 @@ Phases may be split into smaller PRs such as Phase 3A, Phase 3B, and so on when 
 - [x] Add read-only deck missing-card UI. (Phase 6F: `/decks/[deckId]` compares persisted requirements against current app-facing available collection counts using Phase 6A missing-card domain logic; no allocation writes or assembly/disassembly.)
 - [x] Add assembled deck allocation. (Phase 6G: assemble THEORETICAL decks by persisting DeckCardAllocation rows atomically and setting Deck.status to ASSEMBLED.)
 - [x] Add disassemble flow. (Phase 6H: delete a deck’s persisted allocations atomically and return it to THEORETICAL.)
-- [ ] Add deckbuilder UI foundation. (Phase 6I: improve `/decks/[deckId]` layout and split UI sections without changing business rules.)
-- [ ] Add deckbuilder card catalog/search. (Phase 6J: searchable card catalog/add-card UX using existing DeckCard requirement writes.)
+- [x] Add deckbuilder UI foundation. (Phase 6I: improve `/decks/[deckId]` layout and split UI sections without changing business rules.)
+- [x] Add deckbuilder card catalog/search. (Phase 6J: searchable card catalog/add-card UX using existing DeckCard requirement writes.)
 - [ ] Add deckbuilder UX polish. (Phase 6K: denser deck list, requirement grouping, clearer availability/missing indicators.)
 
 Phase 6A is domain-only groundwork for later deckbuilding work. It does not add deck CRUD, deck pages, deckbuilder UI, assembly allocation writes, disassembly, schema changes, migrations, booster behavior, pricing behavior, sync behavior, or Electron behavior.
@@ -89,7 +89,7 @@ Phase 6H adds the disassemble flow for assembled decks. It atomically deletes a 
 
 Phase 6I adds the deckbuilder UI foundation only. It should improve the `/decks/[deckId]` layout and split the page into clearer sections while continuing to consume existing server-side data and business rules unchanged. It must not add new DeckCard writes, allocation behavior, disassembly behavior, pricing, booster, sync, Electron, schema, or migration work.
 
-Phase 6J adds searchable card catalog and add-card UX for deckbuilding. It should use the existing DeckCard requirement write flows from Phase 6E and keep allocation, missing-card, and availability calculations centralized in the established domain and server-side query layers. It must not add new business rules, automatic allocation changes, pricing, booster, sync, Electron, schema, or migration work.
+Phase 6J adds a searchable card catalog and add-card UX to `/decks/[deckId]`. It uses the existing server-side trackable card option query and existing DeckCard requirement write flows from Phase 6E, keeps catalog filtering client-side by card name, set code, collector number, rarity, and kind, disables catalog add controls for assembled decks, and keeps allocation, missing-card, and availability calculations centralized in the established domain and server-side query layers. It does not add new business rules, automatic allocation changes, pricing, booster, sync, Electron, schema, or migration work.
 
 Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in place. It may make the deck list denser, group requirement rows more clearly, and improve availability and missing-card indicators without changing business rules or persistence behavior. It must not add pricing, booster, sync, Electron, schema, or migration work.
 
