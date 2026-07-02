@@ -18,6 +18,7 @@ import {
   addDeckRequirementAction,
   assembleDeckAction,
   deleteDeckRequirementAction,
+  disassembleDeckAction,
   updateDeckRequirementAction,
 } from "../actions";
 import { AddDeckRequirementForm } from "./AddDeckRequirementForm";
@@ -26,7 +27,12 @@ export const dynamic = "force-dynamic";
 
 type DeckDetailPageProps = {
   params: Promise<{ deckId: string }>;
-  searchParams?: Promise<{ assemblyError?: string; assembled?: string }>;
+  searchParams?: Promise<{
+    assemblyError?: string;
+    assembled?: string;
+    disassemblyError?: string;
+    disassembled?: string;
+  }>;
 };
 
 export default async function DeckDetailPage({
@@ -86,6 +92,20 @@ export default async function DeckDetailPage({
                 Seuls les decks théoriques peuvent être assemblés.
               </p>
             ) : null}
+            <form action={disassembleDeckAction.bind(null, deck.deckId)}>
+              <button
+                className="rounded-chip border border-[rgba(217,164,65,0.52)] bg-[rgba(217,164,65,0.13)] px-5 py-3 font-semibold text-amber-200 hover:text-archive-text100 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={deck.status !== "ASSEMBLED"}
+                type="submit"
+              >
+                Désassembler le deck
+              </button>
+            </form>
+            {deck.status !== "ASSEMBLED" ? (
+              <p className="text-sm text-archive-text500">
+                Seuls les decks assemblés peuvent être désassemblés.
+              </p>
+            ) : null}
           </div>
           {statusMessage?.assembled ? (
             <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
@@ -95,6 +115,17 @@ export default async function DeckDetailPage({
           {statusMessage?.assemblyError ? (
             <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
               Assemblage impossible : {statusMessage.assemblyError}
+            </p>
+          ) : null}
+          {statusMessage?.disassembled ? (
+            <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
+              Deck désassemblé avec succès. Les exigences peuvent de nouveau être
+              modifiées.
+            </p>
+          ) : null}
+          {statusMessage?.disassemblyError ? (
+            <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
+              Désassemblage impossible : {statusMessage.disassemblyError}
             </p>
           ) : null}
         </header>
@@ -182,8 +213,8 @@ export default async function DeckDetailPage({
           ) : (
             <p className="border-b border-[rgba(199,168,102,0.18)] bg-[rgba(217,164,65,0.10)] px-5 py-4 text-sm text-amber-100">
               Ce deck n’est plus théorique : ses exigences sont affichées en
-              lecture seule et ne peuvent pas être modifiées tant qu’un flux de
-              désassemblage ou de réallocation n’est pas disponible.
+              lecture seule et ne peuvent pas être modifiées tant que le deck
+              reste assemblé.
             </p>
           )}
           {deck.requirements.length === 0 ? (
