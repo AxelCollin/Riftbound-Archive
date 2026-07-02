@@ -63,22 +63,46 @@ export default async function DeckDetailPage({
             </Link>
           </nav>
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">
-            Deckbuilding — Phase 6G
+            Deckbuilder — Phase 6I
           </p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">
             {deck.name}
           </h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Gestion minimale des cartes requises et disponibilité en lecture
-            seule.
+            Fondation de deckbuilder avec identité, actions, exigences,
+            disponibilité et allocations regroupées en panneaux lisibles.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
-            Cette page permet de gérer les cartes requises du deck. L’assemblage
-            crée des allocations persistées quand toute la liste peut être
-            satisfaite.
+            Cette page conserve les règles existantes : les exigences restent
+            éditables uniquement en mode théorique, tandis que les decks
+            assemblés affichent leurs allocations en lecture seule.
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <form action={assembleDeckAction.bind(null, deck.deckId)}>
+        </header>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.6fr)]">
+          <article className="rounded-panel border border-[rgba(199,168,102,0.36)] bg-[rgba(8,17,27,0.82)] p-6 shadow-panel">
+            <p className="text-xs uppercase tracking-[0.28em] text-archive-gold300">
+              Statut et actions
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-archive-text100">
+              Pilotage du deck
+            </h2>
+            <dl className="mt-5 grid gap-4 text-sm text-archive-text300 sm:grid-cols-2">
+              <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(5,8,14,0.42)] p-4">
+                <dt className="text-archive-text500">Statut</dt>
+                <dd className="mt-2 text-lg font-semibold text-archive-text100">
+                  {deckStatusLabelsFr[deck.status]}
+                </dd>
+              </div>
+              <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(5,8,14,0.42)] p-4">
+                <dt className="text-archive-text500">Stratégie d’allocation</dt>
+                <dd className="mt-2 text-lg font-semibold text-archive-text100">
+                  {deckAllocationStrategyLabelsFr[deck.allocationStrategy]}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <form action={assembleDeckAction.bind(null, deck.deckId)}>
               <button
                 className="rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={deck.status !== "THEORETICAL"}
@@ -86,13 +110,13 @@ export default async function DeckDetailPage({
               >
                 Assembler le deck
               </button>
-            </form>
-            {deck.status !== "THEORETICAL" ? (
+              </form>
+              {deck.status !== "THEORETICAL" ? (
               <p className="text-sm text-archive-text500">
                 Seuls les decks théoriques peuvent être assemblés.
               </p>
             ) : null}
-            <form action={disassembleDeckAction.bind(null, deck.deckId)}>
+              <form action={disassembleDeckAction.bind(null, deck.deckId)}>
               <button
                 className="rounded-chip border border-[rgba(217,164,65,0.52)] bg-[rgba(217,164,65,0.13)] px-5 py-3 font-semibold text-amber-200 hover:text-archive-text100 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={deck.status !== "ASSEMBLED"}
@@ -100,35 +124,74 @@ export default async function DeckDetailPage({
               >
                 Désassembler le deck
               </button>
-            </form>
-            {deck.status !== "ASSEMBLED" ? (
+              </form>
+              {deck.status !== "ASSEMBLED" ? (
               <p className="text-sm text-archive-text500">
                 Seuls les decks assemblés peuvent être désassemblés.
               </p>
             ) : null}
-          </div>
-          {statusMessage?.assembled ? (
-            <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
+            </div>
+            {statusMessage?.assembled ? (
+              <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
               Deck assemblé avec succès.
-            </p>
-          ) : null}
-          {statusMessage?.assemblyError ? (
-            <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
+              </p>
+            ) : null}
+            {statusMessage?.assemblyError ? (
+              <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
               Assemblage impossible : {statusMessage.assemblyError}
-            </p>
-          ) : null}
-          {statusMessage?.disassembled ? (
-            <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
+              </p>
+            ) : null}
+            {statusMessage?.disassembled ? (
+              <p className="mt-4 rounded-card border border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.12)] px-4 py-3 text-sm text-green-200">
               Deck désassemblé avec succès. Les exigences peuvent de nouveau être
               modifiées.
-            </p>
-          ) : null}
-          {statusMessage?.disassemblyError ? (
-            <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
+              </p>
+            ) : null}
+            {statusMessage?.disassemblyError ? (
+              <p className="mt-4 rounded-card border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.13)] px-4 py-3 text-sm text-red-200">
               Désassemblage impossible : {statusMessage.disassemblyError}
+              </p>
+            ) : null}
+          </article>
+
+          <article className="rounded-panel border border-[rgba(199,168,102,0.36)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
+            <p className="text-xs uppercase tracking-[0.28em] text-archive-gold300">
+              Synthèse du deck
             </p>
-          ) : null}
-        </header>
+            <h2 className="mt-3 text-2xl font-semibold text-archive-text100">
+              Indicateurs de construction
+            </h2>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {[
+                ["Lignes requises", deck.summary.requirementLineCount],
+                ["Cartes requises", deck.summary.requiredCardQuantity],
+                ["Lignes d’allocation", deck.summary.allocationLineCount],
+                ["Cartes allouées", deck.summary.allocatedCardQuantity],
+                ["Lignes satisfaites", deck.missing.summary.completeLineCount],
+                ["Cartes manquantes", deck.missing.summary.missingCardQuantity],
+              ].map(([label, value]) => (
+                <article
+                  className="rounded-card border border-[rgba(199,168,102,0.24)] bg-[rgba(16,32,51,0.66)] p-4"
+                  key={label}
+                >
+                  <p className="text-xs uppercase tracking-[0.18em] text-archive-text500">
+                    {label}
+                  </p>
+                  <p className="mt-2 text-3xl font-semibold text-archive-gold300">
+                    {value}
+                  </p>
+                </article>
+              ))}
+            </div>
+            <p
+              className={`mt-5 rounded-card border px-4 py-3 text-sm ${deck.missing.summary.isComplete ? "border-[rgba(121,184,90,0.45)] bg-[rgba(121,184,90,0.10)] text-green-200" : "border-[rgba(217,164,65,0.5)] bg-[rgba(217,164,65,0.10)] text-amber-200"}`}
+            >
+              {deck.missing.summary.isComplete
+                ? "Toutes les exigences sont satisfaites par les cartes disponibles."
+                : "Certaines exigences restent manquantes avec les cartes disponibles."}
+            </p>
+          </article>
+        </section>
 
         <section className="grid gap-4 lg:grid-cols-4">
           <article className="rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(16,32,51,0.72)] p-5 shadow-panel lg:col-span-2">
@@ -136,18 +199,6 @@ export default async function DeckDetailPage({
               Métadonnées
             </h2>
             <dl className="mt-4 grid gap-3 text-sm text-archive-text300 sm:grid-cols-2">
-              <div>
-                <dt className="text-archive-text500">Statut</dt>
-                <dd className="mt-1 text-archive-text100">
-                  {deckStatusLabelsFr[deck.status]}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-archive-text500">Stratégie</dt>
-                <dd className="mt-1 text-archive-text100">
-                  {deckAllocationStrategyLabelsFr[deck.allocationStrategy]}
-                </dd>
-              </div>
               <div>
                 <dt className="text-archive-text500">Créé</dt>
                 <dd className="mt-1 text-archive-text100">
@@ -167,41 +218,16 @@ export default async function DeckDetailPage({
               </p>
             ) : null}
           </article>
-          {[
-            ["Lignes requises", deck.summary.requirementLineCount],
-            ["Cartes requises", deck.summary.requiredCardQuantity],
-            ["Allocations", deck.summary.allocationLineCount],
-            ["Cartes allouées", deck.summary.allocatedCardQuantity],
-          ].map(([label, value]) => (
-            <article
-              className="rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(16,32,51,0.72)] p-5 shadow-panel"
-              key={label}
-            >
-              <p className="text-sm text-archive-text300">{label}</p>
-              <p className="mt-3 text-4xl font-semibold text-archive-gold300">
-                {value}
-              </p>
-            </article>
-          ))}
-        </section>
-
-        <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-5 shadow-panel">
-          <h2 className="text-2xl font-semibold text-archive-text100">
-            Résumé
-          </h2>
-          <p className="mt-2 text-sm text-archive-text300">
-            Vue de gestion des exigences DeckCard avec assemblage atomique ; les
-            allocations enregistrées restent en lecture seule.
-          </p>
         </section>
 
         <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
             <h2 className="text-2xl font-semibold text-archive-text100">
-              Cartes requises
+              Exigences du deck
             </h2>
             <p className="mt-2 text-sm text-archive-text300">
-              Édition des exigences uniquement, sans allocation automatique.
+              Zone d’édition des exigences DeckCard existantes. Aucun catalogue ni
+              recherche de carte n’est ajouté dans cette phase.
             </p>
           </div>
           {canEditRequirements ? (
@@ -358,7 +384,7 @@ export default async function DeckDetailPage({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-semibold text-archive-text100">
-                  Disponibilité du deck
+                  Disponibilité et cartes manquantes
                 </h2>
                 <p className="mt-2 text-sm text-archive-text300">
                   Lecture seule : cette section compare les cartes requises avec
