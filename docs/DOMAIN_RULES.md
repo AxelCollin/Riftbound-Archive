@@ -155,6 +155,8 @@ The user can configure:
 - period unit;
 - manual count adjustments.
 
+Phase 7A stores the minimal counter settings before counter accrual exists: daily generated boosters must be a non-negative integer, allowing `0` to intentionally pause future accrual, and the default opening decrement flag must be boolean.
+
 Unopened boosters accumulate.
 
 Opening a booster:

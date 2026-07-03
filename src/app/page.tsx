@@ -44,6 +44,12 @@ export default function HomePage() {
           >
             Ouvrir les decks →
           </Link>
+          <Link
+            className="w-fit rounded-chip border border-[rgba(199,168,102,0.42)] bg-[rgba(16,32,51,0.72)] px-5 py-3 text-sm font-semibold text-archive-gold300 shadow-panel transition hover:border-archive-gold300 hover:text-archive-text100"
+            href="/boosters"
+          >
+            Paramètres des boosters →
+          </Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
