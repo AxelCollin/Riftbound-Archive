@@ -17,9 +17,11 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Phase 5 is complete. The app now has local mock official card data, a service-layer flow for recording collection transactions, `CollectionEntry` owned snapshots updated from those transactions, a collection page with filters/search, read-only card detail pages, server-composed binder and availability quantities, an owned-vs-available collection display toggle, a read-only binder page, and a read-only per-card availability explanation page.
+Phase 6 Deckbuilding MVP is complete. The app now has local mock official card data, a service-layer flow for recording collection transactions, `CollectionEntry` owned snapshots updated from those transactions, a collection page with filters/search, read-only card detail pages, server-composed binder and availability quantities, an owned-vs-available collection display toggle, a read-only binder page, and a read-only per-card availability explanation page.
 
-The current next phase is Phase 6 Deckbuilding MVP. Binder editing and binder overrides are not implemented yet. Deck CRUD, deckbuilder UI, assembled/disassembled deck flows, booster behavior, pricing behavior, sync behavior, and Electron packaging remain future phases.
+Deckbuilding now includes a deck list, deck metadata CRUD, a deck detail page, DeckCard requirement add/edit/remove flows, read-only missing-card and availability display, assembled deck allocation, disassemble flow, a deckbuilder UI foundation, searchable card catalog/add-card UX, and deckbuilder UX polish.
+
+The current next roadmap focus is Phase 7 Booster opening. Binder editing and binder overrides are not implemented yet. Booster behavior, pricing behavior, Riot sync behavior, Electron packaging, and provider work remain future phases.
 
 ## Local setup
 
