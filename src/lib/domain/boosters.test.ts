@@ -26,13 +26,27 @@ describe("booster settings domain", () => {
     });
   });
 
-  it("accepts zero daily increment to pause accrual", () => {
+  it("accepts numeric zero daily increment to pause accrual", () => {
     expect(normalizeBoosterSettingsInput({
       boostersPerInterval: 0,
       intervalCount: 1,
       intervalUnit: "DAY",
       autoDecrementOnOpening: false,
     }).boostersPerInterval).toBe(0);
+  });
+
+  it("accepts string zero daily increment to pause accrual", () => {
+    expect(normalizeBoosterSettingsInput({
+      boostersPerInterval: "0",
+      intervalCount: 1,
+      intervalUnit: "DAY",
+      autoDecrementOnOpening: false,
+    }).boostersPerInterval).toBe(0);
+  });
+
+  it("rejects blank daily increment values", () => {
+    expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: "", intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
+    expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: "   ", intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
   });
 
   it("rejects invalid numeric and boolean settings", () => {

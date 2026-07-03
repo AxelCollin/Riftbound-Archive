@@ -60,6 +60,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
                 defaultValue={settings.boostersPerInterval}
                 min={0}
                 name="boostersPerInterval"
+                required
                 step={1}
                 type="number"
               />

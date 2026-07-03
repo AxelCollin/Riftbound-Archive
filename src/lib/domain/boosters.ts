@@ -7,9 +7,16 @@ export const DEFAULT_BOOSTER_INTERVAL_UNIT: BoosterIntervalUnit = "DAY";
 export const DEFAULT_AUTO_DECREMENT_ON_OPENING = true;
 
 const booleanInputSchema = z.union([z.boolean(), z.literal("true"), z.literal("false"), z.literal("on")]);
+const requiredCoercedIntegerSchema = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+
+  return value;
+}, z.coerce.number().int());
 
 export const boosterSettingsInputSchema = z.object({
-  boostersPerInterval: z.coerce.number().int().nonnegative(),
+  boostersPerInterval: requiredCoercedIntegerSchema.pipe(z.number().nonnegative()),
   intervalCount: z.coerce.number().int().positive(),
   intervalUnit: z.literal("DAY"),
   autoDecrementOnOpening: booleanInputSchema,
