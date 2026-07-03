@@ -111,13 +111,17 @@ Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in
 - [ ] Add TCGCSV provider if practical.
 - [ ] Add JustTCG runtime capability check later.
 
-## Phase 9 - Riot sync
+## Phase 9 - Card library sync / Riot sync
 
-- [ ] Add Riot provider behind feature flag.
+- [ ] Add local card library sync workflow behind feature flag.
+- [ ] Add Riot provider behind feature flag as the preferred official provider when available and approved.
+- [ ] Add Riftcodex as the recommended interim public provider if Riot access is unavailable.
+- [ ] Keep RiftScribe available as an optional fallback or secondary provider.
 - [ ] Add locale fallback chain.
-- [ ] Store raw JSON.
-- [ ] Add sync logs.
-- [ ] Replace mock data with Riot data when available.
+- [ ] Store raw JSON payloads in the local card library snapshot.
+- [ ] Add sync logs and unresolved mapping reporting.
+- [ ] Import normalized provider data into SQLite without overwriting user-owned data.
+- [ ] Replace mock data with synced local SQLite card library data when available.
 
 ## Phase 10 - Premium 4K UI polish
 

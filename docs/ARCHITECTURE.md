@@ -20,12 +20,13 @@ The current implementation remains a local Next.js web app. The intended final d
 ## Architecture principles
 
 - Local-first data storage.
-- Server-side external API access.
+- Server-side external API access for explicit sync/update workflows only.
 - No API keys in client-side code.
 - Official card data separated from user data.
 - Domain calculations centralized in pure TypeScript modules.
 - UI components must consume computed results, not reimplement business logic.
 - External providers must be replaceable.
+- External card APIs must feed a local card library snapshot, not normal runtime pages.
 - The app must run in degraded mode without Riot or price API credentials.
 
 ## Future Electron compatibility
@@ -59,6 +60,7 @@ src/
     market/
     settings/
     api/
+      sync/card-library/
       sync/riot/
       sync/prices/
       cards/
@@ -85,7 +87,10 @@ src/
       boosters.ts
       prices.ts
     providers/
-      riot/
+      cards/
+        riot/
+        riftcodex/
+        riftscribe/
       prices/
         justtcg.ts
         tcgcsv.ts
@@ -105,6 +110,10 @@ src/
     prices.test.ts
 prisma/
   schema.prisma
+data/
+  card-library/
+    manifest.json
+    providers/
 public/
   ui/
     backgrounds/
@@ -117,6 +126,8 @@ public/
 
 ## Data separation
 
+Card provider APIs are not runtime data sources for normal pages. They are explicit sync/update sources that create a local card library snapshot: raw provider files are preserved locally, normalized official metadata is imported into SQLite, and app pages then read SQLite through server-side queries and domain modules. The runtime UI should continue to work offline after sync.
+
 Official synchronized data:
 
 - `sets`
@@ -124,7 +135,7 @@ Official synchronized data:
 - `cardTranslations`
 - `cardAssets` (future/optional dedicated asset table)
 - `syncLogs`
-- raw provider payloads
+- raw provider payloads preserved in local card library files
 
 The current Phase 3 MVP Prisma schema does not include a dedicated `CardAsset`/`cardAssets` table. It stores the official image URL and artist metadata directly on `Card` through fields such as `officialImageUrl` and `officialArtist`. A separate asset table can be added later only if multiple images, richer asset metadata, or provider-specific asset history justify it.
 
@@ -175,7 +186,8 @@ ENABLE_PRICE_SYNC="false"
 
 ## Internal API routes
 
-- `POST /api/sync/riot`: synchronize official Riot card data.
+- `POST /api/sync/card-library`: explicitly refresh the local card library from the configured card content provider.
+- `POST /api/sync/riot`: future Riot-specific card library sync entry point, if kept separate from the generic card library route.
 - `POST /api/sync/prices`: synchronize prices from enabled providers.
 - `GET /api/cards`: card search, filters, and sorting.
 - `GET /api/cards/[cardId]`: enriched card detail.

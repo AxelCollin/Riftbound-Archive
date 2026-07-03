@@ -21,7 +21,7 @@ Phase 6 Deckbuilding MVP is complete. The app now has local mock official card d
 
 Deckbuilding now includes a deck list, deck metadata CRUD, a deck detail page, DeckCard requirement add/edit/remove flows, read-only missing-card and availability display, assembled deck allocation, disassemble flow, a deckbuilder UI foundation, searchable card catalog/add-card UX, and deckbuilder UX polish.
 
-The current next roadmap focus is Phase 7 Booster opening. Binder editing and binder overrides are not implemented yet. Booster behavior, pricing behavior, Riot sync behavior, Electron packaging, and provider work remain future phases.
+The current next roadmap focus is Phase 7 Booster opening. Binder editing and binder overrides are not implemented yet. Booster behavior, pricing behavior, card library provider sync, Electron packaging, and provider implementation work remain future phases. External card APIs are planned as explicit card library sync sources only; normal app pages should read the local SQLite library after sync.
 
 ## Local setup
 
