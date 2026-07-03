@@ -95,12 +95,14 @@ Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in
 
 ## Phase 7 - Booster opening
 
-- [ ] Add booster counter settings.
+- [x] Add booster counter settings. (Phase 7A: minimal `/boosters` settings surface backed by existing `BoosterSettings` persistence for daily increment and default opening decrement behavior.)
 - [ ] Add accumulated counter calculation.
 - [ ] Add booster opening entry flow.
 - [ ] Add automatic collection transactions.
 - [ ] Add post-opening summary.
 - [ ] Add rollback where safe.
+
+Phase 7A adds only the booster counter settings foundation. The `/boosters` page lets the user configure the daily booster increment and whether future openings should decrement the counter by default, using the existing `BoosterSettings` table. It does not add accumulated counter calculation, daily accrual, booster opening entry, collection transactions, post-opening summaries, rollback, pricing, provider sync, or any deckbuilding changes.
 
 ## Phase 8 - Pricing MVP
 
