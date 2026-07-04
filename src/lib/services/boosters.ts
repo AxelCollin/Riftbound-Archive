@@ -2,8 +2,10 @@ import { prisma } from "@/lib/db";
 import {
   calculateAccumulatedBoosters,
   getDefaultBoosterSettings,
+  normalizeBoosterOpeningInput,
   normalizeBoosterSettingsInput,
   type BoosterCounterState,
+  type BoosterOpeningInput,
   type BoosterSettingsInput,
   type NormalizedBoosterSettings,
 } from "@/lib/domain/boosters";
@@ -22,18 +24,28 @@ export type BoosterCounterStateView = {
   calculatedAt: string;
 };
 
+export type BoosterOpeningView = {
+  id: string;
+  openedAt: string;
+  boosterCount: number;
+  decrementCounter: boolean;
+  note: string | null;
+};
+
 export type BoosterOverviewView = BoosterSettingsView & {
   counter: BoosterCounterStateView;
+  recentOpenings: BoosterOpeningView[];
 };
 
 type BoosterCounterEventDelegate = {
   aggregate: (args: { _sum: { quantityDelta: true } }) => Promise<{ _sum: { quantityDelta: number | null } }>;
-  create: (args: { data: { type: "ACCRUAL"; quantityDelta: number; occurredAt: Date; note: string } }) => Promise<unknown>;
+  create: (args: { data: { type: "ACCRUAL" | "OPENING_DECREMENT"; quantityDelta: number; occurredAt: Date; note?: string; boosterOpeningId?: string } }) => Promise<unknown>;
 };
 
 type BoosterPrismaClient = {
   boosterSettings: typeof prisma.boosterSettings;
   boosterCounterEvent: BoosterCounterEventDelegate;
+  boosterOpening: typeof prisma.boosterOpening;
 };
 
 type BoosterSettingsRecord = {
@@ -88,6 +100,16 @@ export async function getBoosterSettings(now = new Date()): Promise<BoosterSetti
   return toView(record as BoosterSettingsRecord | null, now);
 }
 
+function toOpeningView(record: { id: string; openedAt: Date; boosterCount: number; decrementCounter: boolean; note: string | null }): BoosterOpeningView {
+  return {
+    id: record.id,
+    openedAt: record.openedAt.toISOString(),
+    boosterCount: record.boosterCount,
+    decrementCounter: record.decrementCounter,
+    note: record.note,
+  };
+}
+
 async function sumCounterEventQuantity(client: BoosterPrismaClient = prisma as unknown as BoosterPrismaClient): Promise<number> {
   const aggregate = await client.boosterCounterEvent.aggregate({ _sum: { quantityDelta: true } });
   return aggregate._sum.quantityDelta ?? 0;
@@ -102,9 +124,10 @@ function hasAccrualSettingsChange(existing: BoosterSettingsRecord, settings: Nor
 }
 
 export async function getBoosterOverview(now = new Date()): Promise<BoosterOverviewView> {
-  const [record, ledgerQuantity] = await Promise.all([
+  const [record, ledgerQuantity, recentOpenings] = await Promise.all([
     prisma.boosterSettings.findFirst({ orderBy: { createdAt: "asc" } }),
     sumCounterEventQuantity(),
+    prisma.boosterOpening.findMany({ orderBy: { openedAt: "desc" }, take: 5 }),
   ]);
   const settings = toView(record as BoosterSettingsRecord | null, now);
   const counter = calculateAccumulatedBoosters({
@@ -114,7 +137,7 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
     accrualAnchorAt: new Date(settings.accrualAnchorAt),
   }, now);
 
-  return { ...settings, counter: toCounterView(counter, ledgerQuantity) };
+  return { ...settings, counter: toCounterView(counter, ledgerQuantity), recentOpenings: recentOpenings.map(toOpeningView) };
 }
 
 export async function updateBoosterSettings(input: BoosterSettingsInput, now = new Date()): Promise<BoosterSettingsView> {
@@ -162,4 +185,82 @@ export async function updateBoosterSettings(input: BoosterSettingsInput, now = n
   });
 
   return toView(record as BoosterSettingsRecord);
+}
+
+async function createDefaultBoosterSettingsForOpening(client: BoosterPrismaClient, now: Date): Promise<BoosterSettingsRecord> {
+  const defaults = getDefaultBoosterSettings();
+
+  return client.boosterSettings.create({
+    data: {
+      boostersPerInterval: defaults.boostersPerInterval,
+      intervalCount: defaults.intervalCount,
+      intervalUnit: defaults.intervalUnit,
+      autoDecrementOnOpening: defaults.autoDecrementOnOpening,
+      accrualAnchorAt: now,
+    },
+  }) as Promise<BoosterSettingsRecord>;
+}
+
+async function materializePendingAccrualIfNeeded(client: BoosterPrismaClient, settings: BoosterSettingsRecord, now: Date): Promise<void> {
+  const pendingAccrual = calculateAccumulatedBoosters({
+    boostersPerInterval: settings.boostersPerInterval,
+    intervalCount: settings.intervalCount,
+    intervalUnit: settings.intervalUnit,
+    accrualAnchorAt: settings.accrualAnchorAt,
+  }, now);
+
+  if (pendingAccrual.accumulatedBoosters > 0) {
+    await client.boosterCounterEvent.create({
+      data: {
+        type: "ACCRUAL",
+        quantityDelta: pendingAccrual.accumulatedBoosters,
+        occurredAt: now,
+        note: "Accrual materialized before booster opening.",
+      },
+    });
+  }
+
+  if (pendingAccrual.completeIntervals > 0) {
+    await client.boosterSettings.update({ where: { id: settings.id }, data: { accrualAnchorAt: pendingAccrual.nextAccrualAnchorAt } });
+  }
+}
+
+export async function recordBoosterOpening(input: BoosterOpeningInput, now = new Date()): Promise<BoosterOpeningView> {
+  const openingInput = normalizeBoosterOpeningInput(input);
+
+  const opening = await prisma.$transaction(async (tx) => {
+    const client = tx as unknown as BoosterPrismaClient;
+    const existing = await client.boosterSettings.findFirst({ orderBy: { createdAt: "asc" } });
+
+    if (existing) {
+      await materializePendingAccrualIfNeeded(client, existing as BoosterSettingsRecord, now);
+    } else {
+      await createDefaultBoosterSettingsForOpening(client, now);
+    }
+
+    const createdOpening = await client.boosterOpening.create({
+      data: {
+        openedAt: now,
+        boosterCount: openingInput.boosterCount,
+        decrementCounter: openingInput.decrementCounter,
+        note: openingInput.note,
+      },
+    });
+
+    if (openingInput.decrementCounter) {
+      await client.boosterCounterEvent.create({
+        data: {
+          type: "OPENING_DECREMENT",
+          quantityDelta: -openingInput.boosterCount,
+          occurredAt: now,
+          boosterOpeningId: createdOpening.id,
+          note: "Décrément automatique lors d’une ouverture de boosters.",
+        },
+      });
+    }
+
+    return createdOpening;
+  });
+
+  return toOpeningView(opening);
 }

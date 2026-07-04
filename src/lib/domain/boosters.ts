@@ -22,11 +22,36 @@ export const boosterSettingsInputSchema = z.object({
   autoDecrementOnOpening: booleanInputSchema,
 });
 
+export const boosterOpeningInputSchema = z.object({
+  boosterCount: requiredCoercedIntegerSchema.pipe(z.number().positive()),
+  decrementCounter: booleanInputSchema,
+  note: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().max(1000).optional()),
+});
+
 export type BoosterSettingsInput = {
   boostersPerInterval: unknown;
   intervalCount: unknown;
   intervalUnit: unknown;
   autoDecrementOnOpening: unknown;
+};
+
+export type BoosterOpeningInput = {
+  boosterCount: unknown;
+  decrementCounter: unknown;
+  note?: unknown;
+};
+
+export type NormalizedBoosterOpeningInput = {
+  boosterCount: number;
+  decrementCounter: boolean;
+  note?: string;
 };
 
 export type NormalizedBoosterSettings = {
@@ -44,6 +69,7 @@ export type BoosterCounterState = {
   accumulatedBoosters: number;
   completeIntervals: number;
   accrualAnchorAt: Date;
+  nextAccrualAnchorAt: Date;
   calculatedAt: Date;
 };
 
@@ -64,6 +90,20 @@ export function normalizeBoosterSettingsInput(input: BoosterSettingsInput): Norm
   };
 }
 
+export function normalizeBoosterOpeningInput(input: BoosterOpeningInput): NormalizedBoosterOpeningInput {
+  const parsed = boosterOpeningInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new Error("Ouverture de boosters invalide.");
+  }
+
+  return {
+    boosterCount: parsed.data.boosterCount,
+    decrementCounter: parsed.data.decrementCounter === true || parsed.data.decrementCounter === "true" || parsed.data.decrementCounter === "on",
+    note: parsed.data.note,
+  };
+}
+
 export function getDefaultBoosterSettings(): NormalizedBoosterSettings {
   return {
     boostersPerInterval: DEFAULT_BOOSTERS_PER_INTERVAL,
@@ -78,7 +118,7 @@ export function calculateAccumulatedBoosters(settings: BoosterAccrualSettings, n
   const accrualAnchorAt = new Date(settings.accrualAnchorAt.getTime());
 
   if (settings.boostersPerInterval <= 0 || settings.intervalCount <= 0 || calculatedAt.getTime() <= accrualAnchorAt.getTime()) {
-    return { accumulatedBoosters: 0, completeIntervals: 0, accrualAnchorAt, calculatedAt };
+    return { accumulatedBoosters: 0, completeIntervals: 0, accrualAnchorAt, nextAccrualAnchorAt: accrualAnchorAt, calculatedAt };
   }
 
   if (settings.intervalUnit !== "DAY") {
@@ -93,6 +133,7 @@ export function calculateAccumulatedBoosters(settings: BoosterAccrualSettings, n
     accumulatedBoosters: completeIntervals * settings.boostersPerInterval,
     completeIntervals,
     accrualAnchorAt,
+    nextAccrualAnchorAt: new Date(accrualAnchorAt.getTime() + completeIntervals * intervalMs),
     calculatedAt,
   };
 }

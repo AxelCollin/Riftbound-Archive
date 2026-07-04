@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-import { updateBoosterSettingsAction } from "./actions";
+import { recordBoosterOpeningAction, updateBoosterSettingsAction } from "./actions";
 import { getBoosterOverview } from "@/lib/services/boosters";
 
 export const dynamic = "force-dynamic";
 
 type BoostersPageProps = {
-  searchParams?: Promise<{ updated?: string; error?: string }>;
+  searchParams?: Promise<{ updated?: string; error?: string; openingRecorded?: string; openingError?: string }>;
 };
 
 export default async function BoostersPage({ searchParams }: BoostersPageProps = {}) {
@@ -22,10 +22,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
             <Link className="hover:text-archive-text100" href="/decks">Decks →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7B</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7C</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Paramètres des boosters</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Le compteur accumulé est désormais calculé en lecture seule depuis les paramètres enregistrés. L’ouverture de boosters arrive dans une phase suivante.
+            Le compteur accumulé est calculé depuis le journal, et vous pouvez maintenant enregistrer une ouverture sans modifier automatiquement la collection.
           </p>
         </header>
 
@@ -34,6 +34,12 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
         ) : null}
         {params?.error ? (
           <p role="alert" className="rounded-card border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] p-4 text-sm font-semibold text-archive-text100">{params.error}</p>
+        ) : null}
+        {params?.openingRecorded ? (
+          <p className="rounded-card border border-[rgba(121,184,90,0.42)] bg-[rgba(121,184,90,0.12)] p-4 text-sm font-semibold text-archive-text100">Ouverture de boosters enregistrée.</p>
+        ) : null}
+        {params?.openingError ? (
+          <p role="alert" className="rounded-card border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] p-4 text-sm font-semibold text-archive-text100">{params.openingError}</p>
         ) : null}
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
@@ -84,13 +90,74 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             </label>
 
             <div className="rounded-card border border-[rgba(58,123,213,0.28)] bg-[rgba(58,123,213,0.10)] p-4 text-sm text-archive-text300">
-              L’ouverture de boosters arrive dans une phase suivante.
+              Ce réglage sert de valeur par défaut pour la nouvelle section d’ouverture.
             </div>
 
             <button className="w-fit rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" type="submit">
               Enregistrer les paramètres
             </button>
           </form>
+        </section>
+
+        <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
+          <div className="max-w-3xl">
+            <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Phase 7C</p>
+            <h2 className="mt-3 text-3xl font-semibold text-archive-text100">Enregistrer une ouverture</h2>
+            <p className="mt-3 text-sm leading-6 text-archive-text300">
+              Cette phase enregistre l’ouverture et le compteur. Les cartes ne sont pas encore ajoutées automatiquement à la collection.
+              {" "}Le détail des cartes ouvertes sera ajouté dans une phase suivante.
+            </p>
+          </div>
+
+          <form action={recordBoosterOpeningAction} className="mt-8 grid max-w-2xl gap-5">
+            <label className="grid gap-2 text-sm font-semibold text-archive-text100">
+              Boosters ouverts
+              <input
+                className="rounded-card border border-[rgba(199,168,102,0.32)] bg-[rgba(8,17,27,0.92)] px-4 py-3 text-archive-text100"
+                defaultValue={1}
+                min={1}
+                name="boosterCount"
+                required
+                step={1}
+                type="number"
+              />
+            </label>
+
+            <label className="flex items-start gap-3 rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.48)] p-4 text-sm font-semibold text-archive-text100">
+              <input className="mt-1" defaultChecked={settings.autoDecrementOnOpening} name="decrementCounter" type="checkbox" />
+              <span>
+                Décrémenter le compteur
+                <span className="mt-1 block font-normal text-archive-text300">Si activé, un événement de compteur négatif est ajouté. Le compteur peut devenir négatif.</span>
+              </span>
+            </label>
+
+            <label className="grid gap-2 text-sm font-semibold text-archive-text100">
+              Note
+              <textarea
+                className="min-h-28 rounded-card border border-[rgba(199,168,102,0.32)] bg-[rgba(8,17,27,0.92)] px-4 py-3 text-archive-text100"
+                name="note"
+                placeholder="Contexte, produit ouvert, remarques…"
+              />
+            </label>
+
+            <button className="w-fit rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" type="submit">
+              Enregistrer l’ouverture
+            </button>
+          </form>
+
+          {settings.recentOpenings.length > 0 ? (
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-archive-text100">Ouvertures récentes</h3>
+              <ul className="mt-3 grid gap-3">
+                {settings.recentOpenings.map((opening) => (
+                  <li className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.48)] p-4 text-sm text-archive-text300" key={opening.id}>
+                    <span className="font-semibold text-archive-text100">{opening.boosterCount} booster(s)</span> — {opening.openedAt} — {opening.decrementCounter ? "compteur décrémenté" : "compteur inchangé"}
+                    {opening.note ? <span className="block pt-1">{opening.note}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       </section>
     </main>

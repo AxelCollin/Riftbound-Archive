@@ -63,9 +63,9 @@ This schema increment adds only the booster persistence foundation:
 - `BoosterOpening` stores recorded booster opening sessions, including when the session was opened, how many boosters it represented, whether the counter should be decremented, status, and notes.
 - `BoosterOpeningCard` stores pulled cards as aggregated quantities per opening, official card, and physical `CardVariant`.
 
-The current booster count is intentionally not stored directly. It will be computed later from booster settings and counter events.
+The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor. Phase 7C uses the existing `BoosterOpening` table for opening header records and the existing `BoosterCounterEvent` table for optional `OPENING_DECREMENT` ledger entries. Pulled-card details in `BoosterOpeningCard` are intentionally deferred for a later booster sub-step.
 
-Automatic collection transactions, post-opening summaries, accumulated counter calculation, and rollback flows remain future service, domain, and UI work. Price, provider, and sync tables are also still future Phase 3 pull requests.
+Automatic collection transactions, post-opening summaries, pulled-card entry, and rollback flows remain future service, domain, and UI work. Price, provider, and sync tables are also still future Phase 3 pull requests.
 
 ## Phase 3E scope
 

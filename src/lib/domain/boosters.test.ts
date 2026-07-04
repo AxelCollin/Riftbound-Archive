@@ -86,6 +86,15 @@ describe("accumulated booster counter domain", () => {
     expect(calculate("2026-07-03T23:59:59.999Z").accumulatedBoosters).toBe(2);
   });
 
+  it("exposes the last materialized interval boundary separately from the calculation time", () => {
+    const counter = calculate("2026-07-04T12:00:00.000Z");
+
+    expect(counter.accumulatedBoosters).toBe(3);
+    expect(counter.completeIntervals).toBe(3);
+    expect(counter.nextAccrualAnchorAt.toISOString()).toBe("2026-07-04T00:00:00.000Z");
+    expect(counter.calculatedAt.toISOString()).toBe("2026-07-04T12:00:00.000Z");
+  });
+
   it("returns 0 when now is before the accrual anchor", () => {
     expect(calculate("2026-06-30T23:59:59.999Z").accumulatedBoosters).toBe(0);
   });
