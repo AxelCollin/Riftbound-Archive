@@ -161,13 +161,16 @@ Phase 7B calculates the read-only accumulated booster allowance from persisted `
 
 Unopened boosters accumulate.
 
-Opening a booster:
+Opening a booster in Phase 7C:
 
-- decrements the counter by 1 by default;
-- can be marked as not decrementing the counter;
-- creates collection transactions for entered cards;
-- creates a booster opening history record;
-- produces a post-opening summary.
+- creates a `BoosterOpening` history record with a positive integer booster count, an explicit decrement choice, and an optional trimmed note;
+- defaults the decrement choice in the UI from `BoosterSettings.autoDecrementOnOpening`;
+- if decrementing, first materializes any pending virtual accrual up to `openedAt` as an `ACCRUAL` counter event, advances the accrual anchor, then creates an `OPENING_DECREMENT` `BoosterCounterEvent` with `quantityDelta = -boosterCount`;
+- if not decrementing, creates no opening decrement counter event;
+- does not require the counter to be sufficient and may make the displayed counter negative;
+- is atomic across the opening row, pending accrual materialization, accrual-anchor update, and optional opening decrement event;
+- does not create `CollectionTransaction` rows and does not mutate `CollectionEntry`;
+- does not yet persist pulled-card details, add cards automatically, produce a post-opening summary, or implement rollback.
 
 The summary should include:
 

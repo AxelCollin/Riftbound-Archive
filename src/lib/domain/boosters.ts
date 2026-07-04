@@ -22,11 +22,36 @@ export const boosterSettingsInputSchema = z.object({
   autoDecrementOnOpening: booleanInputSchema,
 });
 
+export const boosterOpeningInputSchema = z.object({
+  boosterCount: requiredCoercedIntegerSchema.pipe(z.number().positive()),
+  decrementCounter: booleanInputSchema,
+  note: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, z.string().max(1000).optional()),
+});
+
 export type BoosterSettingsInput = {
   boostersPerInterval: unknown;
   intervalCount: unknown;
   intervalUnit: unknown;
   autoDecrementOnOpening: unknown;
+};
+
+export type BoosterOpeningInput = {
+  boosterCount: unknown;
+  decrementCounter: unknown;
+  note?: unknown;
+};
+
+export type NormalizedBoosterOpeningInput = {
+  boosterCount: number;
+  decrementCounter: boolean;
+  note?: string;
 };
 
 export type NormalizedBoosterSettings = {
@@ -61,6 +86,20 @@ export function normalizeBoosterSettingsInput(input: BoosterSettingsInput): Norm
     intervalCount: parsed.data.intervalCount,
     intervalUnit: parsed.data.intervalUnit,
     autoDecrementOnOpening: parsed.data.autoDecrementOnOpening === true || parsed.data.autoDecrementOnOpening === "true" || parsed.data.autoDecrementOnOpening === "on",
+  };
+}
+
+export function normalizeBoosterOpeningInput(input: BoosterOpeningInput): NormalizedBoosterOpeningInput {
+  const parsed = boosterOpeningInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new Error("Ouverture de boosters invalide.");
+  }
+
+  return {
+    boosterCount: parsed.data.boosterCount,
+    decrementCounter: parsed.data.decrementCounter === true || parsed.data.decrementCounter === "true" || parsed.data.decrementCounter === "on",
+    note: parsed.data.note,
   };
 }
 

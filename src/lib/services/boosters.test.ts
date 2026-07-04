@@ -10,12 +10,18 @@ const prismaMock = vi.hoisted(() => ({
     aggregate: vi.fn(),
     create: vi.fn(),
   },
+  boosterOpening: {
+    create: vi.fn(),
+    findMany: vi.fn(),
+  },
+  collectionEntry: { create: vi.fn(), update: vi.fn() },
+  collectionTransaction: { create: vi.fn() },
   $transaction: vi.fn(async (callback) => callback(prismaMock)),
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaMock }));
 
-import { getBoosterOverview, getBoosterSettings, updateBoosterSettings } from "./boosters";
+import { getBoosterOverview, getBoosterSettings, recordBoosterOpening, updateBoosterSettings } from "./boosters";
 
 const record = {
   id: "settings-1",
@@ -31,6 +37,7 @@ const record = {
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.boosterCounterEvent.aggregate.mockResolvedValue({ _sum: { quantityDelta: 0 } });
+  prismaMock.boosterOpening.findMany.mockResolvedValue([]);
   prismaMock.$transaction.mockImplementation(async (callback) => callback(prismaMock));
 });
 
@@ -153,6 +160,110 @@ describe("booster settings service", () => {
 
     expect(prismaMock.boosterSettings.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ boostersPerInterval: 2, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: false, accrualAnchorAt: expect.any(Date) }),
+    });
+  });
+});
+
+describe("booster opening service", () => {
+  const openedAt = new Date("2026-07-04T12:00:00.000Z");
+  const opening = {
+    id: "opening-1",
+    openedAt,
+    boosterCount: 1,
+    decrementCounter: true,
+    note: "Soirée draft",
+  };
+
+  it("records one booster opening", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: true, note: " Soirée draft " }, openedAt)).resolves.toMatchObject({
+      id: "opening-1",
+      boosterCount: 1,
+      note: "Soirée draft",
+    });
+
+    expect(prismaMock.boosterOpening.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ boosterCount: 1, decrementCounter: true, note: "Soirée draft", openedAt }),
+    });
+  });
+
+  it("creates a negative opening decrement counter event when requested", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({ boosterCount: 2, decrementCounter: true, note: "" }, openedAt);
+
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "OPENING_DECREMENT", quantityDelta: -2, occurredAt: openedAt, boosterOpeningId: "opening-1" }),
+    });
+  });
+
+  it("creates no decrement event when decrementCounter is false", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce({ ...opening, decrementCounter: false });
+
+    await recordBoosterOpening({ boosterCount: 2, decrementCounter: false, note: "" }, openedAt);
+
+    expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "OPENING_DECREMENT" }),
+    });
+  });
+
+  it("does not block insufficient counters and can produce a negative ledger", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce({ ...opening, boosterCount: 5 });
+
+    await recordBoosterOpening({ boosterCount: 5, decrementCounter: true, note: "" }, openedAt);
+
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "OPENING_DECREMENT", quantityDelta: -5 }),
+    });
+  });
+
+  it("materializes pending virtual accrual before opening decrement", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, boostersPerInterval: 1, accrualAnchorAt: new Date("2026-07-01T00:00:00.000Z") });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: true, note: "" }, new Date("2026-07-04T00:00:00.000Z"));
+
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({ type: "ACCRUAL", quantityDelta: 3 }),
+    });
+    expect(prismaMock.boosterSettings.update).toHaveBeenCalledWith({
+      where: { id: "settings-1" },
+      data: { accrualAnchorAt: new Date("2026-07-04T00:00:00.000Z") },
+    });
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({ type: "OPENING_DECREMENT", quantityDelta: -1 }),
+    });
+  });
+
+  it("uses a transaction for the atomic opening write", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: true, note: "" }, openedAt);
+
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.collectionEntry.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid booster count", async () => {
+    await expect(recordBoosterOpening({ boosterCount: 0, decrementCounter: true, note: "" }, openedAt)).rejects.toThrow("Ouverture de boosters invalide.");
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("trims optional notes and stores empty notes as undefined", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce({ ...opening, note: null });
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "   " }, openedAt);
+
+    expect(prismaMock.boosterOpening.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ note: undefined }),
     });
   });
 });

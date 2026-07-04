@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { DEFAULT_BOOSTER_INTERVAL_UNIT } from "@/lib/domain/boosters";
-import { updateBoosterSettings } from "@/lib/services/boosters";
+import { recordBoosterOpening, updateBoosterSettings } from "@/lib/services/boosters";
 
 export async function updateBoosterSettingsAction(formData: FormData): Promise<void> {
   try {
@@ -19,4 +19,19 @@ export async function updateBoosterSettingsAction(formData: FormData): Promise<v
   }
 
   redirect("/boosters?updated=1");
+}
+
+export async function recordBoosterOpeningAction(formData: FormData): Promise<void> {
+  try {
+    await recordBoosterOpening({
+      boosterCount: String(formData.get("boosterCount") ?? ""),
+      decrementCounter: formData.get("decrementCounter") === null ? false : "on",
+      note: String(formData.get("note") ?? ""),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Ouverture de boosters invalide.";
+    redirect(`/boosters?openingError=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/boosters?openingRecorded=1");
 }
