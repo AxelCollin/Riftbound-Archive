@@ -36,6 +36,19 @@ export type NormalizedBoosterSettings = {
   autoDecrementOnOpening: boolean;
 };
 
+export type BoosterAccrualSettings = Pick<NormalizedBoosterSettings, "boostersPerInterval" | "intervalCount" | "intervalUnit"> & {
+  accrualAnchorAt: Date;
+};
+
+export type BoosterCounterState = {
+  accumulatedBoosters: number;
+  completeIntervals: number;
+  accrualAnchorAt: Date;
+  calculatedAt: Date;
+};
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export function normalizeBoosterSettingsInput(input: BoosterSettingsInput): NormalizedBoosterSettings {
   const parsed = boosterSettingsInputSchema.safeParse(input);
 
@@ -57,5 +70,29 @@ export function getDefaultBoosterSettings(): NormalizedBoosterSettings {
     intervalCount: DEFAULT_BOOSTER_INTERVAL_COUNT,
     intervalUnit: DEFAULT_BOOSTER_INTERVAL_UNIT,
     autoDecrementOnOpening: DEFAULT_AUTO_DECREMENT_ON_OPENING,
+  };
+}
+
+export function calculateAccumulatedBoosters(settings: BoosterAccrualSettings, now: Date): BoosterCounterState {
+  const calculatedAt = new Date(now.getTime());
+  const accrualAnchorAt = new Date(settings.accrualAnchorAt.getTime());
+
+  if (settings.boostersPerInterval <= 0 || settings.intervalCount <= 0 || calculatedAt.getTime() <= accrualAnchorAt.getTime()) {
+    return { accumulatedBoosters: 0, completeIntervals: 0, accrualAnchorAt, calculatedAt };
+  }
+
+  if (settings.intervalUnit !== "DAY") {
+    throw new Error("Unité d’intervalle de boosters non prise en charge.");
+  }
+
+  const intervalMs = settings.intervalCount * MS_PER_DAY;
+  const elapsedMs = calculatedAt.getTime() - accrualAnchorAt.getTime();
+  const completeIntervals = Math.floor(elapsedMs / intervalMs);
+
+  return {
+    accumulatedBoosters: completeIntervals * settings.boostersPerInterval,
+    completeIntervals,
+    accrualAnchorAt,
+    calculatedAt,
   };
 }

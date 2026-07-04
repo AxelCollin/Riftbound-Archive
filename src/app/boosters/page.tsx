@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { updateBoosterSettingsAction } from "./actions";
-import { getBoosterSettings } from "@/lib/services/boosters";
+import { getBoosterOverview } from "@/lib/services/boosters";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ type BoostersPageProps = {
 
 export default async function BoostersPage({ searchParams }: BoostersPageProps = {}) {
   const params = await searchParams;
-  const settings = await getBoosterSettings();
+  const settings = await getBoosterOverview();
 
   return (
     <main className="min-h-screen px-8 py-6">
@@ -22,10 +22,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
             <Link className="hover:text-archive-text100" href="/decks">Decks →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7A</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7B</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Paramètres des boosters</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Ces paramètres préparent le compteur ; le calcul accumulé et l’ouverture de boosters arrivent dans les prochaines phases.
+            Le compteur accumulé est désormais calculé en lecture seule depuis les paramètres enregistrés. L’ouverture de boosters arrive dans une phase suivante.
           </p>
         </header>
 
@@ -37,7 +37,12 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
         ) : null}
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
+            <article className="rounded-card border border-[rgba(199,168,102,0.38)] bg-[rgba(16,32,51,0.82)] p-5">
+              <p className="text-sm text-archive-text300">Compteur actuel</p>
+              <p className="mt-3 text-4xl font-semibold text-archive-gold300">{settings.counter.accumulatedBoosters}</p>
+              <p className="mt-2 text-xs uppercase tracking-[0.22em] text-archive-text500">Boosters disponibles</p>
+            </article>
             <article className="rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(16,32,51,0.72)] p-5">
               <p className="text-sm text-archive-text300">Gain quotidien</p>
               <p className="mt-3 text-4xl font-semibold text-archive-gold300">+{settings.boostersPerInterval}</p>
@@ -50,6 +55,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
               <p className="text-sm text-archive-text300">Ouverture</p>
               <p className="mt-3 text-2xl font-semibold text-archive-gold300">{settings.autoDecrementOnOpening ? "Décrémente" : "Ne décrémente pas"}</p>
             </article>
+          </div>
+
+          <div className="mt-6 rounded-card border border-[rgba(58,123,213,0.28)] bg-[rgba(58,123,213,0.10)] p-4 text-sm text-archive-text300">
+            Calculé depuis le dernier point d’ancrage : <span className="font-semibold text-archive-text100">{settings.counter.accrualAnchorAt}</span> (UTC). {settings.counter.completeIntervals} intervalle(s) complet(s) comptabilisé(s).
           </div>
 
           <form action={updateBoosterSettingsAction} className="mt-8 grid max-w-2xl gap-5">
@@ -75,7 +84,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             </label>
 
             <div className="rounded-card border border-[rgba(58,123,213,0.28)] bg-[rgba(58,123,213,0.10)] p-4 text-sm text-archive-text300">
-              Aucun formulaire d’ouverture de booster n’est disponible dans cette phase.
+              L’ouverture de boosters arrive dans une phase suivante.
             </div>
 
             <button className="w-fit rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" type="submit">

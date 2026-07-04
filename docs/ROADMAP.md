@@ -96,13 +96,15 @@ Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in
 ## Phase 7 - Booster opening
 
 - [x] Add booster counter settings. (Phase 7A: minimal `/boosters` settings surface backed by existing `BoosterSettings` persistence for daily increment and default opening decrement behavior.)
-- [ ] Add accumulated counter calculation.
+- [x] Add accumulated counter calculation. (Phase 7B: read-only accumulated allowance calculation from `BoosterSettings`, displayed on `/boosters`.)
 - [ ] Add booster opening entry flow.
 - [ ] Add automatic collection transactions.
 - [ ] Add post-opening summary.
 - [ ] Add rollback where safe.
 
 Phase 7A adds only the booster counter settings foundation. The `/boosters` page lets the user configure the daily booster increment and whether future openings should decrement the counter by default, using the existing `BoosterSettings` table. It does not add accumulated counter calculation, daily accrual, booster opening entry, collection transactions, post-opening summaries, rollback, pricing, provider sync, or any deckbuilding changes.
+
+Phase 7B adds a read-only accumulated booster counter calculation. The service reads the existing `BoosterSettings` row, sums existing `BoosterCounterEvent.quantityDelta` ledger entries, passes an explicit current time into pure domain logic, counts only complete elapsed day-based intervals since `accrualAnchorAt`, and displays ledger quantity plus virtual accrual on `/boosters`. If an accrual-affecting setting changes, pending virtual accrual from the old settings is materialized as an `ACCRUAL` counter event and the anchor resets to the update time, so edited rates affect future intervals only and do not retroactively alter already-earned boosters. If no settings row exists, the default Phase 7A settings use the request time as a safe anchor so the read-only counter starts at zero. This phase does not create booster openings, opening decrement events, collection transactions, collection entry mutations, post-opening summaries, rollback, pricing, provider sync, or deckbuilding changes.
 
 ## Phase 8 - Pricing MVP
 

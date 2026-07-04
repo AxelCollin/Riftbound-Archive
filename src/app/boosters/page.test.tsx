@@ -2,10 +2,10 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const getBoosterSettingsMock = vi.hoisted(() => vi.fn());
+const getBoosterOverviewMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/services/boosters", () => ({
-  getBoosterSettings: getBoosterSettingsMock,
+  getBoosterOverview: getBoosterOverviewMock,
 }));
 
 vi.mock("next/link", () => ({
@@ -19,7 +19,7 @@ vi.mock("./actions", () => ({
 import BoostersPage from "./page";
 
 async function renderPage(searchParams = {}) {
-  getBoosterSettingsMock.mockResolvedValueOnce({
+  getBoosterOverviewMock.mockResolvedValueOnce({
     id: null,
     boostersPerInterval: 1,
     intervalCount: 1,
@@ -28,6 +28,12 @@ async function renderPage(searchParams = {}) {
     autoDecrementOnOpening: true,
     createdAt: null,
     updatedAt: null,
+    counter: {
+      accumulatedBoosters: 3,
+      completeIntervals: 3,
+      accrualAnchorAt: "1970-01-01T00:00:00.000Z",
+      calculatedAt: "1970-01-04T00:00:00.000Z",
+    },
   });
   render(await BoostersPage({ searchParams: Promise.resolve(searchParams) }));
 }
@@ -37,6 +43,10 @@ describe("BoostersPage", () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { name: "Paramètres des boosters" })).toBeInTheDocument();
+    expect(screen.getByText("Compteur actuel")).toBeInTheDocument();
+    expect(screen.getByText("Boosters disponibles")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText(/Calculé depuis le dernier point d’ancrage/)).toBeInTheDocument();
     expect(screen.getAllByText("Gain quotidien").length).toBeGreaterThan(0);
     expect(screen.getByText("Décrémenter le compteur lors d’une ouverture")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1")).toBeInTheDocument();
@@ -61,6 +71,6 @@ describe("BoostersPage", () => {
     await renderPage();
 
     expect(screen.queryByRole("button", { name: /Ouvrir un booster/i })).not.toBeInTheDocument();
-    expect(screen.getByText("Aucun formulaire d’ouverture de booster n’est disponible dans cette phase.")).toBeInTheDocument();
+    expect(screen.getByText("L’ouverture de boosters arrive dans une phase suivante.")).toBeInTheDocument();
   });
 });
