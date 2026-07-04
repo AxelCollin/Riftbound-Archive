@@ -69,6 +69,7 @@ export type BoosterCounterState = {
   accumulatedBoosters: number;
   completeIntervals: number;
   accrualAnchorAt: Date;
+  nextAccrualAnchorAt: Date;
   calculatedAt: Date;
 };
 
@@ -117,7 +118,7 @@ export function calculateAccumulatedBoosters(settings: BoosterAccrualSettings, n
   const accrualAnchorAt = new Date(settings.accrualAnchorAt.getTime());
 
   if (settings.boostersPerInterval <= 0 || settings.intervalCount <= 0 || calculatedAt.getTime() <= accrualAnchorAt.getTime()) {
-    return { accumulatedBoosters: 0, completeIntervals: 0, accrualAnchorAt, calculatedAt };
+    return { accumulatedBoosters: 0, completeIntervals: 0, accrualAnchorAt, nextAccrualAnchorAt: accrualAnchorAt, calculatedAt };
   }
 
   if (settings.intervalUnit !== "DAY") {
@@ -132,6 +133,7 @@ export function calculateAccumulatedBoosters(settings: BoosterAccrualSettings, n
     accumulatedBoosters: completeIntervals * settings.boostersPerInterval,
     completeIntervals,
     accrualAnchorAt,
+    nextAccrualAnchorAt: new Date(accrualAnchorAt.getTime() + completeIntervals * intervalMs),
     calculatedAt,
   };
 }

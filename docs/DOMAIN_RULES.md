@@ -165,7 +165,7 @@ Opening a booster in Phase 7C:
 
 - creates a `BoosterOpening` history record with a positive integer booster count, an explicit decrement choice, and an optional trimmed note;
 - defaults the decrement choice in the UI from `BoosterSettings.autoDecrementOnOpening`;
-- if decrementing, first materializes any pending virtual accrual up to `openedAt` as an `ACCRUAL` counter event, advances the accrual anchor, then creates an `OPENING_DECREMENT` `BoosterCounterEvent` with `quantityDelta = -boosterCount`;
+- if decrementing, first materializes any pending virtual accrual up to `openedAt` as an `ACCRUAL` counter event, advances the accrual anchor only to the last materialized interval boundary so partial accrual progress is preserved, then creates an `OPENING_DECREMENT` `BoosterCounterEvent` with `quantityDelta = -boosterCount`;
 - if not decrementing, creates no opening decrement counter event;
 - does not require the counter to be sufficient and may make the displayed counter negative;
 - is atomic across the opening row, pending accrual materialization, accrual-anchor update, and optional opening decrement event;

@@ -207,7 +207,7 @@ async function materializePendingAccrualIfNeeded(client: BoosterPrismaClient, se
   }
 
   if (pendingAccrual.completeIntervals > 0) {
-    await client.boosterSettings.update({ where: { id: settings.id }, data: { accrualAnchorAt: now } });
+    await client.boosterSettings.update({ where: { id: settings.id }, data: { accrualAnchorAt: pendingAccrual.nextAccrualAnchorAt } });
   }
 }
 

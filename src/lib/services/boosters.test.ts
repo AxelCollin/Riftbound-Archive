@@ -240,6 +240,51 @@ describe("booster opening service", () => {
     });
   });
 
+  it("preserves partial accrual progress when materializing before an opening", async () => {
+    const openingAtNoon = new Date("2026-07-04T12:00:00.000Z");
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, boostersPerInterval: 1, accrualAnchorAt: new Date("2026-07-01T00:00:00.000Z") });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce({ ...opening, openedAt: openingAtNoon });
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: true, note: "" }, openingAtNoon);
+
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({ type: "ACCRUAL", quantityDelta: 3, occurredAt: openingAtNoon }),
+    });
+    expect(prismaMock.boosterSettings.update).toHaveBeenCalledWith({
+      where: { id: "settings-1" },
+      data: { accrualAnchorAt: new Date("2026-07-04T00:00:00.000Z") },
+    });
+  });
+
+  it("shows the next daily booster accrued after a partial-progress opening", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, boostersPerInterval: 1, accrualAnchorAt: new Date("2026-07-04T00:00:00.000Z") });
+    prismaMock.boosterCounterEvent.aggregate.mockResolvedValueOnce({ _sum: { quantityDelta: 2 } });
+
+    await expect(getBoosterOverview(new Date("2026-07-05T00:00:00.000Z"))).resolves.toMatchObject({
+      counter: {
+        accumulatedBoosters: 3,
+        completeIntervals: 1,
+        accrualAnchorAt: "2026-07-04T00:00:00.000Z",
+      },
+    });
+  });
+
+  it("does not materialize accrual or update the anchor before one complete interval", async () => {
+    const beforeBoundary = new Date("2026-07-01T12:00:00.000Z");
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, boostersPerInterval: 1, accrualAnchorAt: new Date("2026-07-01T00:00:00.000Z") });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce({ ...opening, openedAt: beforeBoundary });
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: true, note: "" }, beforeBoundary);
+
+    expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "ACCRUAL" }),
+    });
+    expect(prismaMock.boosterSettings.update).not.toHaveBeenCalled();
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "OPENING_DECREMENT", quantityDelta: -1 }),
+    });
+  });
+
   it("uses a transaction for the atomic opening write", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
