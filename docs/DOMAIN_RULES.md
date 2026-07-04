@@ -161,7 +161,7 @@ Phase 7B calculates the read-only accumulated booster allowance from persisted `
 
 Unopened boosters accumulate.
 
-Opening a booster in Phase 7C:
+Opening a booster from Phase 7D onward:
 
 - creates a `BoosterOpening` history record with a positive integer booster count, an explicit decrement choice, and an optional trimmed note;
 - persists a default `BoosterSettings` row with Phase 7A defaults and `accrualAnchorAt = openedAt` before the opening is recorded when no settings row exists yet;
@@ -169,9 +169,16 @@ Opening a booster in Phase 7C:
 - if decrementing, first materializes any pending virtual accrual up to `openedAt` as an `ACCRUAL` counter event, advances the accrual anchor only to the last materialized interval boundary so partial accrual progress is preserved, then creates an `OPENING_DECREMENT` `BoosterCounterEvent` with `quantityDelta = -boosterCount`;
 - if not decrementing, creates no opening decrement counter event;
 - does not require the counter to be sufficient and may make the displayed counter negative;
-- is atomic across default settings creation, the opening row, pending accrual materialization, accrual-anchor update, and optional opening decrement event;
-- does not create `CollectionTransaction` rows and does not mutate `CollectionEntry`;
-- does not yet persist pulled-card details, add cards automatically, produce a post-opening summary, or implement rollback.
+- is atomic across default settings creation, the opening row, pending accrual materialization, accrual-anchor update, optional opening decrement event, pulled-card rows, collection transactions, and owned collection snapshot updates;
+- may remain header-only when no pulled-card rows are submitted;
+- ignores intentionally empty pulled-card rows and rejects partially filled rows;
+- merges duplicate pulled-card rows for the same card and variant by summing their positive quantities before persistence;
+- accepts pulled cards only for trackable `GAMEPLAY` and `ENERGY` cards and rejects `TOKEN`, `RULES`, unknown card ids, invalid variants, and zero or negative quantities;
+- creates one `BoosterOpeningCard` per merged pulled card and variant;
+- creates matching `ADD` `CollectionTransaction` rows with positive quantities, `source = booster-opening:<openingId>`, and a note identifying the booster origin;
+- increments an existing `CollectionEntry` quantity or creates the matching entry when absent;
+- does not store availability directly and does not mutate binder reservations or assembled deck allocations;
+- does not yet produce a post-opening summary or implement rollback.
 
 The summary should include:
 

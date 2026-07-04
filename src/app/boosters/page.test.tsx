@@ -36,6 +36,7 @@ async function renderPage(searchParams = {}) {
       calculatedAt: "1970-01-04T00:00:00.000Z",
     },
     recentOpenings: [],
+    cardOptions: [{ cardId: "card-1", displayName: "Ahri · OGN #001", allowedVariants: ["NORMAL", "FOIL"] }],
   });
   render(await BoostersPage({ searchParams: Promise.resolve(searchParams) }));
 }
@@ -69,14 +70,27 @@ describe("BoostersPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Paramètres de boosters invalides.");
   });
 
-  it("renders the Phase 7C booster opening entry flow", async () => {
+  it("renders the Phase 7D booster opening entry flow with pulled cards", async () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { name: "Enregistrer une ouverture" })).toBeInTheDocument();
-    expect(screen.getByText(/Les cartes ne sont pas encore ajoutées automatiquement à la collection/)).toBeInTheDocument();
-    expect(screen.getByText(/Le détail des cartes ouvertes sera ajouté dans une phase suivante/)).toBeInTheDocument();
+    expect(screen.getByText(/les transactions de collection correspondantes/)).toBeInTheDocument();
+    expect(screen.getByText("Cartes ouvertes")).toBeInTheDocument();
+    expect(screen.getByText(/Ajouter à la collection les cartes GAMEPLAY ou ENERGY/)).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Carte")).toHaveLength(5);
+    expect(screen.getAllByLabelText("Variante")).toHaveLength(5);
+    expect(screen.getAllByLabelText("Quantité")).toHaveLength(5);
+    expect(screen.queryByText(/pas encore ajoutées automatiquement/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/rollback/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/résumé/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Boosters ouverts")).toHaveValue(1);
     expect(screen.getAllByRole("checkbox", { name: /Décrémenter le compteur/ })[1]).toBeChecked();
-    expect(screen.getByRole("button", { name: "Enregistrer l’ouverture" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajouter à la collection" })).toBeInTheDocument();
+  });
+
+  it("renders opening success feedback for collection updates", async () => {
+    await renderPage({ openingRecorded: "1" });
+
+    expect(screen.getByText("Ouverture de boosters enregistrée et cartes ajoutées à la collection.")).toBeInTheDocument();
   });
 });
