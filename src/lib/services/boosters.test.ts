@@ -285,6 +285,83 @@ describe("booster opening service", () => {
     });
   });
 
+  it("creates default settings when recording the first opening on a fresh database", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(null);
+    prismaMock.boosterSettings.create.mockResolvedValueOnce({
+      ...record,
+      boostersPerInterval: 1,
+      intervalCount: 1,
+      intervalUnit: "DAY",
+      autoDecrementOnOpening: true,
+      accrualAnchorAt: openedAt,
+    });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "" }, openedAt);
+
+    expect(prismaMock.boosterSettings.create).toHaveBeenCalledWith({
+      data: {
+        boostersPerInterval: 1,
+        intervalCount: 1,
+        intervalUnit: "DAY",
+        autoDecrementOnOpening: true,
+        accrualAnchorAt: openedAt,
+      },
+    });
+    expect(prismaMock.boosterOpening.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ openedAt, boosterCount: 1, decrementCounter: false }),
+    });
+  });
+
+  it("atomically creates default settings, opening, and decrement event on a fresh database", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(null);
+    prismaMock.boosterSettings.create.mockResolvedValueOnce({
+      ...record,
+      boostersPerInterval: 1,
+      intervalCount: 1,
+      intervalUnit: "DAY",
+      autoDecrementOnOpening: true,
+      accrualAnchorAt: openedAt,
+    });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({ boosterCount: 2, decrementCounter: true, note: "" }, openedAt);
+
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.boosterSettings.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ boostersPerInterval: 1, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: true, accrualAnchorAt: openedAt }),
+    });
+    expect(prismaMock.boosterOpening.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ openedAt, boosterCount: 2, decrementCounter: true }),
+    });
+    expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ type: "OPENING_DECREMENT", quantityDelta: -2, occurredAt: openedAt, boosterOpeningId: "opening-1" }),
+    });
+    expect(prismaMock.collectionEntry.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("accrues future overview counters from the persisted first-opening anchor", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({
+      ...record,
+      boostersPerInterval: 1,
+      intervalCount: 1,
+      intervalUnit: "DAY",
+      autoDecrementOnOpening: true,
+      accrualAnchorAt: openedAt,
+    });
+    prismaMock.boosterCounterEvent.aggregate.mockResolvedValueOnce({ _sum: { quantityDelta: -1 } });
+
+    await expect(getBoosterOverview(new Date("2026-07-05T12:00:00.000Z"))).resolves.toMatchObject({
+      id: "settings-1",
+      counter: {
+        accumulatedBoosters: 0,
+        completeIntervals: 1,
+        accrualAnchorAt: "2026-07-04T12:00:00.000Z",
+      },
+    });
+  });
+
   it("uses a transaction for the atomic opening write", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);

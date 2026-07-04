@@ -187,6 +187,20 @@ export async function updateBoosterSettings(input: BoosterSettingsInput, now = n
   return toView(record as BoosterSettingsRecord);
 }
 
+async function createDefaultBoosterSettingsForOpening(client: BoosterPrismaClient, now: Date): Promise<BoosterSettingsRecord> {
+  const defaults = getDefaultBoosterSettings();
+
+  return client.boosterSettings.create({
+    data: {
+      boostersPerInterval: defaults.boostersPerInterval,
+      intervalCount: defaults.intervalCount,
+      intervalUnit: defaults.intervalUnit,
+      autoDecrementOnOpening: defaults.autoDecrementOnOpening,
+      accrualAnchorAt: now,
+    },
+  }) as Promise<BoosterSettingsRecord>;
+}
+
 async function materializePendingAccrualIfNeeded(client: BoosterPrismaClient, settings: BoosterSettingsRecord, now: Date): Promise<void> {
   const pendingAccrual = calculateAccumulatedBoosters({
     boostersPerInterval: settings.boostersPerInterval,
@@ -220,6 +234,8 @@ export async function recordBoosterOpening(input: BoosterOpeningInput, now = new
 
     if (existing) {
       await materializePendingAccrualIfNeeded(client, existing as BoosterSettingsRecord, now);
+    } else {
+      await createDefaultBoosterSettingsForOpening(client, now);
     }
 
     const createdOpening = await client.boosterOpening.create({
