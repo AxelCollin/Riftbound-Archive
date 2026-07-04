@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getDefaultBoosterSettings, normalizeBoosterSettingsInput } from "./boosters";
+import { calculateAccumulatedBoosters, getDefaultBoosterSettings, normalizeBoosterSettingsInput } from "./boosters";
 
 describe("booster settings domain", () => {
   it("returns the Phase 7A default booster settings", () => {
@@ -54,5 +54,52 @@ describe("booster settings domain", () => {
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1.5, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1, intervalCount: 0, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: "yes" })).toThrow("Paramètres de boosters invalides.");
+  });
+});
+
+describe("accumulated booster counter domain", () => {
+  const anchor = new Date("2026-07-01T00:00:00.000Z");
+
+  function calculate(now: string, overrides = {}) {
+    return calculateAccumulatedBoosters({
+      boostersPerInterval: 1,
+      intervalCount: 1,
+      intervalUnit: "DAY",
+      accrualAnchorAt: anchor,
+      ...overrides,
+    }, new Date(now));
+  }
+
+  it("returns 0 after 0 complete days", () => {
+    expect(calculate("2026-07-01T23:59:59.999Z").accumulatedBoosters).toBe(0);
+  });
+
+  it("returns 1 after 1 complete day", () => {
+    expect(calculate("2026-07-02T00:00:00.000Z").accumulatedBoosters).toBe(1);
+  });
+
+  it("returns 3 after 3 complete days", () => {
+    expect(calculate("2026-07-04T00:00:00.000Z").accumulatedBoosters).toBe(3);
+  });
+
+  it("does not count a partial day", () => {
+    expect(calculate("2026-07-03T23:59:59.999Z").accumulatedBoosters).toBe(2);
+  });
+
+  it("returns 0 when now is before the accrual anchor", () => {
+    expect(calculate("2026-06-30T23:59:59.999Z").accumulatedBoosters).toBe(0);
+  });
+
+  it("returns 0 when boosters per interval is 0", () => {
+    expect(calculate("2026-07-04T00:00:00.000Z", { boostersPerInterval: 0 }).accumulatedBoosters).toBe(0);
+  });
+
+  it("multiplies boosters per interval by complete intervals", () => {
+    expect(calculate("2026-07-04T00:00:00.000Z", { boostersPerInterval: 2 }).accumulatedBoosters).toBe(6);
+  });
+
+  it("supports interval counts greater than 1", () => {
+    expect(calculate("2026-07-04T23:59:59.999Z", { intervalCount: 2 }).accumulatedBoosters).toBe(1);
+    expect(calculate("2026-07-05T00:00:00.000Z", { intervalCount: 2 }).accumulatedBoosters).toBe(2);
   });
 });

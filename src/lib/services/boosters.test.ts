@@ -10,7 +10,7 @@ const prismaMock = vi.hoisted(() => ({
 
 vi.mock("@/lib/db", () => ({ prisma: prismaMock }));
 
-import { getBoosterSettings, updateBoosterSettings } from "./boosters";
+import { getBoosterOverview, getBoosterSettings, updateBoosterSettings } from "./boosters";
 
 const record = {
   id: "settings-1",
@@ -26,6 +26,36 @@ const record = {
 beforeEach(() => vi.clearAllMocks());
 
 describe("booster settings service", () => {
+  it("returns persisted settings with calculated counter state", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(record);
+
+    await expect(getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"))).resolves.toMatchObject({
+      id: "settings-1",
+      boostersPerInterval: 2,
+      counter: {
+        accumulatedBoosters: 6,
+        completeIntervals: 3,
+        accrualAnchorAt: "2026-07-01T00:00:00.000Z",
+        calculatedAt: "2026-07-04T00:00:00.000Z",
+      },
+    });
+  });
+
+  it("returns default settings and a safe zero counter when no row exists", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(null);
+
+    await expect(getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"))).resolves.toMatchObject({
+      id: null,
+      boostersPerInterval: 1,
+      counter: {
+        accumulatedBoosters: 0,
+        completeIntervals: 0,
+        accrualAnchorAt: "2026-07-04T00:00:00.000Z",
+        calculatedAt: "2026-07-04T00:00:00.000Z",
+      },
+    });
+  });
+
   it("returns default settings when no persisted row exists", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(null);
 
