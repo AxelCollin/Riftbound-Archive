@@ -23,9 +23,26 @@ export const boosterSettingsInputSchema = z.object({
   autoDecrementOnOpening: booleanInputSchema,
 });
 
+const optionalTrimmedStringSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  return value;
+}, z.string().optional());
+
+const optionalCardVariantSchema = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+
+  return value;
+}, z.enum(CARD_VARIANTS).optional());
+
 const boosterOpeningPullInputSchema = z.object({
-  cardId: z.string().trim().optional(),
-  variant: z.enum(CARD_VARIANTS).optional(),
+  cardId: optionalTrimmedStringSchema,
+  variant: optionalCardVariantSchema,
   quantity: z.preprocess((value) => {
     if (typeof value === "string" && value.trim() === "") {
       return undefined;

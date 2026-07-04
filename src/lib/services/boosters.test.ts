@@ -466,10 +466,31 @@ describe("booster opening service", () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
-    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "", variant: undefined, quantity: "" }] }, openedAt);
+    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: Array.from({ length: 5 }, () => ({ cardId: "", variant: "", quantity: "" })) }, openedAt);
 
     expect(prismaMock.boosterOpening.create).toHaveBeenCalled();
     expect(prismaMock.boosterOpeningCard.create).not.toHaveBeenCalled();
+  });
+
+  it("records one valid pulled-card row while ignoring remaining blank fixed rows", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
+    prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
+
+    await recordBoosterOpening({
+      boosterCount: 1,
+      decrementCounter: false,
+      note: "",
+      pulls: [
+        { cardId: "card-1", variant: "NORMAL", quantity: "1" },
+        ...Array.from({ length: 4 }, () => ({ cardId: "", variant: "", quantity: "" })),
+      ],
+    }, openedAt);
+
+    expect(prismaMock.boosterOpening.create).toHaveBeenCalled();
+    expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.collectionTransaction.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.collectionEntry.upsert).toHaveBeenCalledTimes(1);
   });
 
   it("rejects invalid booster count", async () => {
