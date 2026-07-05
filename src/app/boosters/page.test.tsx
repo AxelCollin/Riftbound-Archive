@@ -154,10 +154,10 @@ describe("BoostersPage", () => {
   });
 
   it("renders rollback success and controlled failure feedback", async () => {
-    await renderPage({ rollbackRecorded: "1", rollbackError: "Rollback impossible : la collection ne contient plus assez d’exemplaires" });
+    await renderPage({ rollbackRecorded: "1", rollbackError: "Annulation impossible : la collection ne contient plus assez d’exemplaires" });
 
     expect(screen.getByText("Ouverture annulée.")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Rollback impossible : la collection ne contient plus assez d’exemplaires");
+    expect(screen.getByRole("alert")).toHaveTextContent("Annulation impossible : la collection ne contient plus assez d’exemplaires");
   });
 
   it("treats repeated opened query parameters as malformed without crashing", async () => {
