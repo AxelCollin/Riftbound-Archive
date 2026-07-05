@@ -3,9 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const getBoosterOverviewMock = vi.hoisted(() => vi.fn());
+const getBoosterOpeningSummaryMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/services/boosters", () => ({
   getBoosterOverview: getBoosterOverviewMock,
+  getBoosterOpeningSummary: getBoosterOpeningSummaryMock,
 }));
 
 vi.mock("next/link", () => ({
@@ -20,6 +22,7 @@ vi.mock("./actions", () => ({
 import BoostersPage from "./page";
 
 async function renderPage(searchParams = {}) {
+  getBoosterOpeningSummaryMock.mockResolvedValueOnce(null);
   getBoosterOverviewMock.mockResolvedValueOnce({
     id: null,
     boostersPerInterval: 1,
@@ -81,11 +84,41 @@ describe("BoostersPage", () => {
     expect(screen.getAllByLabelText("Variante")).toHaveLength(5);
     expect(screen.getAllByLabelText("Quantité")).toHaveLength(5);
     expect(screen.queryByText(/pas encore ajoutées automatiquement/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/rollback/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/résumé/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /rollback/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Boosters ouverts")).toHaveValue(1);
     expect(screen.getAllByRole("checkbox", { name: /Décrémenter le compteur/ })[1]).toBeChecked();
     expect(screen.getByRole("button", { name: "Ajouter à la collection" })).toBeInTheDocument();
+  });
+
+
+  it("renders the post-opening summary from an opened query parameter", async () => {
+    getBoosterOpeningSummaryMock.mockReset();
+    getBoosterOpeningSummaryMock.mockResolvedValueOnce({
+      id: "opening-1",
+      openedAt: "2026-07-04T12:00:00.000Z",
+      boosterCount: 2,
+      decrementCounter: true,
+      distinctCardRows: 1,
+      totalCardQuantity: 2,
+      newlyCreatedCollectionEntries: 1,
+      incrementedCollectionEntries: 0,
+      totalCardsAddedToCollection: 2,
+      pulls: [{ cardId: "card-1", displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
+    });
+
+    await renderPage({ opened: "opening-1" });
+
+    expect(getBoosterOpeningSummaryMock).toHaveBeenCalledWith("opening-1");
+    expect(screen.getByText("Résumé de l’ouverture")).toBeInTheDocument();
+    expect(screen.getAllByText("Boosters ouverts").length).toBeGreaterThan(0);
+    expect(screen.getByText("Cartes enregistrées")).toBeInTheDocument();
+    expect(screen.getByText("Ahri française")).toBeInTheDocument();
+    expect(screen.getByText("NORMAL")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(screen.getByText("Le rollback sera ajouté dans une phase suivante.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /rollback/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Enregistrer une ouverture" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Paramètres des boosters" })).toBeInTheDocument();
   });
 
   it("renders opening success feedback for collection updates", async () => {

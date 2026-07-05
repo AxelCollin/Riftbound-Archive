@@ -28,17 +28,19 @@ export async function recordBoosterOpeningAction(formData: FormData): Promise<vo
     quantity: String(formData.get(`pulls.${index}.quantity`) ?? ""),
   }));
 
-  try {
-    await recordBoosterOpening({
-      boosterCount: String(formData.get("boosterCount") ?? ""),
-      decrementCounter: formData.get("decrementCounter") === null ? false : "on",
-      note: String(formData.get("note") ?? ""),
-      pulls,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Ouverture de boosters invalide.";
-    redirect(`/boosters?openingError=${encodeURIComponent(message)}`);
-  }
+  const opening = await (async () => {
+    try {
+      return await recordBoosterOpening({
+        boosterCount: String(formData.get("boosterCount") ?? ""),
+        decrementCounter: formData.get("decrementCounter") === null ? false : "on",
+        note: String(formData.get("note") ?? ""),
+        pulls,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Ouverture de boosters invalide.";
+      redirect(`/boosters?openingError=${encodeURIComponent(message)}`);
+    }
+  })();
 
-  redirect("/boosters?openingRecorded=1");
+  redirect(`/boosters?openingRecorded=1&opened=${encodeURIComponent(opening.id)}`);
 }

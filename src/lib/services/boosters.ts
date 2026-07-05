@@ -48,6 +48,30 @@ export type BoosterOverviewView = BoosterSettingsView & {
   cardOptions: BoosterCardOptionView[];
 };
 
+export type BoosterOpeningSummaryPullView = {
+  cardId: string;
+  displayName: string;
+  setCode: string | null;
+  collectorNumber: string | null;
+  variant: CardVariant;
+  quantity: number;
+  collectionQuantityAfterOpening: number;
+  wasNewCollectionEntry: boolean;
+};
+
+export type BoosterOpeningSummaryView = {
+  id: string;
+  openedAt: string;
+  boosterCount: number;
+  decrementCounter: boolean;
+  distinctCardRows: number;
+  totalCardQuantity: number;
+  newlyCreatedCollectionEntries: number;
+  incrementedCollectionEntries: number;
+  totalCardsAddedToCollection: number;
+  pulls: BoosterOpeningSummaryPullView[];
+};
+
 type BoosterCounterEventDelegate = {
   aggregate: (args: { _sum: { quantityDelta: true } }) => Promise<{ _sum: { quantityDelta: number | null } }>;
   create: (args: { data: { type: "ACCRUAL" | "OPENING_DECREMENT"; quantityDelta: number; occurredAt: Date; note?: string; boosterOpeningId?: string } }) => Promise<unknown>;
@@ -291,6 +315,94 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
       update: { quantity: { increment: pull.quantity } },
     });
   }
+}
+
+export async function getBoosterOpeningSummary(openingId?: string | null): Promise<BoosterOpeningSummaryView | null> {
+  const safeOpeningId = openingId?.trim();
+
+  if (!safeOpeningId) {
+    return null;
+  }
+
+  const opening = await prisma.boosterOpening.findUnique({
+    where: { id: safeOpeningId },
+    include: {
+      cards: {
+        orderBy: [{ card: { set: { code: "asc" } } }, { card: { collectorNumber: "asc" } }, { card: { name: "asc" } }],
+        include: {
+          card: {
+            select: {
+              id: true,
+              name: true,
+              collectorNumber: true,
+              set: { select: { code: true } },
+              translations: { where: { locale: { in: ["fr-FR", "fr-fr", "fr", "en-US", "en"] } }, select: { locale: true, name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!opening) {
+    return null;
+  }
+
+  const source = `booster-opening:${opening.id}`;
+  const collectionEntryWhere = opening.cards.length > 0
+    ? { OR: opening.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant })) }
+    : { id: { in: [] } };
+
+  const [transactions, collectionEntries] = await Promise.all([
+    prisma.collectionTransaction.findMany({
+      where: { source },
+      select: { cardId: true, variant: true, quantity: true },
+    }),
+    prisma.collectionEntry.findMany({
+      where: collectionEntryWhere,
+      select: { cardId: true, variant: true, quantity: true },
+    }),
+  ]);
+
+  const transactionQuantityByKey = new Map<string, number>();
+  for (const transaction of transactions) {
+    const key = `${transaction.cardId}:${transaction.variant}`;
+    transactionQuantityByKey.set(key, (transactionQuantityByKey.get(key) ?? 0) + transaction.quantity);
+  }
+
+  const collectionQuantityByKey = new Map(collectionEntries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
+
+  const pulls = opening.cards.map((pull) => {
+    const key = `${pull.cardId}:${pull.variant}`;
+    const collectionQuantityAfterOpening = collectionQuantityByKey.get(key) ?? 0;
+    const transactionQuantity = transactionQuantityByKey.get(key) ?? pull.quantity;
+    return {
+      cardId: pull.cardId,
+      displayName: getDisplayCardName(pull.card),
+      setCode: pull.card.set?.code ?? null,
+      collectorNumber: pull.card.collectorNumber,
+      variant: pull.variant,
+      quantity: pull.quantity,
+      collectionQuantityAfterOpening,
+      wasNewCollectionEntry: collectionQuantityAfterOpening === transactionQuantity,
+    };
+  });
+
+  const totalCardQuantity = pulls.reduce((total, pull) => total + pull.quantity, 0);
+  const newlyCreatedCollectionEntries = pulls.filter((pull) => pull.wasNewCollectionEntry).length;
+
+  return {
+    id: opening.id,
+    openedAt: opening.openedAt.toISOString(),
+    boosterCount: opening.boosterCount,
+    decrementCounter: opening.decrementCounter,
+    distinctCardRows: pulls.length,
+    totalCardQuantity,
+    newlyCreatedCollectionEntries,
+    incrementedCollectionEntries: pulls.length - newlyCreatedCollectionEntries,
+    totalCardsAddedToCollection: transactions.reduce((total, transaction) => total + transaction.quantity, 0),
+    pulls,
+  };
 }
 
 export async function recordBoosterOpening(input: BoosterOpeningInput, now = new Date()): Promise<BoosterOpeningView> {
