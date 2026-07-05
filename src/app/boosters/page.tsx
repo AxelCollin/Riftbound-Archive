@@ -79,7 +79,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
 
             <div className="mt-6 overflow-hidden rounded-card border border-[rgba(199,168,102,0.24)]">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[rgba(199,168,102,0.12)] text-xs uppercase tracking-[0.18em] text-archive-gold300"><tr><th className="px-4 py-3">Carte</th><th className="px-4 py-3">Set</th><th className="px-4 py-3">Variante</th><th className="px-4 py-3">Quantité</th><th className="px-4 py-3">Collection après ouverture</th></tr></thead>
+                <thead className="bg-[rgba(199,168,102,0.12)] text-xs uppercase tracking-[0.18em] text-archive-gold300"><tr><th className="px-4 py-3">Carte</th><th className="px-4 py-3">Set</th><th className="px-4 py-3">Variante</th><th className="px-4 py-3">Quantité</th><th className="px-4 py-3">Collection actuelle</th></tr></thead>
                 <tbody>
                   {openingSummary.pulls.length > 0 ? openingSummary.pulls.map((pull) => (
                     <tr className="border-t border-[rgba(199,168,102,0.14)] text-archive-text300" key={`${pull.cardId}:${pull.variant}`}><td className="px-4 py-3 font-semibold text-archive-text100">{pull.displayName}</td><td className="px-4 py-3">{pull.setCode ?? "—"}{pull.collectorNumber ? ` #${pull.collectorNumber}` : ""}</td><td className="px-4 py-3">{pull.variant}</td><td className="px-4 py-3">{pull.quantity}</td><td className="px-4 py-3">{pull.collectionQuantityAfterOpening} · {pull.wasNewCollectionEntry ? "nouvelle entrée" : "entrée incrémentée"}</td></tr>
@@ -148,12 +148,12 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
               <input className="mt-1" defaultChecked={settings.autoDecrementOnOpening} name="autoDecrementOnOpening" type="checkbox" />
               <span>
                 Décrémenter le compteur lors d’une ouverture
-                <span className="mt-1 block font-normal text-archive-text300">Ce réglage servira de valeur par défaut quand le flux d’ouverture sera ajouté.</span>
+                <span className="mt-1 block font-normal text-archive-text300">Ce réglage sert de valeur par défaut pour les prochaines ouvertures.</span>
               </span>
             </label>
 
             <div className="rounded-card border border-[rgba(58,123,213,0.28)] bg-[rgba(58,123,213,0.10)] p-4 text-sm text-archive-text300">
-              Ce réglage sert de valeur par défaut pour la nouvelle section d’ouverture.
+              Les prochaines ouvertures utiliseront ce choix par défaut, avec possibilité de le modifier au moment de l’enregistrement.
             </div>
 
             <button className="w-fit rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" type="submit">
