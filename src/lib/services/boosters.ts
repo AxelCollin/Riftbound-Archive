@@ -436,14 +436,14 @@ function getRollbackBlockedReason(
   const entryQuantityByKey = new Map(entries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
 
   for (const [key, openingQuantity] of openingQuantityByKey) {
-    if (transactionQuantityByKey.get(key) !== openingQuantity) return "Rollback impossible : transactions d’ouverture incohérentes";
+    if (transactionQuantityByKey.get(key) !== openingQuantity) return "Annulation impossible : transactions d’ouverture incohérentes";
     const currentQuantity = entryQuantityByKey.get(key);
-    if (currentQuantity === undefined) return "Rollback impossible : entrée de collection introuvable";
-    if (currentQuantity - openingQuantity < 0) return "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+    if (currentQuantity === undefined) return "Annulation impossible : entrée de collection introuvable";
+    if (currentQuantity - openingQuantity < 0) return "Annulation impossible : la collection ne contient plus assez d’exemplaires";
   }
 
   for (const key of transactionQuantityByKey.keys()) {
-    if (!openingQuantityByKey.has(key)) return "Rollback impossible : transactions d’ouverture incohérentes";
+    if (!openingQuantityByKey.has(key)) return "Annulation impossible : transactions d’ouverture incohérentes";
   }
 
   return null;
@@ -488,7 +488,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
           type: "REMOVE",
           quantity: card.quantity,
           source: rollbackSource,
-          note: "Rollback d’ouverture de booster",
+          note: "Annulation d’ouverture de booster",
         },
       });
     }
@@ -501,7 +501,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
           quantityDelta: record.boosterCount,
           occurredAt: now,
           boosterOpeningId: record.id,
-          note: "Rollback du décrément d’ouverture de booster",
+          note: "Annulation du décrément d’ouverture de booster",
         },
       });
     }

@@ -51,7 +51,7 @@ export async function rollbackBoosterOpeningAction(formData: FormData): Promise<
     try {
       return await rollbackBoosterOpening(openingId);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+      const message = error instanceof Error ? error.message : "Annulation impossible : la collection ne contient plus assez d’exemplaires";
       const openedQuery = openingId.trim() ? `&opened=${encodeURIComponent(openingId.trim())}` : "";
       redirect(`/boosters?rollbackError=${encodeURIComponent(message)}${openedQuery}`);
     }

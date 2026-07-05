@@ -27,7 +27,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
             <Link className="hover:text-archive-text100" href="/decks">Decks →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7F</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Paramètres des boosters</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
             Le compteur accumulé est calculé depuis le journal, les cartes ouvertes sont ajoutées à la collection, et une ouverture peut être annulée tant que l’annulation reste sûre.
@@ -91,7 +91,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             </div>
 
             <div className="mt-4 rounded-card border border-[rgba(217,167,74,0.38)] bg-[rgba(217,167,74,0.10)] p-4 text-sm text-archive-text300">
-              <p className="font-semibold text-archive-text100">Rollback</p>
+              <p className="font-semibold text-archive-text100">Annulation</p>
               <p className="mt-2">Annuler cette ouverture inverse uniquement les quantités de collection et le décrément de compteur liés à cette ouverture. Aucun prix ni valeur n’est recalculé ou annulé.</p>
               {openingSummary.canRollback ? (
                 <form action={rollbackBoosterOpeningAction} className="mt-4">
@@ -99,7 +99,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
                   <button className="rounded-chip border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] px-5 py-3 font-semibold text-archive-text100 hover:text-archive-gold300" type="submit">Annuler cette ouverture</button>
                 </form>
               ) : (
-                <p className="mt-3 font-semibold text-archive-text100">{openingSummary.rollbackBlockedReason ?? "Rollback indisponible"}</p>
+                <p className="mt-3 font-semibold text-archive-text100">{openingSummary.rollbackBlockedReason ?? "Annulation indisponible"}</p>
               )}
             </div>
           </section>
@@ -164,10 +164,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
           <div className="max-w-3xl">
-            <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Phase 7F</p>
+            <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Ouverture de boosters</p>
             <h2 className="mt-3 text-3xl font-semibold text-archive-text100">Enregistrer une ouverture</h2>
             <p className="mt-3 text-sm leading-6 text-archive-text300">
-              Cette phase enregistre l’ouverture, les cartes ouvertes et les transactions de collection correspondantes. Les lignes vides sont ignorées ; une ligne partiellement remplie est refusée.
+              Enregistrer l’ouverture, les cartes ouvertes et les transactions de collection correspondantes. Les lignes vides sont ignorées ; une ligne partiellement remplie est refusée.
             </p>
           </div>
 

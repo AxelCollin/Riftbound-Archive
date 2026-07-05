@@ -710,7 +710,7 @@ describe("booster opening rollback service", () => {
       data: { quantity: { decrement: 2 } },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
-      data: { cardId: "card-1", variant: "NORMAL", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Rollback d’ouverture de booster" },
+      data: { cardId: "card-1", variant: "NORMAL", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
     });
     expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ type: "ROLLBACK", quantityDelta: 2, boosterOpeningId: "opening-1", occurredAt: now }),
@@ -743,7 +743,7 @@ describe("booster opening rollback service", () => {
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 1 }]);
 
-    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : la collection ne contient plus assez d’exemplaires");
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : la collection ne contient plus assez d’exemplaires");
     expect(prismaMock.boosterOpening.update).not.toHaveBeenCalled();
   });
 
@@ -752,7 +752,7 @@ describe("booster opening rollback service", () => {
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([]);
 
-    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : entrée de collection introuvable");
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : entrée de collection introuvable");
     expect(prismaMock.boosterOpening.update).not.toHaveBeenCalled();
   });
 
@@ -761,7 +761,7 @@ describe("booster opening rollback service", () => {
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 1, type: "ADD" }]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
 
-    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : transactions d’ouverture incohérentes");
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : transactions d’ouverture incohérentes");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
   });
 
@@ -773,7 +773,7 @@ describe("booster opening rollback service", () => {
     ]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
 
-    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : transactions d’ouverture incohérentes");
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : transactions d’ouverture incohérentes");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
     expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
     expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalled();
@@ -791,7 +791,7 @@ describe("booster opening rollback service", () => {
     ]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
 
-    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : entrée de collection introuvable");
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : entrée de collection introuvable");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
     expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalledWith({ data: expect.objectContaining({ type: "ROLLBACK" }) });
     expect(prismaMock.boosterOpening.update).not.toHaveBeenCalled();
