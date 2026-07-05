@@ -1,12 +1,18 @@
 # API providers
 
+## Document status
+
+This document defines provider strategy and integration boundaries.
+
+It does not define the canonical card taxonomy. For taxonomy, use `docs/CARD_TAXONOMY.md`. Provider mapping must adapt provider-specific fields into the app taxonomy instead of forcing provider terminology directly into domain concepts.
+
 ## Principle
 
 External data providers must be optional and replaceable.
 
 The application must remain usable without provider credentials.
 
-All external API calls must happen server-side.
+All external API calls must happen server-side or in a future desktop-local background process that keeps credentials local/server-side.
 
 External card APIs are sync/update sources only. They must not be runtime dependencies for normal application pages. During normal use, the app reads the local SQLite card library and domain/query data that was imported during the latest successful card library sync.
 
@@ -29,13 +35,13 @@ Riftbound Archive maintains a local card library snapshot. The intended card dat
 1. The user explicitly triggers **update card library** or **sync card library**.
 2. The selected provider fetches the latest card, set, translation, and image metadata.
 3. Raw provider payloads are written to local files before mapping.
-4. Payloads are mapped and normalized into the app's canonical card/set shape.
+4. Payloads are mapped and normalized into the app's canonical card/set/taxonomy shape.
 5. Normalized official metadata is imported into SQLite.
 6. Runtime app pages read local SQLite data through server-side queries and domain modules during normal use.
 
 Normal collection, binder, deckbuilding, booster, and card browsing pages should keep working offline after a successful sync. They must not require live provider availability once the local SQLite card library exists.
 
-Raw provider JSON should be preserved locally for debugging, auditability, and future remapping when provider schemas or app normalization rules change. Local card library snapshots should generally not be committed to Git because they are generated/cache data and may be large or provider-specific. Small test fixtures are acceptable when they are intentionally curated for tests or mapping examples.
+Raw provider JSON should be preserved locally for debugging, auditability, and future remapping when provider schemas or app normalization rules change. Local card library snapshots should generally not be committed to Git because they are generated/cache data and may be large or provider-specific. Small test fixtures are acceptable when intentionally curated for tests or mapping examples.
 
 A future folder shape may look like:
 
@@ -57,7 +63,7 @@ tests/
     card-providers/
 ```
 
-The manifest should record provider id, sync timestamp, source version or etag when available, locale coverage, import status, and any unresolved mapping counts.
+The manifest should record provider id, sync timestamp, source version or etag when available, locale coverage, import status, and unresolved mapping counts.
 
 ## Card mapping and import rules
 
@@ -67,13 +73,30 @@ Mapping should be deterministic and conservative:
 
 - preserve the raw provider payload alongside normalized data;
 - map exact identifiers when the provider has stable ids;
-- use set codes, collector numbers, names, locale fields, rarity, kind, and print treatment as mapping evidence;
+- use set codes, collector numbers, names, locale fields, rarity, gameplay type, factions, collector treatment, finish support, and print treatment as mapping evidence;
 - flag uncertain or ambiguous mappings for review instead of silently applying them;
 - record unresolved provider entries so they can be remapped later;
 - tolerate provider schema changes and missing optional fields;
 - keep locale fallback behavior explicit.
 
 Tokens and rules cards may exist in imported official metadata if a provider exposes them, but domain rules still decide whether they are trackable for collection, deckbuilding, binder, availability, and booster summaries.
+
+## Provider taxonomy mapping
+
+Providers may use terminology that does not match the app taxonomy.
+
+Provider mapping must keep these concepts separate when possible:
+
+- gameplay card type;
+- gameplay rarity;
+- physical finish;
+- collector category;
+- showcase treatment;
+- faction;
+- gameplay identity / rules-equivalent group;
+- provider-side product or listing subtype.
+
+Provider fields such as `subType`, `variant`, `rarity`, `treatment`, or `foil` must not be blindly copied into domain fields. They must be normalized through explicit mapping rules.
 
 ## Riot content provider
 
@@ -143,31 +166,36 @@ Rationale:
 
 ## Provider capabilities
 
-A provider should expose capabilities such as:
+A price provider should expose capabilities such as:
 
 ```ts
 interface PriceProviderCapabilities {
-  supportsVariantPricing: boolean;
+  supportsFinishPricing: boolean;
+  supportsCollectorTreatmentPricing: boolean;
   supportsLanguageDimension: boolean;
   supportsHistory: boolean;
   supportsEURNative: boolean;
 }
 ```
 
-Card content providers should expose equivalent card sync capabilities such as supported locales, raw payload preservation, stable external ids, image metadata support, set metadata support, and incremental sync support.
+Card content providers should expose equivalent card sync capabilities such as supported locales, raw payload preservation, stable external ids, image metadata support, set metadata support, taxonomy detail support, and incremental sync support.
 
-## Price data
+## Price data mapping
 
-Store:
+Current pre-Phase-7.5 schema foundations still speak in terms of `card + variant`. Phase 8 pricing behavior should instead be built after Phase 7.5 has clarified printed cards and physical finishes.
+
+Target price mapping should store or derive:
 
 - provider id;
-- card id;
+- local printed card id;
+- local physical finish;
+- local collector category / showcase treatment when relevant;
 - external game id;
 - external set id;
-- external card id;
-- external variant id;
+- external card/product/listing id;
+- external provider-side finish/subtype id;
+- external provider-side finish/subtype label;
 - mapping confidence;
-- variant;
 - currency;
 - low price;
 - market price;
@@ -178,11 +206,13 @@ Store:
 - update timestamp;
 - raw JSON.
 
+Provider-side subtype identifiers are not automatically the same as local physical finishes or showcase treatments.
+
 ## Manual override
 
 Manual override must always be supported.
 
-When active, manual override wins over provider price for the same card and variant.
+When active, manual override wins over provider price for the same local printed card and physical finish.
 
 ## Mapping workflow
 
