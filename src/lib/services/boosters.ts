@@ -9,6 +9,9 @@ import {
   type BoosterSettingsInput,
   type NormalizedBoosterSettings,
 } from "@/lib/domain/boosters";
+import { isTrackableCard } from "@/lib/domain/cards";
+import { getAllowedVariants, type CardVariant } from "@/lib/domain/variants";
+import { getDisplayCardName } from "@/lib/queries/collection";
 
 export type BoosterSettingsView = NormalizedBoosterSettings & {
   id: string | null;
@@ -30,11 +33,19 @@ export type BoosterOpeningView = {
   boosterCount: number;
   decrementCounter: boolean;
   note: string | null;
+  recordedCardCount: number;
+};
+
+export type BoosterCardOptionView = {
+  cardId: string;
+  displayName: string;
+  allowedVariants: CardVariant[];
 };
 
 export type BoosterOverviewView = BoosterSettingsView & {
   counter: BoosterCounterStateView;
   recentOpenings: BoosterOpeningView[];
+  cardOptions: BoosterCardOptionView[];
 };
 
 type BoosterCounterEventDelegate = {
@@ -46,6 +57,10 @@ type BoosterPrismaClient = {
   boosterSettings: typeof prisma.boosterSettings;
   boosterCounterEvent: BoosterCounterEventDelegate;
   boosterOpening: typeof prisma.boosterOpening;
+  boosterOpeningCard: typeof prisma.boosterOpeningCard;
+  collectionEntry: typeof prisma.collectionEntry;
+  collectionTransaction: typeof prisma.collectionTransaction;
+  card: typeof prisma.card;
 };
 
 type BoosterSettingsRecord = {
@@ -100,13 +115,14 @@ export async function getBoosterSettings(now = new Date()): Promise<BoosterSetti
   return toView(record as BoosterSettingsRecord | null, now);
 }
 
-function toOpeningView(record: { id: string; openedAt: Date; boosterCount: number; decrementCounter: boolean; note: string | null }): BoosterOpeningView {
+function toOpeningView(record: { id: string; openedAt: Date; boosterCount: number; decrementCounter: boolean; note: string | null; _count?: { cards: number } }): BoosterOpeningView {
   return {
     id: record.id,
     openedAt: record.openedAt.toISOString(),
     boosterCount: record.boosterCount,
     decrementCounter: record.decrementCounter,
     note: record.note,
+    recordedCardCount: record._count?.cards ?? 0,
   };
 }
 
@@ -124,10 +140,15 @@ function hasAccrualSettingsChange(existing: BoosterSettingsRecord, settings: Nor
 }
 
 export async function getBoosterOverview(now = new Date()): Promise<BoosterOverviewView> {
-  const [record, ledgerQuantity, recentOpenings] = await Promise.all([
+  const [record, ledgerQuantity, recentOpenings, cards] = await Promise.all([
     prisma.boosterSettings.findFirst({ orderBy: { createdAt: "asc" } }),
     sumCounterEventQuantity(),
-    prisma.boosterOpening.findMany({ orderBy: { openedAt: "desc" }, take: 5 }),
+    prisma.boosterOpening.findMany({ orderBy: { openedAt: "desc" }, take: 5, include: { _count: { select: { cards: true } } } }),
+    prisma.card.findMany({
+      where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+      select: { id: true, name: true, collectorNumber: true, rarity: true, kind: true, hasShowcase: true, set: { select: { code: true } }, translations: { where: { locale: { in: ["fr-FR", "fr"] } }, select: { locale: true, name: true } } },
+      orderBy: [{ set: { code: "asc" } }, { collectorNumber: "asc" }, { name: "asc" }],
+    }),
   ]);
   const settings = toView(record as BoosterSettingsRecord | null, now);
   const counter = calculateAccumulatedBoosters({
@@ -137,7 +158,13 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
     accrualAnchorAt: new Date(settings.accrualAnchorAt),
   }, now);
 
-  return { ...settings, counter: toCounterView(counter, ledgerQuantity), recentOpenings: recentOpenings.map(toOpeningView) };
+  const cardOptions = cards.map((card) => ({
+    cardId: card.id,
+    displayName: `${getDisplayCardName(card)}${card.set?.code ? ` · ${card.set.code}` : ""}${card.collectorNumber ? ` #${card.collectorNumber}` : ""}`,
+    allowedVariants: getAllowedVariants(card),
+  }));
+
+  return { ...settings, counter: toCounterView(counter, ledgerQuantity), recentOpenings: recentOpenings.map(toOpeningView), cardOptions };
 }
 
 export async function updateBoosterSettings(input: BoosterSettingsInput, now = new Date()): Promise<BoosterSettingsView> {
@@ -225,6 +252,47 @@ async function materializePendingAccrualIfNeeded(client: BoosterPrismaClient, se
   }
 }
 
+async function validatePulledCards(client: BoosterPrismaClient, pulls: { cardId: string; variant: CardVariant; quantity: number }[]): Promise<void> {
+  for (const pull of pulls) {
+    const card = await client.card.findUnique({ where: { id: pull.cardId }, select: { id: true, name: true, rarity: true, kind: true, hasShowcase: true } });
+
+    if (!card) {
+      throw new Error("Carte ouverte introuvable.");
+    }
+
+    if (!isTrackableCard(card)) {
+      throw new Error("Seules les cartes GAMEPLAY et ENERGY peuvent être ajoutées à la collection.");
+    }
+
+    if (!getAllowedVariants(card).includes(pull.variant)) {
+      throw new Error("Variante de carte ouverte invalide.");
+    }
+  }
+}
+
+async function writePulledCardsToCollection(client: BoosterPrismaClient, openingId: string, pulls: { cardId: string; variant: CardVariant; quantity: number }[]): Promise<void> {
+  for (const pull of pulls) {
+    await client.boosterOpeningCard.create({
+      data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity },
+    });
+    await client.collectionTransaction.create({
+      data: {
+        cardId: pull.cardId,
+        variant: pull.variant,
+        type: "ADD",
+        quantity: pull.quantity,
+        source: `booster-opening:${openingId}`,
+        note: "Ouverture de booster",
+      },
+    });
+    await client.collectionEntry.upsert({
+      where: { cardId_variant: { cardId: pull.cardId, variant: pull.variant } },
+      create: { cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity },
+      update: { quantity: { increment: pull.quantity } },
+    });
+  }
+}
+
 export async function recordBoosterOpening(input: BoosterOpeningInput, now = new Date()): Promise<BoosterOpeningView> {
   const openingInput = normalizeBoosterOpeningInput(input);
 
@@ -238,6 +306,8 @@ export async function recordBoosterOpening(input: BoosterOpeningInput, now = new
       await createDefaultBoosterSettingsForOpening(client, now);
     }
 
+    await validatePulledCards(client, openingInput.pulls);
+
     const createdOpening = await client.boosterOpening.create({
       data: {
         openedAt: now,
@@ -246,6 +316,8 @@ export async function recordBoosterOpening(input: BoosterOpeningInput, now = new
         note: openingInput.note,
       },
     });
+
+    await writePulledCardsToCollection(client, createdOpening.id, openingInput.pulls);
 
     if (openingInput.decrementCounter) {
       await client.boosterCounterEvent.create({
@@ -259,7 +331,7 @@ export async function recordBoosterOpening(input: BoosterOpeningInput, now = new
       });
     }
 
-    return createdOpening;
+    return { ...createdOpening, _count: { cards: openingInput.pulls.length } };
   });
 
   return toOpeningView(opening);

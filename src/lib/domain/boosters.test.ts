@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateAccumulatedBoosters, getDefaultBoosterSettings, normalizeBoosterSettingsInput } from "./boosters";
+import { calculateAccumulatedBoosters, getDefaultBoosterSettings, normalizeBoosterOpeningInput, normalizeBoosterSettingsInput } from "./boosters";
 
 describe("booster settings domain", () => {
   it("returns the Phase 7A default booster settings", () => {
@@ -54,6 +54,42 @@ describe("booster settings domain", () => {
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1.5, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1, intervalCount: 0, intervalUnit: "DAY", autoDecrementOnOpening: true })).toThrow("Paramètres de boosters invalides.");
     expect(() => normalizeBoosterSettingsInput({ boostersPerInterval: 1, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: "yes" })).toThrow("Paramètres de boosters invalides.");
+  });
+});
+
+describe("booster opening domain", () => {
+  const baseInput = {
+    boosterCount: 1,
+    decrementCounter: false,
+    note: "",
+  };
+
+  it("ignores fixed form pull rows that submit blank strings", () => {
+    expect(normalizeBoosterOpeningInput({
+      ...baseInput,
+      pulls: [{ cardId: "", variant: "", quantity: "" }],
+    }).pulls).toEqual([]);
+  });
+
+  it("trims blank card ids consistently before empty-row handling", () => {
+    expect(normalizeBoosterOpeningInput({
+      ...baseInput,
+      pulls: [{ cardId: "   ", variant: "   ", quantity: "   " }],
+    }).pulls).toEqual([]);
+  });
+
+  it("rejects partially filled pull rows after blank variant normalization", () => {
+    expect(() => normalizeBoosterOpeningInput({
+      ...baseInput,
+      pulls: [{ cardId: "card-1", variant: "", quantity: "1" }],
+    })).toThrow("Ligne de carte ouverte incomplète.");
+  });
+
+  it("rejects invalid non-empty pulled variants", () => {
+    expect(() => normalizeBoosterOpeningInput({
+      ...baseInput,
+      pulls: [{ cardId: "card-1", variant: "ETCHED", quantity: "1" }],
+    })).toThrow("Ouverture de boosters invalide.");
   });
 });
 

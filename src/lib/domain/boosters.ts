@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BoosterIntervalUnit } from "@prisma/client";
+import { CARD_VARIANTS, type CardVariant } from "./variants";
 
 export const DEFAULT_BOOSTERS_PER_INTERVAL = 1;
 export const DEFAULT_BOOSTER_INTERVAL_COUNT = 1;
@@ -22,6 +23,35 @@ export const boosterSettingsInputSchema = z.object({
   autoDecrementOnOpening: booleanInputSchema,
 });
 
+const optionalTrimmedStringSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  return value;
+}, z.string().optional());
+
+const optionalCardVariantSchema = z.preprocess((value) => {
+  if (typeof value === "string" && value.trim() === "") {
+    return undefined;
+  }
+
+  return value;
+}, z.enum(CARD_VARIANTS).optional());
+
+const boosterOpeningPullInputSchema = z.object({
+  cardId: optionalTrimmedStringSchema,
+  variant: optionalCardVariantSchema,
+  quantity: z.preprocess((value) => {
+    if (typeof value === "string" && value.trim() === "") {
+      return undefined;
+    }
+
+    return value;
+  }, z.coerce.number().int().positive().optional()),
+});
+
 export const boosterOpeningInputSchema = z.object({
   boosterCount: requiredCoercedIntegerSchema.pipe(z.number().positive()),
   decrementCounter: booleanInputSchema,
@@ -33,6 +63,7 @@ export const boosterOpeningInputSchema = z.object({
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
   }, z.string().max(1000).optional()),
+  pulls: z.array(boosterOpeningPullInputSchema).optional().default([]),
 });
 
 export type BoosterSettingsInput = {
@@ -42,16 +73,30 @@ export type BoosterSettingsInput = {
   autoDecrementOnOpening: unknown;
 };
 
+export type BoosterOpeningPullInput = {
+  cardId?: unknown;
+  variant?: unknown;
+  quantity?: unknown;
+};
+
 export type BoosterOpeningInput = {
   boosterCount: unknown;
   decrementCounter: unknown;
   note?: unknown;
+  pulls?: BoosterOpeningPullInput[];
+};
+
+export type NormalizedBoosterOpeningPull = {
+  cardId: string;
+  variant: CardVariant;
+  quantity: number;
 };
 
 export type NormalizedBoosterOpeningInput = {
   boosterCount: number;
   decrementCounter: boolean;
   note?: string;
+  pulls: NormalizedBoosterOpeningPull[];
 };
 
 export type NormalizedBoosterSettings = {
@@ -97,10 +142,34 @@ export function normalizeBoosterOpeningInput(input: BoosterOpeningInput): Normal
     throw new Error("Ouverture de boosters invalide.");
   }
 
+  const mergedPulls = new Map<string, NormalizedBoosterOpeningPull>();
+
+  for (const pull of parsed.data.pulls) {
+    const isEmpty = !pull.cardId && !pull.variant && pull.quantity === undefined;
+
+    if (isEmpty) {
+      continue;
+    }
+
+    if (!pull.cardId || !pull.variant || pull.quantity === undefined) {
+      throw new Error("Ligne de carte ouverte incomplète.");
+    }
+
+    const key = `${pull.cardId}::${pull.variant}`;
+    const existing = mergedPulls.get(key);
+
+    if (existing) {
+      existing.quantity += pull.quantity;
+    } else {
+      mergedPulls.set(key, { cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity });
+    }
+  }
+
   return {
     boosterCount: parsed.data.boosterCount,
     decrementCounter: parsed.data.decrementCounter === true || parsed.data.decrementCounter === "true" || parsed.data.decrementCounter === "on",
     note: parsed.data.note,
+    pulls: Array.from(mergedPulls.values()),
   };
 }
 
