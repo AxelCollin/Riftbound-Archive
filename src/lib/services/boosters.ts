@@ -34,6 +34,7 @@ export type BoosterOpeningView = {
   decrementCounter: boolean;
   note: string | null;
   recordedCardCount: number;
+  status: "RECORDED" | "ROLLED_BACK";
 };
 
 export type BoosterCardOptionView = {
@@ -69,12 +70,15 @@ export type BoosterOpeningSummaryView = {
   newlyCreatedCollectionEntries: number;
   incrementedCollectionEntries: number;
   totalCardsAddedToCollection: number;
+  status: "RECORDED" | "ROLLED_BACK";
+  canRollback: boolean;
+  rollbackBlockedReason: string | null;
   pulls: BoosterOpeningSummaryPullView[];
 };
 
 type BoosterCounterEventDelegate = {
   aggregate: (args: { _sum: { quantityDelta: true } }) => Promise<{ _sum: { quantityDelta: number | null } }>;
-  create: (args: { data: { type: "ACCRUAL" | "OPENING_DECREMENT"; quantityDelta: number; occurredAt: Date; note?: string; boosterOpeningId?: string } }) => Promise<unknown>;
+  create: (args: { data: { type: "ACCRUAL" | "OPENING_DECREMENT" | "ROLLBACK"; quantityDelta: number; occurredAt: Date; note?: string; boosterOpeningId?: string } }) => Promise<unknown>;
 };
 
 type BoosterPrismaClient = {
@@ -139,7 +143,7 @@ export async function getBoosterSettings(now = new Date()): Promise<BoosterSetti
   return toView(record as BoosterSettingsRecord | null, now);
 }
 
-function toOpeningView(record: { id: string; openedAt: Date; boosterCount: number; decrementCounter: boolean; note: string | null; _count?: { cards: number } }): BoosterOpeningView {
+function toOpeningView(record: { id: string; openedAt: Date; boosterCount: number; decrementCounter: boolean; status?: "RECORDED" | "ROLLED_BACK"; note: string | null; _count?: { cards: number } }): BoosterOpeningView {
   return {
     id: record.id,
     openedAt: record.openedAt.toISOString(),
@@ -147,6 +151,7 @@ function toOpeningView(record: { id: string; openedAt: Date; boosterCount: numbe
     decrementCounter: record.decrementCounter,
     note: record.note,
     recordedCardCount: record._count?.cards ?? 0,
+    status: record.status ?? "RECORDED",
   };
 }
 
@@ -401,8 +406,101 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
     newlyCreatedCollectionEntries,
     incrementedCollectionEntries: pulls.length - newlyCreatedCollectionEntries,
     totalCardsAddedToCollection: transactions.reduce((total, transaction) => total + transaction.quantity, 0),
+    status: opening.status,
+    canRollback: opening.status === "RECORDED" && getRollbackBlockedReason(opening.status, opening.cards, transactions, collectionEntries) === null,
+    rollbackBlockedReason: getRollbackBlockedReason(opening.status, opening.cards, transactions, collectionEntries),
     pulls,
   };
+}
+
+function getRollbackBlockedReason(
+  status: "RECORDED" | "ROLLED_BACK",
+  cards: { cardId: string; variant: CardVariant; quantity: number }[],
+  transactions: { cardId: string; variant: CardVariant; quantity: number; type?: string }[],
+  entries: { cardId: string; variant: CardVariant; quantity: number }[],
+): string | null {
+  if (status === "ROLLED_BACK") return "Cette ouverture a déjà été annulée";
+
+  const transactionQuantityByKey = new Map<string, number>();
+  for (const transaction of transactions) {
+    if (transaction.type && transaction.type !== "ADD") continue;
+    const key = `${transaction.cardId}:${transaction.variant}`;
+    transactionQuantityByKey.set(key, (transactionQuantityByKey.get(key) ?? 0) + transaction.quantity);
+  }
+  const entryQuantityByKey = new Map(entries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
+
+  for (const card of cards) {
+    const key = `${card.cardId}:${card.variant}`;
+    if (transactionQuantityByKey.get(key) !== card.quantity) return "Rollback impossible : transactions d’ouverture incohérentes";
+    const currentQuantity = entryQuantityByKey.get(key);
+    if (currentQuantity === undefined) return "Rollback impossible : entrée de collection introuvable";
+    if (currentQuantity - card.quantity < 0) return "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+  }
+
+  return null;
+}
+
+export async function rollbackBoosterOpening(openingId: string, now = new Date()): Promise<BoosterOpeningView> {
+  const safeOpeningId = openingId.trim();
+  if (!safeOpeningId) throw new Error("Ouverture de booster introuvable.");
+
+  const opening = await prisma.$transaction(async (tx) => {
+    const client = tx as unknown as BoosterPrismaClient;
+    const record = await client.boosterOpening.findUnique({
+      where: { id: safeOpeningId },
+      include: { cards: true, counterEvents: true, _count: { select: { cards: true } } },
+    });
+
+    if (!record) throw new Error("Ouverture de booster introuvable.");
+    if (record.status === "ROLLED_BACK") throw new Error("Cette ouverture a déjà été annulée");
+
+    const source = `booster-opening:${record.id}`;
+    const rollbackSource = `booster-opening-rollback:${record.id}`;
+    const collectionEntryWhere = record.cards.length > 0
+      ? { OR: record.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant })) }
+      : { id: { in: [] } };
+    const [transactions, entries] = await Promise.all([
+      client.collectionTransaction.findMany({ where: { source, type: "ADD" }, select: { cardId: true, variant: true, quantity: true, type: true } }),
+      client.collectionEntry.findMany({ where: collectionEntryWhere, select: { cardId: true, variant: true, quantity: true } }),
+    ]);
+
+    const blockedReason = getRollbackBlockedReason(record.status, record.cards, transactions, entries);
+    if (blockedReason) throw new Error(blockedReason);
+
+    for (const card of record.cards) {
+      await client.collectionEntry.update({
+        where: { cardId_variant: { cardId: card.cardId, variant: card.variant } },
+        data: { quantity: { decrement: card.quantity } },
+      });
+      await client.collectionTransaction.create({
+        data: {
+          cardId: card.cardId,
+          variant: card.variant,
+          type: "REMOVE",
+          quantity: card.quantity,
+          source: rollbackSource,
+          note: "Rollback d’ouverture de booster",
+        },
+      });
+    }
+
+    const hasOpeningDecrement = record.counterEvents.some((event) => event.type === "OPENING_DECREMENT");
+    if (record.decrementCounter && hasOpeningDecrement) {
+      await client.boosterCounterEvent.create({
+        data: {
+          type: "ROLLBACK",
+          quantityDelta: record.boosterCount,
+          occurredAt: now,
+          boosterOpeningId: record.id,
+          note: "Rollback du décrément d’ouverture de booster",
+        },
+      });
+    }
+
+    return client.boosterOpening.update({ where: { id: record.id }, data: { status: "ROLLED_BACK" }, include: { _count: { select: { cards: true } } } });
+  });
+
+  return toOpeningView(opening);
 }
 
 export async function recordBoosterOpening(input: BoosterOpeningInput, now = new Date()): Promise<BoosterOpeningView> {

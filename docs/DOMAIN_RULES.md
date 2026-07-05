@@ -179,11 +179,11 @@ Opening a booster from Phase 7D onward:
 - increments an existing `CollectionEntry` quantity or creates the matching entry when absent;
 - does not store availability directly and does not mutate binder reservations or assembled deck allocations;
 - supports a read-only Phase 7E post-opening summary for a persisted opening;
-- still does not implement rollback.
+- supports Phase 7F safe rollback when the persisted opening, source transactions, and current collection quantities prove a non-negative reversal.
 
-The Phase 7E post-opening summary reads persisted local rows only. It uses `BoosterOpening` for header data, `BoosterOpeningCard` for pulled-card rows, `CollectionTransaction` rows sourced as `booster-opening:<openingId>` for cards added to collection history, current `CollectionEntry` rows for post-opening collection quantities, and local `Card`, `Set`, and `CardTranslation` rows for display metadata. It shows the number of boosters opened, whether the counter was decremented, distinct pulled-card row count, total pulled-card quantity, each pulled card with the established French display-name fallback, set code, collector number, variant, and quantity, collection entries classified as newly created or existing/incremented when the persisted post-opening quantity supports that distinction, and total cards added to the collection. Viewing the summary must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, require pricing data, or expose rollback controls. Missing or invalid opening ids must be handled safely with no crash.
+The Phase 7E post-opening summary reads persisted local rows only. It uses `BoosterOpening` for header data, `BoosterOpeningCard` for pulled-card rows, `CollectionTransaction` rows sourced as `booster-opening:<openingId>` for cards added to collection history, current `CollectionEntry` rows for post-opening collection quantities, and local `Card`, `Set`, and `CardTranslation` rows for display metadata. It shows the number of boosters opened, whether the counter was decremented, distinct pulled-card row count, total pulled-card quantity, each pulled card with the established French display-name fallback, set code, collector number, variant, and quantity, collection entries classified as newly created or existing/incremented when the persisted post-opening quantity supports that distinction, and total cards added to the collection. Viewing the summary must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, or require pricing data. Phase 7F may expose rollback eligibility and a rollback action from this read-only summary, but the summary read itself must not perform the rollback. Missing or invalid opening ids must be handled safely with no crash.
 
-Future summaries may add binder usefulness, deck usefulness, missing-deck reductions, duplicates, value, best pull, and availability impact in later phases. Rollback should be supported when feasible in a later phase.
+Future summaries may add binder usefulness, deck usefulness, missing-deck reductions, duplicates, value, best pull, and availability impact in later phases.
 
 ## Price rules
 
@@ -234,3 +234,11 @@ The domain layer should eventually expose pure functions equivalent to:
 - `getDeckOwnedValue`
 - `getDeckMissingValue`
 - `getBoosterOpeningValue`
+
+## Booster opening rollback
+
+Booster openings are historical records and must not be deleted during rollback. A rollback is allowed only while the opening status is `RECORDED`; a `ROLLED_BACK` opening must fail cleanly and must not reverse collection or counter data a second time.
+
+A safe rollback must prove that each `BoosterOpeningCard` row still has a matching `CollectionEntry` and matching original source `ADD` collection transaction quantity for `booster-opening:<openingId>`. If an entry is missing, source transactions are missing or inconsistent, or subtracting the pulled quantity would make any `CollectionEntry.quantity` negative, rollback is blocked with a controlled French error. Rollback never touches binder overrides or deck allocations directly and never recalculates availability itself; availability reflects the updated owned quantities through the existing formula.
+
+When rollback is safe, all writes must be atomic in one Prisma transaction. The service marks the opening as `ROLLED_BACK`, decrements each matching collection entry by the pulled quantity, appends positive `REMOVE` collection transactions sourced as `booster-opening-rollback:<openingId>`, and keeps zero-quantity collection entries rather than deleting them. If the original opening created an `OPENING_DECREMENT` counter event, rollback appends one `ROLLBACK` counter event with a positive quantity equal to the opening booster count. Original openings, pulled-card rows, original `ADD` transactions, and original counter events remain preserved for history.

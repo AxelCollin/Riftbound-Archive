@@ -93,14 +93,14 @@ Phase 6J adds a searchable card catalog and add-card UX to `/decks/[deckId]`. It
 
 Phase 6K adds deckbuilder UX polish after the foundation and catalog work are in place. It densifies the `/decks/[deckId]` requirement table, groups requirements by set with complete/missing scan labels, and surfaces per-line satisfied and missing quantities from the existing missing-card query data without changing business rules or persistence behavior. With Phase 6K complete, the Phase 6 Deckbuilding MVP is complete and the next roadmap focus remains Phase 7 booster opening. It does not add pricing, booster, sync, Electron, schema, or migration work.
 
-## Phase 7 - Booster opening
+## Phase 7 - Booster opening ✅
 
 - [x] Add booster counter settings. (Phase 7A: minimal `/boosters` settings surface backed by existing `BoosterSettings` persistence for daily increment and default opening decrement behavior.)
 - [x] Add accumulated counter calculation. (Phase 7B: read-only accumulated allowance calculation from `BoosterSettings`, displayed on `/boosters`.)
 - [x] Add booster opening entry flow. (Phase 7C: minimal `/boosters` opening header form backed by existing `BoosterOpening` persistence and optional `OPENING_DECREMENT` counter events.)
 - [x] Add automatic collection transactions. (Phase 7D: pulled-card rows on `/boosters` create `BoosterOpeningCard`, `CollectionTransaction`, and `CollectionEntry` writes atomically for explicitly entered cards.)
 - [x] Add post-opening summary. (Phase 7E: `/boosters` can display a read-only French summary for the opening selected by the post-submit `opened` query parameter.)
-- [ ] Add rollback where safe.
+- [x] Add rollback where safe. (Phase 7F: recorded booster openings can be rolled back only when persisted opening cards, source ADD transactions, and current collection quantities prove a safe reversal.)
 
 Phase 7A adds only the booster counter settings foundation. The `/boosters` page lets the user configure the daily booster increment and whether future openings should decrement the counter by default, using the existing `BoosterSettings` table. It does not add accumulated counter calculation, daily accrual, booster opening entry, collection transactions, post-opening summaries, rollback, pricing, provider sync, or any deckbuilding changes.
 
@@ -111,6 +111,8 @@ Phase 7C adds a minimal booster opening entry flow on `/boosters`. The form reco
 Phase 7D adds automatic collection transactions for booster openings only. The `/boosters` form now accepts a small fixed set of pulled-card rows; intentionally empty rows are ignored, partially filled rows are rejected, and duplicate card-plus-variant rows are merged deterministically before writing. For each valid GAMEPLAY or ENERGY pull, the service creates a `BoosterOpeningCard`, creates an `ADD` `CollectionTransaction` sourced as `booster-opening:<openingId>`, and increments or creates the matching `CollectionEntry`, all inside the same Prisma transaction as the opening header and optional counter decrement. Header-only openings remain allowed. Phase 7D does not add post-opening summaries, rollback, pricing/value summaries, provider sync, Riot/Riftcodex/RiftScribe clients, Electron work, or deckbuilding changes.
 
 Phase 7E adds a read-only post-opening summary on `/boosters` for the opening selected by the `opened` query parameter after submit. The summary is composed server-side from persisted `BoosterOpening`, `BoosterOpeningCard`, `CollectionTransaction`, `CollectionEntry`, `Card`, `Set`, and `CardTranslation` rows, uses the established French display-name fallback, and shows booster count, counter decrement status, pulled-card rows, quantities, collection entries newly created versus incremented, and total cards added. Invalid or missing opening ids are handled safely without re-running writes. Phase 7E does not add rollback, pricing/value summaries, provider sync, Electron work, or deckbuilding changes.
+
+Phase 7F adds safe rollback for booster openings. A recorded opening can be marked `ROLLED_BACK` only when its original pulled-card rows, source `ADD` collection transactions, and current `CollectionEntry` quantities are present and consistent enough to reverse without making quantities negative. Rollback writes run in one Prisma transaction, decrement the matching collection entries, append positive `REMOVE` compensation transactions sourced as `booster-opening-rollback:<openingId>`, add a `ROLLBACK` counter event only when the opening has an original decrement event, and preserve the original opening, pulled-card rows, original `ADD` transactions, and original counter events as history. The `/boosters` summary exposes the French rollback action only while safe and shows rolled-back status otherwise. With Phase 7F complete, the Phase 7 Booster opening milestone is complete; pricing/value, provider sync, Electron, binder, and deckbuilding changes remain out of scope.
 
 ## Phase 8 - Pricing MVP
 
