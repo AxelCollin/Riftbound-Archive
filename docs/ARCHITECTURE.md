@@ -1,8 +1,14 @@
 # Architecture
 
-## Decision
+## Document status
 
-The MVP is a local web application, not a packaged desktop application.
+This document defines the technical architecture boundaries for Riftbound Archive.
+
+It separates current implementation rules from planned architecture. Planned routes or folders are not automatically implemented behavior.
+
+## Current decision
+
+The current implementation is a local Next.js web application, not a packaged desktop application.
 
 Default stack:
 
@@ -15,23 +21,39 @@ Default stack:
 - Zod
 - Vitest
 
-The current implementation remains a local Next.js web app. The intended final desktop packaging target is Electron for Windows, but Electron should be added only after the current roadmap is substantially complete. Current PRs must remain compatible with future Electron packaging without implementing Electron-specific code early.
+The intended final desktop packaging target is Electron for Windows, but Electron must be added only during the dedicated Electron phase. Current PRs must stay compatible with future Electron packaging without adding Electron-specific code early.
 
 ## Architecture principles
 
 - Local-first data storage.
 - Server-side external API access for explicit sync/update workflows only.
 - No API keys in client-side code.
-- Official card data separated from user data.
+- Official card data separated from user-owned data.
 - Domain calculations centralized in pure TypeScript modules.
-- UI components must consume computed results, not reimplement business logic.
+- UI components consume computed results and must not reimplement business logic.
 - External providers must be replaceable.
-- External card APIs must feed a local card library snapshot, not normal runtime pages.
+- External card APIs feed a local card library snapshot, not normal runtime pages.
 - The app must run in degraded mode without Riot or price API credentials.
+- The card taxonomy target in `docs/CARD_TAXONOMY.md` must guide Phase 7.5 architecture work.
+
+## Current implementation shape
+
+The current app primarily uses:
+
+- server-rendered app routes under `src/app`;
+- server actions for local writes;
+- service modules for persistence workflows;
+- query modules for server-side composed page data;
+- pure domain modules for rule-heavy calculations;
+- Prisma/SQLite server-side only.
+
+React client components may handle presentation and interaction state, but they must not access Prisma, SQLite, provider APIs, or duplicate domain formulas.
 
 ## Future Electron compatibility
 
-Until the dedicated Electron packaging phase, the app should continue to be developed and validated as the existing local Next.js web app. To preserve a clean path toward a future Windows desktop package:
+Until the dedicated Electron packaging phase, the app should continue to be developed and validated as the existing local Next.js web app.
+
+To preserve a clean path toward a future Windows desktop package:
 
 - Do not access Prisma or SQLite directly from React client components.
 - Keep database access in server-side modules, services, route handlers, or equivalent server-only code.
@@ -42,14 +64,15 @@ Until the dedicated Electron packaging phase, the app should continue to be deve
 - Avoid dependencies on a specific browser runtime.
 - Keep API keys and provider secrets server-side/local.
 - Do not expose secrets to frontend/client code.
-- Do not add Electron-specific code to current feature PRs until the dedicated Electron phase.
+- Do not add Electron-specific code until the dedicated Electron phase.
 
 ## Suggested project structure
+
+This structure is a target direction. Not every folder or route exists yet.
 
 ```text
 src/
   app/
-    dashboard/
     collection/
     cards/[cardId]/
     decks/
@@ -57,20 +80,11 @@ src/
     availability/
     binder/
     boosters/
-    market/
-    settings/
-    api/
-      sync/card-library/
-      sync/riot/
-      sync/prices/
-      cards/
-      collection/
-      decks/
-      boosters/
-      prices/
-      settings/
+    market/          # future Phase 8+
+    settings/        # future/post-7.5 expansion
+    api/             # only when route handlers are needed
   components/
-    shell/
+    shell/           # Phase 7.5 target
     dashboard/
     collection/
     decks/
@@ -81,6 +95,7 @@ src/
     db.ts
     domain/
       cards.ts
+      card-taxonomy.ts  # Phase 7.5 target, name illustrative
       binder.ts
       availability.ts
       decks.ts
@@ -88,79 +103,59 @@ src/
       prices.ts
     providers/
       cards/
-        riot/
-        riftcodex/
-        riftscribe/
       prices/
-        justtcg.ts
-        tcgcsv.ts
-        cardmarket.ts
-        manual.ts
     queries/
+    services/
     formatters/
   styles/
     globals.css
     theme.css
-  tests/
-    cards.test.ts
-    binder.test.ts
-    availability.test.ts
-    decks.test.ts
-    boosters.test.ts
-    prices.test.ts
 prisma/
   schema.prisma
 data/
-  card-library/
-    manifest.json
-    providers/
+  card-library/      # future generated local sync output
 public/
-  ui/
-    backgrounds/
-    panels/
-    dividers/
-    badges/
-    icons/
-    placeholders/
+  ui/                # original UI assets only
 ```
 
 ## Data separation
 
-Card provider APIs are not runtime data sources for normal pages. They are explicit sync/update sources that create a local card library snapshot: raw provider files are preserved locally, normalized official metadata is imported into SQLite, and app pages then read SQLite through server-side queries and domain modules. The runtime UI should continue to work offline after sync.
+Card provider APIs are not runtime data sources for normal pages. They are explicit sync/update sources that create a local card library snapshot.
 
-Official synchronized data:
+Intended sync flow:
 
-- `sets`
-- `cards`
-- `cardTranslations`
-- `cardAssets` (future/optional dedicated asset table)
-- `syncLogs`
-- raw provider payloads preserved in local card library files
+1. raw provider files are preserved locally;
+2. official metadata is normalized;
+3. normalized official metadata is imported into SQLite;
+4. app pages read SQLite through server-side queries and domain modules.
 
-The current Phase 3 MVP Prisma schema does not include a dedicated `CardAsset`/`cardAssets` table. It stores the official image URL and artist metadata directly on `Card` through fields such as `officialImageUrl` and `officialArtist`. A separate asset table can be added later only if multiple images, richer asset metadata, or provider-specific asset history justify it.
+The runtime UI should continue to work offline after sync.
 
-User-owned data:
+Official synchronized data may include:
 
-- `collectionEntries`
-- `collectionTransactions`
-- `cardUserMeta`
-- `binderOverrides`
-- `decks`
-- `deckCards`
-- `deckCardAllocations`
-- `boosterSettings`
-- `boosterCounterEvents`
-- `boosterOpenings`
-- `boosterOpeningCards`
-- `manualPriceOverrides`
-- `appSettings`
+- sets;
+- cards;
+- card translations;
+- future card assets;
+- sync logs;
+- raw provider payloads preserved in local files.
 
-Price data:
+User-owned data includes:
 
-- `priceProviders`
-- `priceMappings`
-- `cardPrices`
-- provider raw payloads
+- collection entries and transactions;
+- card user metadata;
+- binder overrides;
+- decks, requirements, and allocations;
+- booster settings, events, openings, and pulled cards;
+- manual price overrides;
+- app settings.
+
+Price data includes:
+
+- price providers;
+- price mappings;
+- card prices;
+- provider raw payloads.
 
 ## Environment variables
 
@@ -184,30 +179,46 @@ ENABLE_RIOT_SYNC="false"
 ENABLE_PRICE_SYNC="false"
 ```
 
-## Internal API routes
+Secrets must stay in local environment variables or another server-side/local secret store. They must never be exposed to frontend/client code.
 
-- `POST /api/sync/card-library`: explicitly refresh the local card library from the configured card content provider.
-- `POST /api/sync/riot`: future Riot-specific card library sync entry point, if kept separate from the generic card library route.
-- `POST /api/sync/prices`: synchronize prices from enabled providers.
-- `GET /api/cards`: card search, filters, and sorting.
-- `GET /api/cards/[cardId]`: enriched card detail.
-- `POST /api/collection`: create a collection transaction.
-- `POST /api/collection/import`: import collection data.
-- `GET /api/collection/export`: export collection data.
-- `GET /api/decks`: list decks.
-- `POST /api/decks`: create deck.
-- `PATCH /api/decks/[deckId]`: update deck.
-- `DELETE /api/decks/[deckId]`: archive or delete deck.
-- `POST /api/decks/[deckId]/assemble`: allocate cards and mark deck assembled.
-- `POST /api/decks/[deckId]/disassemble`: free allocations.
-- `POST /api/boosters/open`: create booster opening.
-- `POST /api/boosters/[openingId]/rollback`: rollback booster opening.
-- `GET|POST|PATCH /api/prices/mappings`: manage price mappings.
-- `GET|PATCH /api/settings`: manage app settings.
+## Route guidance
+
+Do not assume every planned route exists.
+
+### Current route style
+
+The current app may use server actions and server-side services instead of API routes for local-first workflows. That is valid.
+
+### Planned or candidate API routes
+
+API routes may be added later when they are useful for sync workflows, import/export, desktop integration, or explicit client/server boundaries.
+
+Candidate future routes include:
+
+- `POST /api/sync/card-library`
+- `POST /api/sync/riot`
+- `POST /api/sync/prices`
+- `GET /api/cards`
+- `GET /api/cards/[cardId]`
+- `POST /api/collection`
+- `POST /api/collection/import`
+- `GET /api/collection/export`
+- `GET /api/decks`
+- `POST /api/decks`
+- `PATCH /api/decks/[deckId]`
+- `DELETE /api/decks/[deckId]`
+- `POST /api/decks/[deckId]/assemble`
+- `POST /api/decks/[deckId]/disassemble`
+- `POST /api/boosters/open`
+- `POST /api/boosters/[openingId]/rollback`
+- `GET|POST|PATCH /api/prices/mappings`
+- `GET|PATCH /api/settings`
+
+These routes are not implementation requirements until a roadmap item explicitly asks for them.
 
 ## CI expectations
 
-The repository must eventually run:
+The repository should run:
 
 ```text
 npm run lint
@@ -216,4 +227,4 @@ npm run test
 npm run build
 ```
 
-Do not merge functional PRs until CI exists and passes.
+Functional PRs must pass relevant checks before merge.
