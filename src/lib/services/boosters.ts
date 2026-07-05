@@ -421,6 +421,12 @@ function getRollbackBlockedReason(
 ): string | null {
   if (status === "ROLLED_BACK") return "Cette ouverture a déjà été annulée";
 
+  const openingQuantityByKey = new Map<string, number>();
+  for (const card of cards) {
+    const key = `${card.cardId}:${card.variant}`;
+    openingQuantityByKey.set(key, (openingQuantityByKey.get(key) ?? 0) + card.quantity);
+  }
+
   const transactionQuantityByKey = new Map<string, number>();
   for (const transaction of transactions) {
     if (transaction.type && transaction.type !== "ADD") continue;
@@ -429,12 +435,15 @@ function getRollbackBlockedReason(
   }
   const entryQuantityByKey = new Map(entries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
 
-  for (const card of cards) {
-    const key = `${card.cardId}:${card.variant}`;
-    if (transactionQuantityByKey.get(key) !== card.quantity) return "Rollback impossible : transactions d’ouverture incohérentes";
+  for (const [key, openingQuantity] of openingQuantityByKey) {
+    if (transactionQuantityByKey.get(key) !== openingQuantity) return "Rollback impossible : transactions d’ouverture incohérentes";
     const currentQuantity = entryQuantityByKey.get(key);
     if (currentQuantity === undefined) return "Rollback impossible : entrée de collection introuvable";
-    if (currentQuantity - card.quantity < 0) return "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+    if (currentQuantity - openingQuantity < 0) return "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+  }
+
+  for (const key of transactionQuantityByKey.keys()) {
+    if (!openingQuantityByKey.has(key)) return "Rollback impossible : transactions d’ouverture incohérentes";
   }
 
   return null;

@@ -765,6 +765,21 @@ describe("booster opening rollback service", () => {
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
   });
 
+  it("blocks rollback when source collection transactions include an extra card variant", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([
+      { cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" },
+      { cardId: "card-2", variant: "FOIL", quantity: 1, type: "ADD" },
+    ]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
+
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Rollback impossible : transactions d’ouverture incohérentes");
+    expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+    expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalled();
+    expect(prismaMock.boosterOpening.update).not.toHaveBeenCalled();
+  });
+
   it("keeps rollback writes atomic when one card cannot be reversed", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...rollbackOpening, cards: [
       { cardId: "card-1", variant: "NORMAL", quantity: 2 },
