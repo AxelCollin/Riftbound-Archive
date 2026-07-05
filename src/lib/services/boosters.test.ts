@@ -244,6 +244,7 @@ describe("booster opening service", () => {
       id: "opening-1",
       boosterCount: 1,
       note: "Soirée draft",
+      recordedCardCount: 0,
     });
 
     expect(prismaMock.boosterOpening.create).toHaveBeenCalledWith({
@@ -441,7 +442,9 @@ describe("booster opening service", () => {
     prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
-    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }] }, openedAt);
+    const result = await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }] }, openedAt);
+
+    expect(result.recordedCardCount).toBe(1);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledWith({
       data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", quantity: 2 },
@@ -461,10 +464,12 @@ describe("booster opening service", () => {
     prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
-    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [
+    const result = await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [
       { cardId: "card-1", variant: "NORMAL", quantity: 1 },
       { cardId: "card-1", variant: "NORMAL", quantity: 3 },
     ] }, openedAt);
+
+    expect(result.recordedCardCount).toBe(1);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledTimes(1);
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledWith({
@@ -479,10 +484,12 @@ describe("booster opening service", () => {
       .mockResolvedValueOnce({ id: "card-2", name: "Rune", rarity: "RARE", kind: "ENERGY", hasShowcase: true });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
-    await recordBoosterOpening({ boosterCount: 2, decrementCounter: false, note: "", pulls: [
+    const result = await recordBoosterOpening({ boosterCount: 2, decrementCounter: false, note: "", pulls: [
       { cardId: "card-1", variant: "FOIL", quantity: 1 },
       { cardId: "card-2", variant: "SHOWCASE", quantity: 1 },
     ] }, openedAt);
+
+    expect(result.recordedCardCount).toBe(2);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledTimes(2);
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledTimes(2);
@@ -525,8 +532,9 @@ describe("booster opening service", () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
-    await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: Array.from({ length: 5 }, () => ({ cardId: "", variant: "", quantity: "" })) }, openedAt);
+    const result = await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: Array.from({ length: 5 }, () => ({ cardId: "", variant: "", quantity: "" })) }, openedAt);
 
+    expect(result.recordedCardCount).toBe(0);
     expect(prismaMock.boosterOpening.create).toHaveBeenCalled();
     expect(prismaMock.boosterOpeningCard.create).not.toHaveBeenCalled();
   });

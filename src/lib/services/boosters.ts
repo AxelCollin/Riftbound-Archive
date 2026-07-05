@@ -331,7 +331,7 @@ export async function recordBoosterOpening(input: BoosterOpeningInput, now = new
       });
     }
 
-    return createdOpening;
+    return { ...createdOpening, _count: { cards: openingInput.pulls.length } };
   });
 
   return toOpeningView(opening);
