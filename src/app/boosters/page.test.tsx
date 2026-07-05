@@ -121,6 +121,17 @@ describe("BoostersPage", () => {
     expect(screen.getByRole("heading", { name: "Paramètres des boosters" })).toBeInTheDocument();
   });
 
+
+  it("treats repeated opened query parameters as malformed without crashing", async () => {
+    await renderPage({ opened: ["opening-1", "opening-2"] });
+
+    expect(getBoosterOpeningSummaryMock).toHaveBeenLastCalledWith(undefined);
+    expect(getBoosterOpeningSummaryMock).not.toHaveBeenCalledWith(["opening-1", "opening-2"]);
+    expect(screen.getByRole("status")).toHaveTextContent("Résumé d’ouverture introuvable pour cet identifiant.");
+    expect(screen.getByRole("heading", { name: "Paramètres des boosters" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Enregistrer une ouverture" })).toBeInTheDocument();
+  });
+
   it("renders opening success feedback for collection updates", async () => {
     await renderPage({ openingRecorded: "1" });
 

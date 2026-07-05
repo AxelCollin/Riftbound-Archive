@@ -6,12 +6,17 @@ import { getBoosterOpeningSummary, getBoosterOverview } from "@/lib/services/boo
 export const dynamic = "force-dynamic";
 
 type BoostersPageProps = {
-  searchParams?: Promise<{ updated?: string; error?: string; openingRecorded?: string; openingError?: string; opened?: string }>;
+  searchParams?: Promise<{ updated?: string; error?: string; openingRecorded?: string; openingError?: string; opened?: string | string[] }>;
 };
+
+function normalizeOpenedQueryParam(opened: string | string[] | undefined): string | undefined {
+  return typeof opened === "string" ? opened : undefined;
+}
 
 export default async function BoostersPage({ searchParams }: BoostersPageProps = {}) {
   const params = await searchParams;
-  const [settings, openingSummary] = await Promise.all([getBoosterOverview(), getBoosterOpeningSummary(params?.opened)]);
+  const openedOpeningId = normalizeOpenedQueryParam(params?.opened);
+  const [settings, openingSummary] = await Promise.all([getBoosterOverview(), getBoosterOpeningSummary(openedOpeningId)]);
 
   return (
     <main className="min-h-screen px-8 py-6">
