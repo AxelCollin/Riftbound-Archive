@@ -1,163 +1,228 @@
 # Database schema
 
-## Current Phase 4 collection state
+## Document status
 
-Phase 4 is complete for the collection MVP persistence behavior:
+This document describes the implemented Prisma/SQLite schema state and the known schema-direction changes required by Phase 7.5.
 
-- `CollectionTransaction` is the append-only ownership history. Valid writes create history rows that are never overwritten.
-- `CollectionEntry` is the current owned quantity snapshot for one official card and one physical `CardVariant`.
-- Valid collection transaction writes update both transaction history and the matching `CollectionEntry` snapshot atomically.
-- Snapshot updates reject any operation that would make the resulting owned quantity negative.
-- TOKEN and RULES cards remain non-trackable for collection ownership and must be rejected by collection write flows.
-- ENERGY cards remain trackable.
+It is not a complete implementation history. Historical phase notes should be kept short and clearly marked as historical. For card taxonomy, `docs/CARD_TAXONOMY.md` is the more specific source of truth.
 
-The Phase 4B and Phase 4C sections below are historical sub-phase notes. Phase 4B describes the intermediate history-only step before snapshots were added; Phase 4C and this current-state summary describe the final Phase 4 behavior.
+## Current implemented schema state
 
-## Phase 3A scope
+The current schema already contains foundations for:
 
-This schema foundation adds only the first official Riftbound card data tables:
+- official card/set/translation metadata;
+- user collection entries and collection transaction history;
+- card user metadata;
+- binder overrides;
+- deck metadata, requirements, and assembled allocations;
+- booster settings, counter events, openings, and pulled-card rows;
+- price providers, mappings, provider price snapshots, and manual overrides;
+- sync settings and sync logs.
 
-- `Set` stores official set metadata.
-- `Card` stores official card metadata, including normalized rarity, raw provider rarity, kind, print treatment, collector number, optional official image and artist fields, and the raw official provider payload when available.
-- `CardTranslation` stores localized official card text by locale.
+The schema is still pre-Phase-7.5 for card taxonomy. It uses MVP concepts such as `CardVariant` and a normalized rarity enum that includes values which the target taxonomy will split differently.
 
-This PR intentionally does not add user collection, deck, booster, price, sync log, provider, or workflow tables. Those persistence concerns are planned for later Phase 3 pull requests so each schema change remains small and reviewable.
+## Official card metadata
 
-## Phase 3B scope
+Implemented official metadata tables include:
 
-This schema increment adds only the first user collection persistence tables:
+- `Set`: official set metadata.
+- `Card`: official card metadata, including normalized rarity, raw provider rarity, kind, print treatment, collector number, optional official image URL, optional official artist, and raw provider payload when available.
+- `CardTranslation`: localized official card text by locale.
 
-- `CollectionEntry` stores the current owned quantity snapshot for one official card and one physical `CardVariant`.
-- `CollectionTransaction` stores append-only collection history entries so owned quantities can be audited and rebuilt later.
-- `CardUserMeta` stores user-specific card metadata such as favorites and personal notes.
-- `BinderOverride` stores optional user overrides for binder reservation behavior.
+Current limitations:
 
-Binder reservation and availability remain computed by domain logic rather than stored as database facts. Availability still uses the canonical formula:
+- `Card.kind` is a coarse MVP concept and does not yet represent the full target gameplay card type list from `docs/CARD_TAXONOMY.md`.
+- `Card.rarity` currently supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN`. This is current implementation state, not the target taxonomy. In the target model, `ULTIMATE` belongs to showcase treatment, not gameplay rarity.
+- `Card.printTreatment` stores a simplified official printing/treatment concept. This should evolve toward collector category and showcase treatment.
+- `Card.collectorNumber` remains a nullable string because card numbers can include suffixes, letters, stars, or overnumbered values.
+- A dedicated `CardAsset` table does not exist yet. The current schema stores official image URL and artist metadata directly on `Card`.
 
-```text
-available = owned - binderReserved - assembledDeckAllocated
-```
+## Current collection schema
 
-At the historical Phase 3B checkpoint, deck, booster, price, provider, and sync workflow tables were still deferred. The current schema now includes those foundations through the completed Phase 3C–3F increments described below.
+Implemented collection tables include:
 
-## Phase 3C scope
+- `CollectionEntry`: current owned quantity snapshot for one card and one current physical `CardVariant`.
+- `CollectionTransaction`: append-only ownership history.
+- `CardUserMeta`: user-specific card metadata such as favorites and notes.
+- `BinderOverride`: optional future-facing user overrides for binder reservation behavior.
 
-This schema increment adds only the deck persistence foundation:
-
-- `Deck` stores user-created deck metadata, including the deck name, optional description, current status, and allocation strategy.
-- `DeckCard` stores theoretical deck requirements: which official cards a deck wants, in what quantity, and which explicit variant preference applies.
-- `DeckCardAllocation` stores real allocated physical cards for assembled decks by card, variant, and quantity.
-
-`DeckCard.preferredVariant` uses the deck-specific `DeckCardVariantPreference` enum instead of nullable `CardVariant`. `ANY` means no specific physical variant is required for that deck requirement, while `NORMAL`, `FOIL`, and `SHOWCASE` require that variant. The field is non-null with a default of `ANY` so SQLite can enforce one requirement row per deck, card, and preference through the composite unique index. `CardVariant` remains reserved for real physical variants on owned collection entries and assembled deck allocations.
-
-Only allocations belonging to assembled decks should block global availability. Theoretical decks remain planning records and do not reduce availability.
-
-At the historical Phase 3C checkpoint, missing-card calculation, deck assembly allocation, deck disassembly flows, and booster/price/sync tables were still deferred. The current application now implements the Phase 6 deckbuilding flows and Phase 7 booster flows on top of these schema foundations, while pricing behavior and provider sync remain future work.
-
-## Phase 3D scope
-
-This schema increment adds only the booster persistence foundation:
-
-- `BoosterSettings` stores user-configurable booster accrual settings, including the number of boosters per interval, interval length and unit, accrual anchor, and default opening decrement behavior.
-- `BoosterCounterEvent` stores signed booster counter ledger events. Positive `quantityDelta` values add boosters and negative values remove boosters; opening decrement events may optionally link back to a recorded opening.
-- `BoosterOpening` stores recorded booster opening sessions, including when the session was opened, how many boosters it represented, whether the counter should be decremented, status, and notes.
-- `BoosterOpeningCard` stores pulled cards as aggregated quantities per opening, official card, and physical `CardVariant`.
-
-The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor. Phase 7D uses the existing `BoosterOpening` table for opening header records, `BoosterOpeningCard` for merged pulled-card quantities, `CollectionTransaction` for positive `ADD` history rows sourced from the opening, and `CollectionEntry` for the updated owned snapshot. Optional `OPENING_DECREMENT` ledger entries continue to use `BoosterCounterEvent`.
-
-Post-opening summaries and safe rollback now use these existing tables without additional migrations. Price, provider, and sync tables already exist as Phase 3 foundations, while price behavior, provider synchronization, and sync execution remain future work.
-
-## Phase 3E scope
-
-This schema increment adds only the price persistence foundation:
-
-- `PriceProvider` stores interchangeable price provider definitions, status, priority, base URL, and non-secret configuration metadata. API keys and secrets must remain environment variables and must not be stored in this table.
-- `PriceMapping` maps one local official card plus one physical `CardVariant` to a provider-specific product or listing identifier and provider-side variant/subtype identifier. `externalId` optionally identifies the provider product, listing, or card; it is nullable because `UNRESOLVED` mappings may not have a safe provider id yet, and callers must not invent sentinel ids such as `"UNRESOLVED"` or `"DEFAULT"` that could collide with real provider identifiers. `externalVariantId` remains non-null, defaults to `"DEFAULT"`, and identifies the provider-side variant or subtype for that provider product, such as a TCGCSV subtype row. Providers that do not expose a separate variant or subtype id must store `"DEFAULT"` so SQLite uniqueness remains reliable when `externalId` is known. `externalVariantLabel` may preserve human-readable provider labels, such as `subTypeName`, separately from the stable key. Provider-side mapping uniqueness is `providerId` + `externalId` + `externalVariantId`; SQLite allows multiple rows where the nullable `externalId` is `NULL`, so multiple unresolved mappings can be persisted without fake provider ids. The local `variant` field remains the app's physical owned variant mapping (`NORMAL`, `FOIL`, or `SHOWCASE`) and is separate from provider-specific subtype identifiers. `status` stores review state (`CONFIRMED`, `CANDIDATE`, `UNRESOLVED`, or `REJECTED`) and defaults to `UNRESOLVED` so id-less or placeholder mapping rows are safe by default. New mappings must be explicitly confirmed only after a safe provider id has been selected. `confidence` can store an optional app-level match score, and `matchSource` can identify how the mapping candidate was produced. `CONFIRMED` mappings are expected to have a usable `externalId` before future price synchronization uses them; future service/domain validation will enforce that sync only consumes confirmed mappings with provider ids and will enforce which statuses require external ids. Low-confidence, unresolved, or rejected mappings must not be silently applied by later price synchronization or value logic. Automatic/fuzzy matching behavior, unresolved mapping UI, manual mapping UI, and sync behavior remain future service and UI work.
-- `CardPrice` stores provider price snapshots for a local card and physical variant. Each row represents one provider, card, physical variant, price type, currency, and fetch timestamp. `CardPriceType` supports market, low, mid, high, trend, 1-day average, 7-day average, 30-day average, and custom prices so Cardmarket-style trend and average price points can be queried separately instead of being collapsed into raw JSON. Multiple `CardPrice` rows can exist for different price types from the same provider. Later service/query logic will choose which price type to use for collection, deck, missing-card, booster, and market value calculations.
-- `ManualPriceOverride` stores user-defined prices per card, physical variant, and currency. Manual overrides are independent from external providers and must win over provider prices later in service/domain logic.
-
-Money amounts use `amountMinor` in minor currency units, such as cents for EUR.
-
-This PR intentionally does not add value calculations, market pages, price provider synchronization, external API calls, collection value display, deck value display, missing deck value calculation, or booster opening value calculation. Those remain future service, domain, and UI work.
-
-## Phase 3F scope
-
-This schema increment adds only the sync persistence foundation:
-
-- `SyncSetting` stores queryable, non-secret sync configuration for one `SyncTarget` and provider key, such as `riot`, `tcgcsv`, `justtcg`, or `cardmarket`. Settings default to `enabled = false`, so the app remains usable when every sync setting is disabled or provider credentials are unavailable. `localeChain` supports a future Riot official-data fallback chain, and `configJson` is reserved for non-secret provider configuration only. API keys, tokens, and credentials must stay in environment variables and must not be stored in this table.
-- `SyncLog` stores append-only sync attempt results for later debugging and UI history. It records the sync target, provider key, status, optional trigger, timestamps, optional summary message, non-secret error details, item counts, and optional non-secret raw result metadata.
-
-`OFFICIAL_DATA` is intended for future Riot card, set, asset, and localized metadata synchronization. `PRICE_DATA` is intended for future interchangeable price provider synchronization.
-
-This PR intentionally does not add actual sync execution, scheduling, provider clients, Riot API calls, price provider API calls, conflict handling, import logic, API routes, or UI. Those remain future service, domain, and UI work.
-
-## Phase 3 completion
-
-Phase 3A through Phase 3F now provide the Prisma schema foundation for official data, user collection state, decks, boosters, prices, sync logs, and settings. This closed the Phase 3 database-schema foundation before the later Phase 4 collection, Phase 5 binder/availability, Phase 6 deckbuilding, and Phase 7 booster milestones.
-
-## Phase 4A mock official data seed
-
-Phase 4A adds a repeatable local seed process for fictional, test-only official-card metadata. The seed exists so future Collection MVP work can develop against real `Set`, `Card`, and `CardTranslation` database rows before any Riot/provider synchronization is available.
-
-The Phase 4A seed does not use official Riot card text or images, does not call external providers, and does not create runtime/user-owned data. It only seeds official metadata; `CollectionEntry`, `CollectionTransaction`, deck, booster, price, and sync tables remain unseeded by this process.
-
-
-## Phase 4B collection transaction write service
-
-Historical sub-phase note: Phase 4B added the first server-side write service for validated collection history records. At that intermediate point, the service recorded `CollectionTransaction` rows only: it validates input, confirms the target `Card` exists, rejects untrackable TOKEN and RULES cards, enforces the domain allowed-variant rules, and writes the append-only transaction.
-
-At the historical Phase 4B checkpoint, `CollectionTransaction` was append-only user collection history and snapshot writes were deliberately deferred. The final Phase 4 behavior is documented above and in Phase 4C: valid transaction writes now also update `CollectionEntry` owned snapshots. Collection transaction writes still do not themselves recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, or call external providers; those responsibilities are handled by later domain, query, and service layers where implemented.
-
-
-## Phase 4C collection entry snapshots
-
-Phase 4C extends the collection transaction write service so every valid collection transaction also updates the matching `CollectionEntry` row for the same `cardId` and `variant`. `CollectionTransaction` remains append-only user collection history, while `CollectionEntry` represents the current owned quantity snapshot derived from transaction writes.
-
-Snapshot writes apply `ADD`, `REMOVE`, `SET`, and `ADJUST` semantics in the service layer and reject any operation that would make `CollectionEntry.quantity` negative. The real Prisma path uses a database transaction so the history write and snapshot update commit or roll back together.
-
-This phase did not change the Prisma schema, add migrations, delete zero-quantity entries, recalculate availability, reserve binder cards, allocate deck cards, add booster records, add price records, call external providers, add API routes, or add UI. Binder reservation and deck availability calculations were implemented later and remain separate from collection transaction writes.
-
-## Official data and local state
-
-The database stores official metadata and local application state, but it does not own business-rule decisions. Complex rules such as trackability, binder reservation, allowed variants, availability, deck allocation, booster summaries, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
-
-Availability is never stored directly. It must be computed per card and per variant with the domain formula:
+Current implemented ownership unit:
 
 ```text
-available = owned - binderReserved - assembledDeckAllocated
+cardId + CardVariant
 ```
 
-Tokens and rules cards may be imported into official metadata when a provider exposes them, but collection and deckbuilding logic must ignore them. Energy cards remain trackable.
-
-## Numeric validation expectations
-
-SQLite currently relies on future service and Zod validation for most numeric invariants instead of raw SQL `CHECK` constraints. Signed numeric fields are intentional only where the domain requires deltas, such as `BoosterCounterEvent.quantityDelta`, where positive values add boosters and negative values remove boosters.
-
-Before future write flows persist data, service/Zod validation must reject invalid numeric values for fields that are snapshots, quantities, or money amounts. Collection quantities, deck requirement quantities, assembled allocation quantities, booster opening quantities, and price `amountMinor` values must be validated as non-negative or positive according to their domain meaning before writes. Raw SQL `CHECK` constraints may be considered later as an additional database-level guard, but Phase 3 keeps the schema foundation migration-free in this cleanup.
-
-## Rarity, print treatment, collector numbers, and variants
-
-Official rarity is stored separately from special print treatment and from owned physical variant or finish:
-
-- `Card.rarity` stores the normalized Riftbound rarity used by official data queries. It currently supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN`. Domain variant rules treat `ULTIMATE` and conservative `UNKNOWN` rarity cards as foil-only by default unless future official data proves a more precise rule.
-- `Card.officialRarityRaw` preserves the exact provider or Riot rarity label when present. This lets sync code store future, localized, or provider-specific rarity values without forcing them into an inaccurate normalized enum value.
-- `Card.printTreatment` stores the official printing/treatment concept for a card row. `REGULAR`, `ALT`, and `OVERNUMBER` are separated from rarity because official booster distribution distinguishes Rare, Epic, Alt, Overnumber, and Ultimate cards.
-- `Card.printTreatmentRaw` preserves a provider-specific treatment label when the normalized enum is not expressive enough.
-- `Card.collectorNumber` remains a `String?` because official card numbers may include suffixes, letters, stars, or overnumbered values rather than plain integers.
-
-Special printings such as alternate-art or overnumbered cards should be represented as official card rows with their own collector number and print treatment when the provider exposes them that way. They must not be modeled only as collection variants.
-
-The Prisma schema still defines the MVP `CardVariant` enum for physical collection tracking concepts:
+Current `CardVariant` values:
 
 - `NORMAL`
 - `FOIL`
 - `SHOWCASE`
 
-`CardVariant` describes owned physical copies and finishes for later collection tables. It is not the source of truth for official alternate-art, overnumbered, or other print-treatment metadata.
+This is an MVP implementation simplification. The target Phase 7.5 ownership unit is:
 
-`SHOWCASE_FOIL` is intentionally not part of the MVP schema. Variant-support rules remain domain logic rather than database logic.
+```text
+printedCardId + physicalFinish
+```
 
+where Showcase is represented as a separate printed card / collector category, not as a simple physical finish beside Normal and Foil.
 
-## Booster opening rollback usage
+Collection transaction writes update both append-only history and the matching snapshot atomically. Snapshot writes reject any operation that would make the resulting owned quantity negative.
 
-The existing booster and collection tables support safe rollback without a migration. `BoosterOpening.status` distinguishes active historical openings (`RECORDED`) from reversed openings (`ROLLED_BACK`). `BoosterOpeningCard` remains the immutable list of pulled cards. Original booster collection writes remain append-only `CollectionTransaction` rows with source `booster-opening:<openingId>`, while rollback appends compensating positive `REMOVE` rows with source `booster-opening-rollback:<openingId>` and updates the current `CollectionEntry.quantity` snapshot. If the opening had an `OPENING_DECREMENT` counter event, rollback appends a `BoosterCounterEvent` with type `ROLLBACK`, a positive `quantityDelta`, and the same `boosterOpeningId`; original counter events are not deleted.
+Availability is never stored directly. It is computed through domain/query composition.
+
+## Current deck schema
+
+Implemented deck tables include:
+
+- `Deck`: user-created deck metadata, status, and allocation strategy.
+- `DeckCard`: theoretical deck requirements.
+- `DeckCardAllocation`: real allocated physical copies for assembled decks.
+
+Current implementation state:
+
+- `DeckCard.preferredVariant` uses `DeckCardVariantPreference`.
+- `ANY` means no specific implemented physical variant is required.
+- `NORMAL`, `FOIL`, and `SHOWCASE` still exist as current implementation preferences while Phase 7.5 migration is pending.
+- `DeckCardAllocation` currently allocates by card and implemented variant.
+
+Target Phase 7.5 direction:
+
+- Deck requirements should be able to target gameplay identity.
+- Physical allocations should choose a real printed card and physical finish.
+- Showcase / collector printings should be usable only when explicitly allowed by the deck requirement or allocation strategy.
+
+Only allocations belonging to assembled decks should block global availability. Theoretical decks remain planning records and do not reduce availability.
+
+## Current booster schema
+
+Implemented booster tables include:
+
+- `BoosterSettings`: user-configurable booster accrual settings.
+- `BoosterCounterEvent`: signed booster counter ledger events.
+- `BoosterOpening`: recorded booster opening sessions.
+- `BoosterOpeningCard`: aggregated pulled cards per opening, card, and current physical `CardVariant`.
+
+The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor.
+
+Phase 7 uses these tables for:
+
+- opening header records;
+- optional counter decrements;
+- merged pulled-card rows;
+- collection `ADD` transactions;
+- current owned snapshot updates;
+- read-only post-opening summaries;
+- safe rollback through compensating `REMOVE` transactions and optional `ROLLBACK` counter events.
+
+Target Phase 7.5 direction:
+
+- Replace fixed pulled-card rows in UX with dynamic rows.
+- Move toward pulled card recording by printed card and physical finish.
+- Preserve rollback safety guarantees during the migration.
+
+## Current price schema
+
+Implemented price tables include:
+
+- `PriceProvider`: interchangeable price provider definitions, status, priority, base URL, and non-secret configuration metadata.
+- `PriceMapping`: mapping between local card + current physical variant and provider product/listing/subtype identifiers.
+- `CardPrice`: provider price snapshots.
+- `ManualPriceOverride`: user-defined prices.
+
+Current implementation state:
+
+- Price tables still use the current `card + variant` language.
+- That is schema foundation only; value calculation and price sync behavior are not implemented yet.
+
+Target Phase 8 direction after Phase 7.5:
+
+- Price by printed card and physical finish.
+- Keep provider-side subtype identifiers separate from local finish/treatment taxonomy.
+- Manual overrides must win over provider prices.
+- Do not build value calculation on the old `SHOWCASE`-as-variant assumption.
+
+Money amounts use `amountMinor` in minor currency units, such as cents for EUR.
+
+## Current sync schema
+
+Implemented sync tables include:
+
+- `SyncSetting`: queryable, non-secret sync configuration by target and provider key.
+- `SyncLog`: append-only sync attempt result history.
+
+Current state:
+
+- `OFFICIAL_DATA` is intended for future card, set, asset, and localized metadata synchronization.
+- `PRICE_DATA` is intended for future interchangeable price provider synchronization.
+- Actual provider clients, sync execution, scheduling, conflict handling, import logic, API routes, and UI remain future work.
+
+API keys, tokens, and credentials must stay in environment variables and must not be stored in sync tables.
+
+## Official data and local state separation
+
+The database stores official metadata and local application state, but it does not own business-rule decisions.
+
+Complex rules such as trackability, binder reservation, allowed finishes / temporary variants, availability, deck allocation, booster summaries, rollback safety, and price precedence must stay in pure TypeScript modules under `src/lib/domain`.
+
+Official synchronized data:
+
+- sets;
+- cards;
+- translations;
+- future assets;
+- sync logs;
+- raw provider payloads preserved in local files.
+
+User-owned data:
+
+- collection entries;
+- collection transactions;
+- card user metadata;
+- binder overrides;
+- decks;
+- deck cards;
+- deck card allocations;
+- booster settings;
+- booster counter events;
+- booster openings;
+- booster opening cards;
+- manual price overrides;
+- app settings.
+
+Price data:
+
+- price providers;
+- price mappings;
+- card prices;
+- provider raw payloads.
+
+## Numeric validation expectations
+
+SQLite currently relies on service and Zod validation for most numeric invariants instead of raw SQL `CHECK` constraints.
+
+Signed numeric fields are intentional only where the domain requires deltas, such as `BoosterCounterEvent.quantityDelta`, where positive values add boosters and negative values remove boosters.
+
+Before write flows persist data, service/Zod validation must reject invalid numeric values for fields that are snapshots, quantities, or money amounts. Collection quantities, deck requirement quantities, assembled allocation quantities, booster opening quantities, and price `amountMinor` values must be validated as non-negative or positive according to their domain meaning before writes.
+
+Raw SQL `CHECK` constraints may be considered later as an additional database-level guard.
+
+## Phase 7.5 schema migration direction
+
+Phase 7.5 must correct the schema direction before Phase 8 pricing behavior is implemented.
+
+Target additions or replacements may include:
+
+- gameplay identity key or `GameplayIdentity` table;
+- richer gameplay card type field;
+- gameplay rarity separated from collector treatment;
+- collector category;
+- showcase treatment;
+- physical finish enum with `NORMAL` and `FOIL`;
+- printed-card-to-faction relation if provider data requires multiple factions;
+- related printings / rules-equivalence helpers.
+
+Migration must be incremental and reviewable. Existing data should not be destructively rewritten without a clear migration plan and tests.
+
+## Historical note
+
+Earlier Phase 3 and Phase 4 sub-phase notes described incremental schema work while the schema was being introduced. Those notes are historical context only. The sections above describe the current implemented schema and the Phase 7.5 target direction.
