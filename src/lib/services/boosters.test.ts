@@ -13,17 +13,18 @@ const prismaMock = vi.hoisted(() => ({
   boosterOpening: {
     create: vi.fn(),
     findMany: vi.fn(),
+    findUnique: vi.fn(),
   },
   boosterOpeningCard: { create: vi.fn() },
   card: { findMany: vi.fn(), findUnique: vi.fn() },
-  collectionEntry: { create: vi.fn(), update: vi.fn(), upsert: vi.fn() },
-  collectionTransaction: { create: vi.fn() },
+  collectionEntry: { create: vi.fn(), update: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
+  collectionTransaction: { create: vi.fn(), findMany: vi.fn() },
   $transaction: vi.fn(async (callback) => callback(prismaMock)),
 }));
 
 vi.mock("@/lib/db", () => ({ prisma: prismaMock }));
 
-import { getBoosterOverview, getBoosterSettings, recordBoosterOpening, updateBoosterSettings } from "./boosters";
+import { getBoosterOpeningSummary, getBoosterOverview, getBoosterSettings, recordBoosterOpening, updateBoosterSettings } from "./boosters";
 
 const record = {
   id: "settings-1",
@@ -55,6 +56,9 @@ beforeEach(() => {
   prismaMock.boosterCounterEvent.aggregate.mockResolvedValue({ _sum: { quantityDelta: 0 } });
   prismaMock.boosterOpening.findMany.mockResolvedValue([]);
   prismaMock.card.findMany.mockResolvedValue([]);
+  prismaMock.boosterOpening.findUnique.mockResolvedValue(null);
+  prismaMock.collectionTransaction.findMany.mockResolvedValue([]);
+  prismaMock.collectionEntry.findMany.mockResolvedValue([]);
   prismaMock.$transaction.mockImplementation(async (callback) => callback(prismaMock));
 });
 
@@ -223,6 +227,91 @@ describe("booster settings service", () => {
     expect(prismaMock.boosterSettings.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ boostersPerInterval: 2, intervalCount: 1, intervalUnit: "DAY", autoDecrementOnOpening: false, accrualAnchorAt: expect.any(Date) }),
     });
+  });
+});
+
+
+describe("booster opening summary service", () => {
+  const openedAt = new Date("2026-07-04T12:00:00.000Z");
+  const summaryOpening = {
+    id: "opening-1",
+    openedAt,
+    boosterCount: 2,
+    decrementCounter: true,
+    cards: [
+      {
+        cardId: "card-1",
+        variant: "NORMAL",
+        quantity: 2,
+        card: { id: "card-1", name: "English Ahri", collectorNumber: "001", set: { code: "OGN" }, translations: [{ locale: "fr", name: "Ahri française" }] },
+      },
+    ],
+  };
+
+  it("returns null for missing or invalid opening ids", async () => {
+    await expect(getBoosterOpeningSummary()).resolves.toBeNull();
+    await expect(getBoosterOpeningSummary("   ")).resolves.toBeNull();
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(null);
+    await expect(getBoosterOpeningSummary("missing")).resolves.toBeNull();
+  });
+
+  it("returns booster/header info and zero card totals for an opening with no pulled cards", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...summaryOpening, cards: [] });
+
+    await expect(getBoosterOpeningSummary("opening-1")).resolves.toMatchObject({
+      boosterCount: 2,
+      decrementCounter: true,
+      distinctCardRows: 0,
+      totalCardQuantity: 0,
+      newlyCreatedCollectionEntries: 0,
+      incrementedCollectionEntries: 0,
+      totalCardsAddedToCollection: 0,
+      pulls: [],
+    });
+  });
+
+  it("summarizes one pulled card with French fallback, variant, quantity, and collection counts", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(summaryOpening);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+
+    await expect(getBoosterOpeningSummary("opening-1")).resolves.toMatchObject({
+      distinctCardRows: 1,
+      totalCardQuantity: 2,
+      newlyCreatedCollectionEntries: 1,
+      incrementedCollectionEntries: 0,
+      totalCardsAddedToCollection: 2,
+      pulls: [{ displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
+    });
+  });
+
+  it("summarizes multiple pulled cards and identifies incremented entries", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...summaryOpening,
+      cards: [
+        ...summaryOpening.cards,
+        { cardId: "card-2", variant: "FOIL", quantity: 1, card: { id: "card-2", name: "Rune", collectorNumber: null, set: { code: "OGN" }, translations: [] } },
+      ],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }, { cardId: "card-2", variant: "FOIL", quantity: 1 }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }, { cardId: "card-2", variant: "FOIL", quantity: 1 }]);
+
+    const summary = await getBoosterOpeningSummary("opening-1");
+
+    expect(summary).toMatchObject({ distinctCardRows: 2, totalCardQuantity: 3, newlyCreatedCollectionEntries: 1, incrementedCollectionEntries: 1, totalCardsAddedToCollection: 3 });
+    expect(summary?.pulls[0]).toMatchObject({ wasNewCollectionEntry: false });
+    expect(summary?.pulls[1]).toMatchObject({ displayName: "Rune", variant: "FOIL", quantity: 1, wasNewCollectionEntry: true });
+  });
+
+  it("does not write while reading a summary", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(summaryOpening);
+    await getBoosterOpeningSummary("opening-1");
+
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.boosterOpening.create).not.toHaveBeenCalled();
+    expect(prismaMock.boosterOpeningCard.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionEntry.upsert).not.toHaveBeenCalled();
   });
 });
 

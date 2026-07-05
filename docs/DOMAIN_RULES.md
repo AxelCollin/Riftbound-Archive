@@ -178,20 +178,12 @@ Opening a booster from Phase 7D onward:
 - creates matching `ADD` `CollectionTransaction` rows with positive quantities, `source = booster-opening:<openingId>`, and a note identifying the booster origin;
 - increments an existing `CollectionEntry` quantity or creates the matching entry when absent;
 - does not store availability directly and does not mutate binder reservations or assembled deck allocations;
-- does not yet produce a post-opening summary or implement rollback.
+- supports a read-only Phase 7E post-opening summary for a persisted opening;
+- still does not implement rollback.
 
-The summary should include:
+The Phase 7E post-opening summary reads persisted local rows only. It uses `BoosterOpening` for header data, `BoosterOpeningCard` for pulled-card rows, `CollectionTransaction` rows sourced as `booster-opening:<openingId>` for cards added to collection history, current `CollectionEntry` rows for post-opening collection quantities, and local `Card`, `Set`, and `CardTranslation` rows for display metadata. It shows the number of boosters opened, whether the counter was decremented, distinct pulled-card row count, total pulled-card quantity, each pulled card with the established French display-name fallback, set code, collector number, variant, and quantity, collection entries classified as newly created or existing/incremented when the persisted post-opening quantity supports that distinction, and total cards added to the collection. Viewing the summary must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, require pricing data, or expose rollback controls. Missing or invalid opening ids must be handled safely with no crash.
 
-- new cards;
-- cards newly useful for the binder;
-- cards useful for existing incomplete decks;
-- cards that reduce missing deck quantities;
-- duplicates;
-- booster value;
-- best pull by value;
-- availability impact.
-
-Rollback should be supported when feasible.
+Future summaries may add binder usefulness, deck usefulness, missing-deck reductions, duplicates, value, best pull, and availability impact in later phases. Rollback should be supported when feasible in a later phase.
 
 ## Price rules
 
