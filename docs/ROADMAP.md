@@ -114,6 +114,23 @@ Phase 7E adds a read-only post-opening summary on `/boosters` for the opening se
 
 Phase 7F adds safe rollback for booster openings. A recorded opening can be marked `ROLLED_BACK` only when its original pulled-card rows, source `ADD` collection transactions, and current `CollectionEntry` quantities are present and consistent enough to reverse without making quantities negative. Rollback writes run in one Prisma transaction, decrement the matching collection entries, append positive `REMOVE` compensation transactions sourced as `booster-opening-rollback:<openingId>`, add a `ROLLBACK` counter event only when the opening has an original decrement event, and preserve the original opening, pulled-card rows, original `ADD` transactions, and original counter events as history. The `/boosters` summary exposes the French rollback action only while safe and shows rolled-back status otherwise. With Phase 7F complete, the Phase 7 Booster opening milestone is complete; pricing/value, provider sync, Electron, binder, and deckbuilding changes remain out of scope.
 
+## Phase 7.5 - Post-Phase 7 taxonomy and UX realignment
+
+- [ ] Document corrected card taxonomy and post-Phase 7 UX target.
+- [ ] Add gameplay identity and corrected card taxonomy fields.
+- [ ] Replace Showcase-as-variant with a finish-aware collection model.
+- [ ] Add related printings and gameplay-equivalence helpers.
+- [ ] Add a global app shell with persistent navigation.
+- [ ] Clean stale deck UI copy and remove user-facing phase labels.
+- [ ] Add collection display modes: grid, line, and compact.
+- [ ] Add collection faction-icon filters.
+- [ ] Add direct collection quantity editing through collection transactions.
+- [ ] Redesign card detail around printings, possession, and related cards.
+- [ ] Improve booster UX with header access, dynamic opening rows, richer settings, and opening history.
+- [ ] Redesign deckbuilder layout around filters, card catalogue, compact deck summary, and inline missing-card visibility.
+
+Phase 7.5 is a deliberate realignment phase before Phase 8 Pricing MVP. It corrects the card taxonomy and UX direction so pricing is not built on the old MVP simplification where `SHOWCASE` behaves like a simple variant beside `NORMAL` and `FOIL`. The target taxonomy separates gameplay card type, gameplay rarity, physical finish, collector category, showcase treatment, faction, and gameplay identity. The UX work uses the provided mockups as visual direction only, while excluding unnecessary dashboard quick actions, rule-explanation blocks, advice blocks, a dedicated Energy page, collection-side deckbuilding, and other surfaces that should move to help/settings or remain future work. Phase 7.5 should be split into small PRs. It must not implement Phase 8 pricing, provider sync, Electron packaging, or unrelated feature work.
+
 ## Phase 8 - Pricing MVP
 
 - [ ] Add manual price overrides.
