@@ -19,7 +19,7 @@ The application is primarily designed for personal use.
 
 Phase 7 Booster opening is complete. The app now has local mock official card data, collection transaction and snapshot flows, collection filters/search, read-only card details, server-composed binder and availability quantities, an owned-vs-available collection toggle, read-only binder and availability pages, deckbuilding MVP flows, and booster opening with accumulated counter, automatic collection transactions, post-opening summaries, and safe rollback.
 
-The current next roadmap focus is Phase 8 Pricing MVP. Pricing behavior, provider sync, Electron packaging, binder editing and overrides, imports/exports, and advanced summaries remain future work. External card APIs are planned as explicit card library sync sources only; normal app pages should read the local SQLite library after sync.
+The current next roadmap focus is Phase 7.5 taxonomy and UX realignment before Phase 8 Pricing MVP. Phase 7.5 corrects the card taxonomy and UX direction so pricing is not built on the old MVP simplification where Showcase behaves like a simple variant beside Normal and Foil. Pricing behavior, provider sync, Electron packaging, binder editing and overrides, imports/exports, and advanced summaries remain future work. External card APIs are planned as explicit card library sync sources only; normal app pages should read the local SQLite library after sync.
 
 ## Local setup
 
@@ -60,6 +60,8 @@ npm run build
 - `docs/PRODUCT_SPEC.md`
 - `docs/ARCHITECTURE.md`
 - `docs/DOMAIN_RULES.md`
+- `docs/CARD_TAXONOMY.md`
+- `docs/UX_TARGET.md`
 - `docs/UI_STYLE_GUIDE.md`
 - `docs/API_PROVIDERS.md`
 - `docs/DATABASE_SCHEMA.md`
