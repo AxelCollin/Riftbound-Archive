@@ -17,11 +17,9 @@ The application is primarily designed for personal use.
 
 ## Current status
 
-Phase 6 Deckbuilding MVP is complete. The app now has local mock official card data, a service-layer flow for recording collection transactions, `CollectionEntry` owned snapshots updated from those transactions, a collection page with filters/search, read-only card detail pages, server-composed binder and availability quantities, an owned-vs-available collection display toggle, a read-only binder page, and a read-only per-card availability explanation page.
+Phase 7 Booster opening is complete. The app now has local mock official card data, collection transaction and snapshot flows, collection filters/search, read-only card details, server-composed binder and availability quantities, an owned-vs-available collection toggle, read-only binder and availability pages, deckbuilding MVP flows, and booster opening with accumulated counter, automatic collection transactions, post-opening summaries, and safe rollback.
 
-Deckbuilding now includes a deck list, deck metadata CRUD, a deck detail page, DeckCard requirement add/edit/remove flows, read-only missing-card and availability display, assembled deck allocation, disassemble flow, a deckbuilder UI foundation, searchable card catalog/add-card UX, and deckbuilder UX polish.
-
-The current next roadmap focus is Phase 7 Booster opening. Binder editing and binder overrides are not implemented yet. Booster behavior, pricing behavior, card library provider sync, Electron packaging, and provider implementation work remain future phases. External card APIs are planned as explicit card library sync sources only; normal app pages should read the local SQLite library after sync.
+The current next roadmap focus is Phase 8 Pricing MVP. Pricing behavior, provider sync, Electron packaging, binder editing and overrides, imports/exports, and advanced summaries remain future work. External card APIs are planned as explicit card library sync sources only; normal app pages should read the local SQLite library after sync.
 
 ## Local setup
 
