@@ -36,6 +36,20 @@ const record = {
   updatedAt: new Date("2026-07-02T00:00:00.000Z"),
 };
 
+function cardOptionRecord(overrides: Partial<{ name: string; translations: { locale: string; name: string }[] }> = {}) {
+  return {
+    id: "card-1",
+    name: "Ahri",
+    collectorNumber: "001",
+    rarity: "COMMON",
+    kind: "GAMEPLAY",
+    hasShowcase: false,
+    set: { code: "OGN" },
+    translations: [],
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   prismaMock.boosterCounterEvent.aggregate.mockResolvedValue({ _sum: { quantityDelta: 0 } });
@@ -70,6 +84,51 @@ describe("booster settings service", () => {
         completeIntervals: 3,
       },
     });
+  });
+
+  it("prefers fr-FR translations for booster card option display names", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(record);
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardOptionRecord({
+        name: "English Ahri",
+        translations: [
+          { locale: "fr", name: "Ahri française" },
+          { locale: "fr-FR", name: "Ahri France" },
+        ],
+      }),
+    ]);
+
+    const overview = await getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"));
+
+    expect(overview.cardOptions[0]?.displayName).toBe("Ahri France · OGN #001");
+  });
+
+  it("falls back to fr translations for booster card option display names", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(record);
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardOptionRecord({
+        name: "English Ahri",
+        translations: [{ locale: "fr", name: "Ahri française" }],
+      }),
+    ]);
+
+    const overview = await getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"));
+
+    expect(overview.cardOptions[0]?.displayName).toBe("Ahri française · OGN #001");
+  });
+
+  it("falls back to canonical names for booster card options without French translations", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(record);
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardOptionRecord({
+        name: "English Ahri",
+        translations: [],
+      }),
+    ]);
+
+    const overview = await getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"));
+
+    expect(overview.cardOptions[0]?.displayName).toBe("English Ahri · OGN #001");
   });
 
   it("returns default settings and a safe zero counter when no row exists", async () => {

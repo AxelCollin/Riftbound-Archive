@@ -11,6 +11,7 @@ import {
 } from "@/lib/domain/boosters";
 import { isTrackableCard } from "@/lib/domain/cards";
 import { getAllowedVariants, type CardVariant } from "@/lib/domain/variants";
+import { getDisplayCardName } from "@/lib/queries/collection";
 
 export type BoosterSettingsView = NormalizedBoosterSettings & {
   id: string | null;
@@ -145,7 +146,7 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
     prisma.boosterOpening.findMany({ orderBy: { openedAt: "desc" }, take: 5, include: { _count: { select: { cards: true } } } }),
     prisma.card.findMany({
       where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-      select: { id: true, name: true, collectorNumber: true, rarity: true, kind: true, hasShowcase: true, set: { select: { code: true } }, translations: { where: { locale: "fr" }, select: { name: true }, take: 1 } },
+      select: { id: true, name: true, collectorNumber: true, rarity: true, kind: true, hasShowcase: true, set: { select: { code: true } }, translations: { where: { locale: { in: ["fr-FR", "fr"] } }, select: { locale: true, name: true } } },
       orderBy: [{ set: { code: "asc" } }, { collectorNumber: "asc" }, { name: "asc" }],
     }),
   ]);
@@ -159,7 +160,7 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
 
   const cardOptions = cards.map((card) => ({
     cardId: card.id,
-    displayName: `${card.translations[0]?.name ?? card.name}${card.set?.code ? ` · ${card.set.code}` : ""}${card.collectorNumber ? ` #${card.collectorNumber}` : ""}`,
+    displayName: `${getDisplayCardName(card)}${card.set?.code ? ` · ${card.set.code}` : ""}${card.collectorNumber ? ` #${card.collectorNumber}` : ""}`,
     allowedVariants: getAllowedVariants(card),
   }));
 
