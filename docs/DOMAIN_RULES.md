@@ -1,18 +1,25 @@
 # Domain rules
 
+## Document status
+
 This document is the canonical source for Riftbound Archive business rules.
 
-## Tracked and ignored cards
+It should describe current rules and clearly named target rules. It should not be used as a detailed implementation history. When historical MVP simplifications still exist in code, this document names them as temporary implementation state and points to the target rule.
+
+For card taxonomy details, `docs/CARD_TAXONOMY.md` is the more specific source of truth.
+
+## Trackable and ignored cards
 
 The app must track:
 
-- normal gameplay cards;
-- Energy cards.
+- standard gameplay cards;
+- Rune / Energy cards;
+- collector printings that are trackable physical cards, such as Showcase cards, unless a later rule explicitly excludes them.
 
-The app must ignore:
+The app must ignore in normal collection, deckbuilding, binder, availability, and booster useful-summary flows:
 
-- tokens;
-- rules cards.
+- Token cards;
+- Rules cards.
 
 Ignored cards must not appear in:
 
@@ -30,63 +37,143 @@ Implement a configurable function equivalent to:
 isTrackableCard(card);
 ```
 
-It must return `false` for tokens and rules cards, and `true` for Energy cards.
+It must return `false` for Token and Rules cards, and `true` for Rune / Energy cards.
 
-## Variants and rarity rules
+## Card taxonomy rule
 
-Supported variants for the MVP:
+Do not collapse card taxonomy into a single `variant` field.
+
+The target taxonomy separates:
+
+- gameplay card type;
+- gameplay rarity;
+- physical finish;
+- collector category;
+- showcase treatment;
+- faction;
+- gameplay identity / rules equivalence.
+
+### Current MVP implementation state
+
+The current pre-Phase-7.5 implementation still uses an MVP variant concept similar to:
 
 ```ts
 type CardVariant = "NORMAL" | "FOIL" | "SHOWCASE";
 ```
 
+That is historical implementation debt. It remains relevant only while the migration is in progress.
+
+### Phase 7.5 target state
+
+The target model is:
+
+- `NORMAL` and `FOIL` are physical finishes.
+- `SHOWCASE` is not a finish equivalent to Foil.
+- Showcase is a collector category for separate printed cards.
+- Alternative, Overnumber, Signed, and Ultimate are showcase treatments, not gameplay card types and not physical finishes.
+- Gameplay rarity uses Common, Uncommon, Rare, and Epic.
+- Ultimate does not belong in gameplay rarity.
+- Standard and collector printings can share a gameplay identity when they have equivalent rules.
+
+New code should move toward the target model and must not deepen the old `SHOWCASE`-as-simple-variant assumption unless explicitly documented as temporary migration work.
+
+## Physical finish support
+
+Current domain rules must keep supporting the implemented MVP until Phase 7.5 migrates it.
+
+Current behavior:
+
+- Common and Uncommon standard cards support Normal and Foil in the MVP rules.
+- Higher rarities are conservatively treated as foil-only unless data proves otherwise.
+- The current MVP may still expose Showcase through `CardVariant` while migration is incomplete.
+
+Target behavior:
+
+- Finish support should be data-driven per printed card.
+- Standard printed cards can group Normal and Foil quantities in collection UI.
+- Showcase printed cards are separate printed cards and can have their own supported physical finishes according to real provider data.
+
+## Collection transaction rules
+
+Collection transaction recording writes append-only ownership history and updates the owned snapshot for the same implemented ownership unit.
+
+Current implemented ownership unit:
+
+```text
+cardId + CardVariant
+```
+
+Target ownership unit after Phase 7.5:
+
+```text
+printedCardId + physicalFinish
+```
+
 Rules:
 
-- Common and Uncommon cards support normal and foil variants.
-- All other rarities are considered foil-only by default.
-- A single Showcase variant is tracked separately from regular Foil if present.
-- Showcase cards are never automatically reserved for the binder.
-- Variant support must remain extensible because providers may expose more precise variants later.
+- Validate the card exists.
+- Reject non-trackable Token and Rules cards.
+- Validate the supported finish or temporary implemented variant.
+- Validate transaction type and quantity.
+- Create a `CollectionTransaction` history row.
+- Update or create the matching `CollectionEntry` snapshot atomically.
+- Keep `CollectionTransaction` append-only.
+- Never allow `CollectionEntry.quantity` to become negative.
+- Do not directly reserve binder cards.
+- Do not directly allocate deck cards.
+- Do not persist availability.
 
-Collection transaction recording writes append-only history and updates the owned snapshot for the same card and variant. It must validate the card, card kind, variant, transaction type, and quantity, then create a `CollectionTransaction` history row and update or create the matching `CollectionEntry` snapshot atomically. `CollectionTransaction` rows remain append-only and must not be overwritten. `CollectionEntry` is the current owned quantity snapshot derived from valid transaction writes, and its quantity must never become negative. Collection transaction writes do not directly reserve binder cards, allocate deck cards, or persist availability; those calculations are composed separately by the binder, deck allocation, availability, query, and service layers.
+Binder reservation, deck allocation, and availability calculations are composed separately by domain, query, and service layers.
 
 ## Binder reservation
 
 Default binder behavior:
 
-- Reserve one copy of every trackable non-showcase card.
+- Reserve one copy of every trackable non-showcase printed card.
 - Prefer a regular foil copy.
-- If no regular foil is owned and the card supports normal, reserve one normal copy.
+- If no regular foil is owned and the card supports normal copies, reserve one normal copy.
 - If neither is available, reserve nothing.
-- Never reserve showcase automatically.
+- Never reserve Showcase automatically.
 
-Examples:
+Examples under the current implemented model:
 
 - 3 normal, 0 foil common: reserve 1 normal, 2 normal available.
 - 3 normal, 1 foil common: reserve 1 foil, 3 normal available, 0 foil available.
 - 2 foil rare: reserve 1 foil, 1 foil available.
-- 1 showcase only: reserve nothing, 1 showcase available.
-- 1 regular foil and 1 showcase: reserve 1 regular foil, showcase remains available.
+- 1 showcase-only MVP variant: reserve nothing, 1 available.
+- 1 regular foil and 1 showcase MVP variant: reserve 1 regular foil, showcase remains available.
 
-Overrides may exist later:
+Future overrides may exist later:
 
 ```ts
-type BinderMode = "AUTO" | "DISABLED" | "FORCE_VARIANT";
+type BinderMode = "AUTO" | "DISABLED" | "FORCE_FINISH";
 ```
+
+If the current implementation still uses `FORCE_VARIANT`, treat that name as temporary pre-taxonomy wording.
 
 ## Availability formula
 
-Availability is always computed per card and per variant:
+Availability is conceptually always computed as:
 
 ```text
 available = owned - binderReserved - assembledDeckAllocated
 ```
 
-This is the raw conceptual formula. The current app-facing available-count helper returns a UI-safe value clamped at `0` when the raw result would be negative because of over-reservation, over-allocation, or invalid persisted data.
+Current implemented granularity:
 
-Future Phase 5 explanation and diagnostic logic must surface invalid over-reservation or over-allocation separately. It must not rely only on the clamped available count to decide whether the underlying data is valid.
+```text
+per card + CardVariant
+```
 
-Never duplicate this formula or its clamping policy in UI components. Phase 5A composes owned, binder-reserved, and app-facing available quantities server-side for collection and card-detail query rows. Phase 5B adds a collection UI toggle that selects between those already-computed owned and available row fields. Phase 5C adds a read-only binder page that exposes the current automatic reservation state without overrides, editing, or write flows. Phase 5D adds a read-only per-card availability explanation page that surfaces owned copies, binder reservations, assembled-deck allocations, raw availability, and the app-facing clamped availability value. Binder editing, binder overrides, deck pages, and deck allocation editing remain future work.
+Target Phase 7.5 granularity:
+
+```text
+per printed card + physical finish
+```
+
+This is the raw conceptual formula. The app-facing helper may return a UI-safe value clamped at `0` when raw availability would be negative because of over-reservation, over-allocation, or invalid persisted data.
+
+Never duplicate this formula or its clamping policy in UI components.
 
 ## Deck rules
 
@@ -94,32 +181,22 @@ A deck can contain cards the user does not own.
 
 Deck statuses:
 
-- Non-assembled: theoretical deck, does not block cards.
-- Assembled: physical deck, blocks allocated cards from global availability.
+- `THEORETICAL`: planning deck, does not block cards.
+- `ASSEMBLED`: physical deck, blocks allocated cards from global availability.
+- `ARCHIVED`: historical or hidden deck, behavior should remain explicit in service/query code.
 
 When a deck is assembled:
 
-- Allocate real card variants.
-- Persist allocations.
-- Recompute global availability.
-- Show cards that are missing or unavailable.
+- allocate real owned copies;
+- persist allocations;
+- recompute global availability through existing query/domain composition;
+- show missing or unavailable cards.
 
 When a deck is disassembled:
 
-- Remove persisted allocations.
-- Recompute availability.
-
-Phase 6A adds pure domain logic for normalizing deck requirements and calculating missing cards from already-computed availability. It does not persist decks, deck cards, or deck allocations, and it does not add deck CRUD, deck pages, assembly, disassembly, or deckbuilder UI.
-
-Phase 6B adds a read-only deck list page backed by a server-side query over existing deck tables. It may display saved deck metadata, requirement line counts, required card totals, allocation line counts, and allocated card totals. It must not create, edit, delete, assemble, disassemble, allocate, or persist deck data, and missing-card query composition remains future work.
-
-Phase 6C adds minimal Deck metadata writes. A new deck is always created with status `THEORETICAL`; status editing, assembly, and disassembly are not exposed. Metadata writes may only normalize and persist the deck name, optional description, and allocation strategy. They must not create, update, or delete `DeckCard` or `DeckCardAllocation` rows. Deck card requirement persistence, deck card editing UI, missing-card UI, assembled allocation writes, disassembly, and deckbuilder UI remain future work.
-
-Phase 6D adds read-only deck detail display. The `/decks/[deckId]` page may read and display persisted `Deck`, `DeckCard`, and `DeckCardAllocation` data with totals, but it must not create, update, or delete deck card requirements or allocations. Card search/add/remove UI, missing-card UI, assembly, disassembly, and deckbuilder editing remain future work.
-
-Phase 6E adds DeckCard requirement writes only. Requirement write input must trim and require `cardId`, require a positive integer quantity, and accept only `ANY`, `NORMAL`, `FOIL`, or `SHOWCASE` preferred variants. Requirement services may create, increment, update, merge, or delete `DeckCard` rows for trackable GAMEPLAY and ENERGY cards only. Exact preferred variants must match the selected card's supported variants, while `ANY` is allowed for any trackable card. Phase 6E must not create, update, delete, or clean up `DeckCardAllocation` rows; allocation cleanup, missing-card UI, assembled allocation writes, disassembly, automatic allocation persistence, and full deckbuilder UI remain future work.
-
-Phase 6F adds read-only missing-card UI on the deck detail page. It must compare persisted DeckCard requirements against current app-facing available counts, where available means owned minus binder-reserved copies minus assembled deck allocations with the existing UI-safe clamping semantics. Phase 6F must reuse the Phase 6A missing-card domain logic and must not persist `usedVariants`, write DeckCardAllocation rows, assemble or disassemble decks, mutate collection entries or transactions, change deck status, or add purchase/pricing integration. Assembled allocation writes, automatic allocation persistence, disassembly, deckbuilder UI, and missing-card purchase/pricing integration remain future work.
+- remove persisted allocations;
+- return the deck to theoretical status;
+- recompute availability through existing query/domain composition.
 
 Default automatic allocation strategy:
 
@@ -127,18 +204,21 @@ Default automatic allocation strategy:
 preserve_premium_variants
 ```
 
-For commons and uncommons:
+Current implemented preserve-premium order:
 
-1. Use regular normal copies first.
+1. Use regular normal copies first when supported.
 2. Use regular foil copies second.
-3. Use showcase copies only if allowed by the deck or card line.
+3. Use showcase copies only if allowed by the deck or requirement.
 
-For foil-only rarities:
+Target preserve-premium order after taxonomy migration:
 
-1. Use regular foil copies first.
-2. Use showcase copies only if allowed.
+1. Use standard Normal copies first when supported.
+2. Use standard Foil copies second.
+3. Use collector / Showcase printings only if allowed by the deck or requirement.
 
-Missing-card calculations must satisfy exact variant requirements before flexible `ANY` requirements for the same card. Flexible `ANY` requirements use remaining availability in preserve-premium order: normal first, foil second, showcase last. One available copy must not satisfy multiple requirements.
+Missing-card calculations must satisfy exact physical requirements before flexible `ANY` requirements for the same card or gameplay identity. One available physical copy must not satisfy multiple requirements.
+
+Long-term deck requirements should be able to target gameplay identity while physical allocation chooses a real printed card and physical finish.
 
 ## Booster counter rules
 
@@ -155,39 +235,75 @@ The user can configure:
 - period unit;
 - manual count adjustments.
 
-Phase 7A stores the minimal counter settings before counter accrual exists: daily generated boosters must be a non-negative integer, allowing `0` to intentionally pause future accrual, and the default opening decrement flag must be boolean.
-
-Phase 7B calculates the read-only accumulated booster allowance from persisted `BoosterSettings` plus the `BoosterCounterEvent` ledger. The displayed counter is the sum of persisted `BoosterCounterEvent.quantityDelta` values plus virtual accrual since `accrualAnchorAt`. Virtual accumulation counts only complete elapsed intervals since `accrualAnchorAt`, uses elapsed milliseconds with UTC timestamps to avoid local-time drift, clamps future timestamps to zero accumulated boosters, and remains integer-only. `boostersPerInterval` is multiplied by the number of complete intervals; `boostersPerInterval = 0` produces zero virtual accumulated boosters. The calculation must receive an explicit `now` from the caller. When accrual-affecting settings change, pending virtual accrual from the old settings must first be materialized as an `ACCRUAL` `BoosterCounterEvent`, then `accrualAnchorAt` must reset to the update time so the new rate applies only to future complete intervals. Rate changes are not retroactive and must not recalculate already-earned boosters. If no settings row exists, Phase 7A defaults are used with a safe current-time anchor so the calculated counter starts at zero.
-
 Unopened boosters accumulate.
 
-Opening a booster from Phase 7D onward:
+Opening a booster:
 
 - creates a `BoosterOpening` history record with a positive integer booster count, an explicit decrement choice, and an optional trimmed note;
-- persists a default `BoosterSettings` row with Phase 7A defaults and `accrualAnchorAt = openedAt` before the opening is recorded when no settings row exists yet;
-- defaults the decrement choice in the UI from `BoosterSettings.autoDecrementOnOpening`;
-- if decrementing, first materializes any pending virtual accrual up to `openedAt` as an `ACCRUAL` counter event, advances the accrual anchor only to the last materialized interval boundary so partial accrual progress is preserved, then creates an `OPENING_DECREMENT` `BoosterCounterEvent` with `quantityDelta = -boosterCount`;
-- if not decrementing, creates no opening decrement counter event;
+- defaults the decrement choice from booster settings;
+- may optionally decrement the counter;
 - does not require the counter to be sufficient and may make the displayed counter negative;
-- is atomic across default settings creation, the opening row, pending accrual materialization, accrual-anchor update, optional opening decrement event, pulled-card rows, collection transactions, and owned collection snapshot updates;
+- is atomic across opening, counter events, pulled-card rows, collection transactions, and owned snapshot updates;
 - may remain header-only when no pulled-card rows are submitted;
 - ignores intentionally empty pulled-card rows and rejects partially filled rows;
-- merges duplicate pulled-card rows for the same card and variant by summing their positive quantities before persistence;
-- accepts pulled cards only for trackable `GAMEPLAY` and `ENERGY` cards and rejects `TOKEN`, `RULES`, unknown card ids, invalid variants, and zero or negative quantities;
-- creates one `BoosterOpeningCard` per merged pulled card and variant;
-- creates matching `ADD` `CollectionTransaction` rows with positive quantities, `source = booster-opening:<openingId>`, and a note identifying the booster origin;
-- increments an existing `CollectionEntry` quantity or creates the matching entry when absent;
-- does not store availability directly and does not mutate binder reservations or assembled deck allocations;
-- supports a read-only Phase 7E post-opening summary for a persisted opening;
-- supports Phase 7F safe rollback when the persisted opening, source transactions, and current collection quantities prove a non-negative reversal.
+- merges duplicate pulled-card rows for the same ownership unit before persistence;
+- creates collection `ADD` transactions for valid pulled cards;
+- does not store availability directly;
+- does not mutate binder reservations or assembled deck allocations directly.
 
-The Phase 7E post-opening summary reads persisted local rows only. It uses `BoosterOpening` for header data, `BoosterOpeningCard` for pulled-card rows, `CollectionTransaction` rows sourced as `booster-opening:<openingId>` for cards added to collection history, current `CollectionEntry` rows for post-opening collection quantities, and local `Card`, `Set`, and `CardTranslation` rows for display metadata. It shows the number of boosters opened, whether the counter was decremented, distinct pulled-card row count, total pulled-card quantity, each pulled card with the established French display-name fallback, set code, collector number, variant, and quantity, collection entries classified as newly created or existing/incremented when the persisted post-opening quantity supports that distinction, and total cards added to the collection. Viewing the summary must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, or require pricing data. Phase 7F may expose rollback eligibility and a rollback action from this read-only summary, but the summary read itself must not perform the rollback. Missing or invalid opening ids must be handled safely with no crash.
+The Phase 7 implementation currently uses a small fixed pulled-card row set. Phase 7.5 UX target replaces that with a dynamic list.
 
-Future summaries may add binder usefulness, deck usefulness, missing-deck reductions, duplicates, value, best pull, and availability impact in later phases.
+## Booster opening summary
+
+The current post-opening summary reads persisted local rows only. It must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, or require pricing data.
+
+Current summary scope:
+
+- boosters opened;
+- decrement status;
+- pulled-card rows;
+- total pulled-card quantity;
+- display metadata;
+- new versus incremented collection entries when supported by persisted data;
+- total cards added.
+
+Future summaries may add binder usefulness, deck usefulness, missing-deck reductions, duplicates, value, best pull, and availability impact.
+
+## Booster opening rollback
+
+Booster openings are historical records and must not be deleted during rollback.
+
+A rollback is allowed only while the opening status is `RECORDED`. A `ROLLED_BACK` opening must fail cleanly and must not reverse collection or counter data a second time.
+
+A safe rollback must prove that each persisted pulled-card row still has:
+
+- a matching collection snapshot;
+- matching original source `ADD` collection transaction quantities for `booster-opening:<openingId>`;
+- enough current owned quantity to subtract without making any snapshot negative.
+
+If an entry is missing, source transactions are missing or inconsistent, extra source transactions exist, or subtracting would make a quantity negative, rollback is blocked with a controlled French error.
+
+When rollback is safe, all writes must be atomic in one Prisma transaction. The service:
+
+- marks the opening as `ROLLED_BACK`;
+- decrements each matching collection entry by the pulled quantity;
+- appends positive `REMOVE` collection transactions sourced as `booster-opening-rollback:<openingId>`;
+- keeps zero-quantity collection entries rather than deleting them;
+- appends one `ROLLBACK` counter event only when the original opening created an `OPENING_DECREMENT` event.
+
+Rollback never touches binder overrides or deck allocations directly and never recalculates availability itself. Availability reflects updated owned quantities through the existing formula.
 
 ## Price rules
 
-Prices are stored per card and per variant.
+Prices are future Phase 8 behavior.
+
+Target pricing granularity:
+
+```text
+printed card + physical finish + currency
+```
+
+Current pre-Phase-7.5 schema still refers to `card + variant` in price tables. Treat that as current implementation state, not the long-term target.
 
 The price system must support:
 
@@ -200,9 +316,9 @@ The price system must support:
 
 Manual override must always win over provider price when active.
 
-Values to compute:
+Values to compute later:
 
-- card variant value;
+- card finish value;
 - total owned value for a card;
 - collection total value;
 - binder-reserved value;
@@ -215,10 +331,10 @@ Values to compute:
 
 ## Required pure functions
 
-The domain layer should eventually expose pure functions equivalent to:
+The domain layer should expose or evolve pure functions equivalent to:
 
 - `isTrackableCard`
-- `getAllowedVariants`
+- `getAllowedFinishes` / temporary `getAllowedVariants`
 - `getBinderReservation`
 - `getAvailableCount`
 - `getDeckMissingCards`
@@ -227,18 +343,10 @@ The domain layer should eventually expose pure functions equivalent to:
 - `syncBoosterCounter`
 - `openBooster`
 - `rollbackBoosterOpening`
-- `getCardVariantPrice`
+- `getCardFinishPrice` / temporary `getCardVariantPrice`
 - `getOwnedCardValue`
 - `getCollectionTotalValue`
 - `getDeckTotalValue`
 - `getDeckOwnedValue`
 - `getDeckMissingValue`
 - `getBoosterOpeningValue`
-
-## Booster opening rollback
-
-Booster openings are historical records and must not be deleted during rollback. A rollback is allowed only while the opening status is `RECORDED`; a `ROLLED_BACK` opening must fail cleanly and must not reverse collection or counter data a second time.
-
-A safe rollback must prove that each `BoosterOpeningCard` row still has a matching `CollectionEntry` and matching original source `ADD` collection transaction quantity for `booster-opening:<openingId>`. If an entry is missing, source transactions are missing or inconsistent, or subtracting the pulled quantity would make any `CollectionEntry.quantity` negative, rollback is blocked with a controlled French error. Rollback never touches binder overrides or deck allocations directly and never recalculates availability itself; availability reflects the updated owned quantities through the existing formula.
-
-When rollback is safe, all writes must be atomic in one Prisma transaction. The service marks the opening as `ROLLED_BACK`, decrements each matching collection entry by the pulled quantity, appends positive `REMOVE` collection transactions sourced as `booster-opening-rollback:<openingId>`, and keeps zero-quantity collection entries rather than deleting them. If the original opening created an `OPENING_DECREMENT` counter event, rollback appends one `ROLLBACK` counter event with a positive quantity equal to the opening booster count. Original openings, pulled-card rows, original `ADD` transactions, and original counter events remain preserved for history.
