@@ -38,7 +38,7 @@ Binder reservation and availability remain computed by domain logic rather than 
 available = owned - binderReserved - assembledDeckAllocated
 ```
 
-Deck, booster, price, provider, and sync workflow tables are still future Phase 3 pull requests.
+At the historical Phase 3B checkpoint, deck, booster, price, provider, and sync workflow tables were still deferred. The current schema now includes those foundations through the completed Phase 3C–3F increments described below.
 
 ## Phase 3C scope
 
@@ -52,7 +52,7 @@ This schema increment adds only the deck persistence foundation:
 
 Only allocations belonging to assembled decks should block global availability. Theoretical decks remain planning records and do not reduce availability.
 
-Missing-card calculation, deck assembly allocation, and deck disassembly flows remain future domain, service, and UI work. Booster, price, provider, and sync tables are still future Phase 3 pull requests.
+At the historical Phase 3C checkpoint, missing-card calculation, deck assembly allocation, deck disassembly flows, and booster/price/sync tables were still deferred. The current application now implements the Phase 6 deckbuilding flows and Phase 7 booster flows on top of these schema foundations, while pricing behavior and provider sync remain future work.
 
 ## Phase 3D scope
 
@@ -65,7 +65,7 @@ This schema increment adds only the booster persistence foundation:
 
 The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor. Phase 7D uses the existing `BoosterOpening` table for opening header records, `BoosterOpeningCard` for merged pulled-card quantities, `CollectionTransaction` for positive `ADD` history rows sourced from the opening, and `CollectionEntry` for the updated owned snapshot. Optional `OPENING_DECREMENT` ledger entries continue to use `BoosterCounterEvent`.
 
-Post-opening summaries and safe rollback now use these existing tables without additional migrations. Price, provider, and sync tables are also still future Phase 3 pull requests.
+Post-opening summaries and safe rollback now use these existing tables without additional migrations. Price, provider, and sync tables already exist as Phase 3 foundations, while price behavior, provider synchronization, and sync execution remain future work.
 
 ## Phase 3E scope
 
@@ -93,20 +93,20 @@ This PR intentionally does not add actual sync execution, scheduling, provider c
 
 ## Phase 3 completion
 
-Phase 3A through Phase 3F now provide the Prisma schema foundation for official data, user collection state, decks, boosters, prices, sync logs, and settings. This closes the Phase 3 database-schema foundation without adding Phase 4 seed data, collection UI, runtime sync logic, schema changes, or migrations in this housekeeping update.
+Phase 3A through Phase 3F now provide the Prisma schema foundation for official data, user collection state, decks, boosters, prices, sync logs, and settings. This closed the Phase 3 database-schema foundation before the later Phase 4 collection, Phase 5 binder/availability, Phase 6 deckbuilding, and Phase 7 booster milestones.
 
 ## Phase 4A mock official data seed
 
 Phase 4A adds a repeatable local seed process for fictional, test-only official-card metadata. The seed exists so future Collection MVP work can develop against real `Set`, `Card`, and `CardTranslation` database rows before any Riot/provider synchronization is available.
 
-The Phase 4A seed does not use official Riot card text or images, does not call external providers, and does not create runtime/user-owned data. In this phase, `CollectionEntry`, `CollectionTransaction`, deck, booster, price, and sync tables remain unseeded.
+The Phase 4A seed does not use official Riot card text or images, does not call external providers, and does not create runtime/user-owned data. It only seeds official metadata; `CollectionEntry`, `CollectionTransaction`, deck, booster, price, and sync tables remain unseeded by this process.
 
 
 ## Phase 4B collection transaction write service
 
 Historical sub-phase note: Phase 4B added the first server-side write service for validated collection history records. At that intermediate point, the service recorded `CollectionTransaction` rows only: it validates input, confirms the target `Card` exists, rejects untrackable TOKEN and RULES cards, enforces the domain allowed-variant rules, and writes the append-only transaction.
 
-At the historical Phase 4B checkpoint, `CollectionTransaction` was append-only user collection history and snapshot writes were deliberately deferred. The final Phase 4 behavior is documented above and in Phase 4C: valid transaction writes now also update `CollectionEntry` owned snapshots. Phase 4 still does not recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, call external providers, or implement Phase 5 UI.
+At the historical Phase 4B checkpoint, `CollectionTransaction` was append-only user collection history and snapshot writes were deliberately deferred. The final Phase 4 behavior is documented above and in Phase 4C: valid transaction writes now also update `CollectionEntry` owned snapshots. Collection transaction writes still do not themselves recalculate availability, reserve binder cards, allocate deck cards, create booster records, create price records, or call external providers; those responsibilities are handled by later domain, query, and service layers where implemented.
 
 
 ## Phase 4C collection entry snapshots
@@ -115,7 +115,7 @@ Phase 4C extends the collection transaction write service so every valid collect
 
 Snapshot writes apply `ADD`, `REMOVE`, `SET`, and `ADJUST` semantics in the service layer and reject any operation that would make `CollectionEntry.quantity` negative. The real Prisma path uses a database transaction so the history write and snapshot update commit or roll back together.
 
-This phase does not change the Prisma schema, add migrations, delete zero-quantity entries, recalculate availability, reserve binder cards, allocate deck cards, add booster records, add price records, call external providers, add API routes, or add UI. Binder reservation and deck availability calculations remain future work.
+This phase did not change the Prisma schema, add migrations, delete zero-quantity entries, recalculate availability, reserve binder cards, allocate deck cards, add booster records, add price records, call external providers, add API routes, or add UI. Binder reservation and deck availability calculations were implemented later and remain separate from collection transaction writes.
 
 ## Official data and local state
 
