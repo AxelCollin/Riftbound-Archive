@@ -65,7 +65,7 @@ This schema increment adds only the booster persistence foundation:
 
 The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor. Phase 7D uses the existing `BoosterOpening` table for opening header records, `BoosterOpeningCard` for merged pulled-card quantities, `CollectionTransaction` for positive `ADD` history rows sourced from the opening, and `CollectionEntry` for the updated owned snapshot. Optional `OPENING_DECREMENT` ledger entries continue to use `BoosterCounterEvent`.
 
-Post-opening summaries and rollback flows remain future service, domain, and UI work. Price, provider, and sync tables are also still future Phase 3 pull requests.
+Post-opening summaries and safe rollback now use these existing tables without additional migrations. Price, provider, and sync tables are also still future Phase 3 pull requests.
 
 ## Phase 3E scope
 
@@ -156,3 +156,8 @@ The Prisma schema still defines the MVP `CardVariant` enum for physical collecti
 `CardVariant` describes owned physical copies and finishes for later collection tables. It is not the source of truth for official alternate-art, overnumbered, or other print-treatment metadata.
 
 `SHOWCASE_FOIL` is intentionally not part of the MVP schema. Variant-support rules remain domain logic rather than database logic.
+
+
+## Booster opening rollback usage
+
+The existing booster and collection tables support safe rollback without a migration. `BoosterOpening.status` distinguishes active historical openings (`RECORDED`) from reversed openings (`ROLLED_BACK`). `BoosterOpeningCard` remains the immutable list of pulled cards. Original booster collection writes remain append-only `CollectionTransaction` rows with source `booster-opening:<openingId>`, while rollback appends compensating positive `REMOVE` rows with source `booster-opening-rollback:<openingId>` and updates the current `CollectionEntry.quantity` snapshot. If the opening had an `OPENING_DECREMENT` counter event, rollback appends a `BoosterCounterEvent` with type `ROLLBACK`, a positive `quantityDelta`, and the same `boosterOpeningId`; original counter events are not deleted.

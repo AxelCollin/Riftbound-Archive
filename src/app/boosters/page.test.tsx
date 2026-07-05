@@ -16,6 +16,7 @@ vi.mock("next/link", () => ({
 
 vi.mock("./actions", () => ({
   recordBoosterOpeningAction: vi.fn(),
+  rollbackBoosterOpeningAction: vi.fn(),
   updateBoosterSettingsAction: vi.fn(),
 }));
 
@@ -103,6 +104,9 @@ describe("BoostersPage", () => {
       newlyCreatedCollectionEntries: 1,
       incrementedCollectionEntries: 0,
       totalCardsAddedToCollection: 2,
+      status: "RECORDED",
+      canRollback: true,
+      rollbackBlockedReason: null,
       pulls: [{ cardId: "card-1", displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
     });
 
@@ -115,12 +119,46 @@ describe("BoostersPage", () => {
     expect(screen.getByText("Ahri française")).toBeInTheDocument();
     expect(screen.getByText("NORMAL")).toBeInTheDocument();
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
-    expect(screen.getByText("Le rollback sera ajouté dans une phase suivante.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /rollback/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Annuler cette ouverture" })).toBeInTheDocument();
+    expect(screen.getByText(/Aucun prix ni valeur/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Enregistrer une ouverture" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Paramètres des boosters" })).toBeInTheDocument();
   });
 
+
+
+
+  it("does not show the rollback form for a rolled-back opening", async () => {
+    getBoosterOpeningSummaryMock.mockReset();
+    getBoosterOpeningSummaryMock.mockResolvedValueOnce({
+      id: "opening-1",
+      openedAt: "2026-07-04T12:00:00.000Z",
+      boosterCount: 1,
+      decrementCounter: true,
+      distinctCardRows: 0,
+      totalCardQuantity: 0,
+      newlyCreatedCollectionEntries: 0,
+      incrementedCollectionEntries: 0,
+      totalCardsAddedToCollection: 0,
+      status: "ROLLED_BACK",
+      canRollback: false,
+      rollbackBlockedReason: "Cette ouverture a déjà été annulée",
+      pulls: [],
+    });
+
+    await renderPage({ opened: "opening-1" });
+
+    expect(screen.getByText("Ouverture annulée")).toBeInTheDocument();
+    expect(screen.getByText("Cette ouverture a déjà été annulée")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Annuler cette ouverture" })).not.toBeInTheDocument();
+  });
+
+  it("renders rollback success and controlled failure feedback", async () => {
+    await renderPage({ rollbackRecorded: "1", rollbackError: "Rollback impossible : la collection ne contient plus assez d’exemplaires" });
+
+    expect(screen.getByText("Ouverture annulée.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Rollback impossible : la collection ne contient plus assez d’exemplaires");
+  });
 
   it("treats repeated opened query parameters as malformed without crashing", async () => {
     await renderPage({ opened: ["opening-1", "opening-2"] });

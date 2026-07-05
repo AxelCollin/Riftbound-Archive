@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-import { recordBoosterOpeningAction, updateBoosterSettingsAction } from "./actions";
+import { recordBoosterOpeningAction, rollbackBoosterOpeningAction, updateBoosterSettingsAction } from "./actions";
 import { getBoosterOpeningSummary, getBoosterOverview } from "@/lib/services/boosters";
 
 export const dynamic = "force-dynamic";
 
 type BoostersPageProps = {
-  searchParams?: Promise<{ updated?: string; error?: string; openingRecorded?: string; openingError?: string; opened?: string | string[] }>;
+  searchParams?: Promise<{ updated?: string; error?: string; openingRecorded?: string; openingError?: string; rollbackRecorded?: string; rollbackError?: string; opened?: string | string[] }>;
 };
 
 function normalizeOpenedQueryParam(opened: string | string[] | undefined): string | undefined {
@@ -27,10 +27,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
             <Link className="hover:text-archive-text100" href="/collection">Collection →</Link>
             <Link className="hover:text-archive-text100" href="/decks">Decks →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7E</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Boosters — Phase 7F</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Paramètres des boosters</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Le compteur accumulé est calculé depuis le journal, et les cartes saisies lors d’une ouverture sont ajoutées automatiquement à la collection.
+            Le compteur accumulé est calculé depuis le journal, les cartes ouvertes sont ajoutées à la collection, et une ouverture peut être annulée tant que l’annulation reste sûre.
           </p>
         </header>
 
@@ -46,6 +46,12 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
         {params?.openingError ? (
           <p role="alert" className="rounded-card border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] p-4 text-sm font-semibold text-archive-text100">{params.openingError}</p>
         ) : null}
+        {params?.rollbackRecorded ? (
+          <p className="rounded-card border border-[rgba(121,184,90,0.42)] bg-[rgba(121,184,90,0.12)] p-4 text-sm font-semibold text-archive-text100">Ouverture annulée.</p>
+        ) : null}
+        {params?.rollbackError ? (
+          <p role="alert" className="rounded-card border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] p-4 text-sm font-semibold text-archive-text100">{params.rollbackError}</p>
+        ) : null}
 
         {params?.opened && !openingSummary ? (
           <p role="status" className="rounded-card border border-[rgba(217,167,74,0.48)] bg-[rgba(217,167,74,0.12)] p-4 text-sm font-semibold text-archive-text100">Résumé d’ouverture introuvable pour cet identifiant.</p>
@@ -57,9 +63,9 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
               <div>
                 <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Résumé de l’ouverture</p>
                 <h2 className="mt-3 text-3xl font-semibold text-archive-text100">Cartes ajoutées</h2>
-                <p className="mt-2 text-sm text-archive-text300">Résumé lu depuis les lignes persistées de l’ouverture, sans prix ni rollback.</p>
+                <p className="mt-2 text-sm text-archive-text300">Résumé lu depuis les lignes persistées de l’ouverture, sans prix ni valeur.</p>
               </div>
-              <p className="rounded-chip border border-[rgba(58,123,213,0.32)] bg-[rgba(58,123,213,0.12)] px-4 py-2 text-sm font-semibold text-archive-text100">{openingSummary.decrementCounter ? "Compteur décrémenté" : "Compteur inchangé"}</p>
+              <div className="flex flex-wrap gap-2"><p className="rounded-chip border border-[rgba(58,123,213,0.32)] bg-[rgba(58,123,213,0.12)] px-4 py-2 text-sm font-semibold text-archive-text100">{openingSummary.decrementCounter ? "Compteur décrémenté" : "Compteur inchangé"}</p><p className="rounded-chip border border-[rgba(199,168,102,0.32)] bg-[rgba(199,168,102,0.10)] px-4 py-2 text-sm font-semibold text-archive-text100">{openingSummary.status === "ROLLED_BACK" ? "Ouverture annulée" : "Ouverture enregistrée"}</p></div>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -84,7 +90,18 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
               </table>
             </div>
 
-            <p className="mt-4 rounded-card border border-[rgba(58,123,213,0.28)] bg-[rgba(58,123,213,0.10)] p-4 text-sm text-archive-text300">Le rollback sera ajouté dans une phase suivante.</p>
+            <div className="mt-4 rounded-card border border-[rgba(217,167,74,0.38)] bg-[rgba(217,167,74,0.10)] p-4 text-sm text-archive-text300">
+              <p className="font-semibold text-archive-text100">Rollback</p>
+              <p className="mt-2">Annuler cette ouverture inverse uniquement les quantités de collection et le décrément de compteur liés à cette ouverture. Aucun prix ni valeur n’est recalculé ou annulé.</p>
+              {openingSummary.canRollback ? (
+                <form action={rollbackBoosterOpeningAction} className="mt-4">
+                  <input name="openingId" type="hidden" value={openingSummary.id} />
+                  <button className="rounded-chip border border-[rgba(217,74,74,0.52)] bg-[rgba(217,74,74,0.14)] px-5 py-3 font-semibold text-archive-text100 hover:text-archive-gold300" type="submit">Annuler cette ouverture</button>
+                </form>
+              ) : (
+                <p className="mt-3 font-semibold text-archive-text100">{openingSummary.rollbackBlockedReason ?? "Rollback indisponible"}</p>
+              )}
+            </div>
           </section>
         ) : null}
 
@@ -147,7 +164,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
 
         <section className="rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
           <div className="max-w-3xl">
-            <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Phase 7E</p>
+            <p className="text-sm uppercase tracking-[0.32em] text-archive-gold300">Phase 7F</p>
             <h2 className="mt-3 text-3xl font-semibold text-archive-text100">Enregistrer une ouverture</h2>
             <p className="mt-3 text-sm leading-6 text-archive-text300">
               Cette phase enregistre l’ouverture, les cartes ouvertes et les transactions de collection correspondantes. Les lignes vides sont ignorées ; une ligne partiellement remplie est refusée.
@@ -231,7 +248,7 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
               <ul className="mt-3 grid gap-3">
                 {settings.recentOpenings.map((opening) => (
                   <li className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.48)] p-4 text-sm text-archive-text300" key={opening.id}>
-                    <span className="font-semibold text-archive-text100">{opening.boosterCount} booster(s)</span> — {opening.openedAt} — {opening.decrementCounter ? "compteur décrémenté" : "compteur inchangé"}
+                    <span className="font-semibold text-archive-text100">{opening.boosterCount} booster(s)</span> — {opening.openedAt} — {opening.decrementCounter ? "compteur décrémenté" : "compteur inchangé"} — {opening.status === "ROLLED_BACK" ? "annulée" : "enregistrée"}
                     <span className="block pt-1">{opening.recordedCardCount > 0 ? `${opening.recordedCardCount} ligne(s) de cartes enregistrée(s)` : "Aucune carte enregistrée"}</span>
                     {opening.note ? <span className="block pt-1">{opening.note}</span> : null}
                   </li>

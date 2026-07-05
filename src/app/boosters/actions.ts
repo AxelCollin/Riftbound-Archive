@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { DEFAULT_BOOSTER_INTERVAL_UNIT, type BoosterOpeningPullInput } from "@/lib/domain/boosters";
-import { recordBoosterOpening, updateBoosterSettings } from "@/lib/services/boosters";
+import { recordBoosterOpening, rollbackBoosterOpening, updateBoosterSettings } from "@/lib/services/boosters";
 
 export async function updateBoosterSettingsAction(formData: FormData): Promise<void> {
   try {
@@ -43,4 +43,19 @@ export async function recordBoosterOpeningAction(formData: FormData): Promise<vo
   })();
 
   redirect(`/boosters?openingRecorded=1&opened=${encodeURIComponent(opening.id)}`);
+}
+
+export async function rollbackBoosterOpeningAction(formData: FormData): Promise<void> {
+  const openingId = String(formData.get("openingId") ?? "");
+  const opening = await (async () => {
+    try {
+      return await rollbackBoosterOpening(openingId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Rollback impossible : la collection ne contient plus assez d’exemplaires";
+      const openedQuery = openingId.trim() ? `&opened=${encodeURIComponent(openingId.trim())}` : "";
+      redirect(`/boosters?rollbackError=${encodeURIComponent(message)}${openedQuery}`);
+    }
+  })();
+
+  redirect(`/boosters?rollbackRecorded=1&opened=${encodeURIComponent(opening.id)}`);
 }
