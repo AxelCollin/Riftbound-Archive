@@ -2,7 +2,7 @@ import type { DeckAllocationStrategy, DeckCardVariantPreference, DeckStatus } fr
 import { prisma } from "../db";
 import { getCardAvailability, type DeckAllocationSet } from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
-import type { CardKind, CardRarity } from "../domain/cards";
+import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import type { CardGameplayType } from "../domain/card-taxonomy";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import { calculateDeckMissingCards } from "../domain/deck-missing";
@@ -308,6 +308,10 @@ const deckDetailCardWithCollectionSelect = {
 } as const;
 
 function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "hasShowcase">): DeckCardVariantPreference[] {
+  if (!isTrackableCard(card)) {
+    return [];
+  }
+
   return ["ANY", ...getAllowedVariants(card)] as DeckCardVariantPreference[];
 }
 
@@ -337,6 +341,7 @@ function compareDeckDetailCardRows(
 
 export function createDeckRequirementCardOptions(cards: DeckDetailCardRecord[]): DeckRequirementCardOption[] {
   return cards
+    .filter(isTrackableCard)
     .map((card) => ({
       ...mapDeckDetailCard(card),
       allowedPreferences: getAllowedDeckCardPreferences(card),

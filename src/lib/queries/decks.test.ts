@@ -331,6 +331,21 @@ describe("deck detail query", () => {
     expect(JSON.parse(JSON.stringify(data?.cardOptions))).toEqual(data?.cardOptions);
   });
 
+  it("filters token and rules gameplay cards out of deckbuilding card options", async () => {
+    prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardRecord({ id: "unit", name: "Trackable Unit", gameplayType: "UNIT" }),
+      cardRecord({ id: "token", name: "Ignored Token", kind: "GAMEPLAY", gameplayType: "TOKEN" }),
+      cardRecord({ id: "rules", name: "Ignored Rules", kind: "GAMEPLAY", gameplayType: "RULES" }),
+    ]);
+    const { getDeckDetailPageData } = await import("./decks");
+
+    const data = await getDeckDetailPageData("deck-detail");
+
+    expect(data?.cardOptions.map((option) => option.cardId)).toEqual(["unit"]);
+    expect(data?.cardOptions[0]?.allowedPreferences).toEqual(["ANY", "NORMAL", "FOIL"]);
+  });
+
   it("computes card option preferences from trackable card capabilities", async () => {
     prismaMock.deck.findUnique.mockResolvedValueOnce(detailDeck());
     prismaMock.card.findMany.mockResolvedValueOnce([
