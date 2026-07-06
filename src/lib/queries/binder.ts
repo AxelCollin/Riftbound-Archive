@@ -5,7 +5,11 @@ import {
   type CardKind,
   type CardRarity,
 } from "../domain/cards";
-import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
+import {
+  isShowcaseCard,
+  type CardCollectorCategory,
+  type CardGameplayType,
+} from "../domain/card-taxonomy";
 import {
   createOwnedVariantCounts,
 } from "../domain/collection-quantities";
@@ -80,7 +84,7 @@ export type BinderPageData = {
 };
 
 export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
-  return cards.filter(isTrackableCard).map((card) => {
+  return cards.filter((card) => isTrackableCard(card) && !isShowcaseCard(card)).map((card) => {
     const allowedVariants = getAllowedVariants(card);
     const owned = createOwnedVariantCounts(
       card.id,
@@ -133,7 +137,10 @@ export function summarizeBinderRows(rows: BinderRow[]): BinderSummary {
 
 export async function getBinderPageData(): Promise<BinderPageData> {
   const cards = await prisma.card.findMany({
-    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+    where: {
+      kind: { in: ["GAMEPLAY", "ENERGY"] },
+      collectorCategory: { not: "SHOWCASE" },
+    },
     orderBy: [
       { set: { code: "asc" } },
       { collectorNumber: "asc" },
