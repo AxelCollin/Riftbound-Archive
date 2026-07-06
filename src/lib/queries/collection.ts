@@ -9,7 +9,7 @@ import {
   type CardKind,
   type CardRarity,
 } from "../domain/cards";
-import type { CardGameplayType } from "../domain/card-taxonomy";
+import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import type { CollectionDisplayRow } from "../domain/collection-display";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import {
@@ -35,6 +35,7 @@ export type CollectionCardRecord = {
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   hasShowcase: boolean;
   set: {

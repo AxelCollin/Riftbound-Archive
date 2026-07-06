@@ -1,5 +1,6 @@
 import type { RiftboundCard } from "./cards";
 import { isTrackableCard } from "./cards";
+import { isShowcaseCard } from "./card-taxonomy";
 import type { CardVariant, VariantCounts } from "./variants";
 import { getVariantCount, supportsNormalVariant } from "./variants";
 
@@ -11,12 +12,12 @@ export interface BinderReservation {
 }
 
 export function getBinderReservation(
-  card: Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "rarity">,
+  card: Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "collectorCategory" | "rarity">,
   owned: VariantCounts,
 ): BinderReservation {
   const reserved: VariantCounts = {};
 
-  if (!isTrackableCard(card)) {
+  if (!isTrackableCard(card) || isShowcaseCard(card)) {
     return { cardId: card.id, reserved };
   }
 
@@ -30,7 +31,7 @@ export function getBinderReservation(
 }
 
 function getDefaultBinderVariant(
-  card: Pick<RiftboundCard, "kind" | "gameplayType" | "rarity">,
+  card: Pick<RiftboundCard, "kind" | "gameplayType" | "collectorCategory" | "rarity">,
   owned: VariantCounts,
 ): CardVariant | undefined {
   if (getVariantCount(owned, "FOIL") > 0) {

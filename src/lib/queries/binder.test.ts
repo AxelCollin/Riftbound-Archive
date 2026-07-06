@@ -142,6 +142,28 @@ describe("binder query mapping", () => {
     });
   });
 
+
+  it("does not auto-reserve showcase printed cards with normal or foil owned", () => {
+    const rows = createBinderRows([
+      card({
+        id: "showcase-printing",
+        collectorCategory: "SHOWCASE",
+        collectionEntries: [
+          { variant: "NORMAL", quantity: 2 },
+          { variant: "FOIL", quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows[0]).toMatchObject({
+      cardId: "showcase-printing",
+      collectorCategory: "SHOWCASE",
+      reservedVariant: null,
+      reservedQuantity: 0,
+      binderStatus: "MISSING",
+    });
+  });
+
   it("includes ENERGY cards and reserves them according to allowed variant rules", () => {
     const [row] = createBinderRows([
       card({

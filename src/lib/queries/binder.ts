@@ -5,7 +5,7 @@ import {
   type CardKind,
   type CardRarity,
 } from "../domain/cards";
-import type { CardGameplayType } from "../domain/card-taxonomy";
+import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import {
   createOwnedVariantCounts,
 } from "../domain/collection-quantities";
@@ -34,6 +34,7 @@ export type BinderCardRecord = {
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   hasShowcase: boolean;
   set: {
@@ -55,6 +56,7 @@ export type BinderRow = {
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   allowedVariants: CardVariant[];
   owned: VariantCounts;
@@ -101,6 +103,8 @@ export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
       collectorNumber: card.collectorNumber ?? "—",
       rarity: card.rarity,
       kind: card.kind,
+      gameplayType: card.gameplayType,
+      collectorCategory: card.collectorCategory,
       printTreatment: card.printTreatment,
       allowedVariants,
       owned,

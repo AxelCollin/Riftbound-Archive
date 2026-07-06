@@ -1,4 +1,4 @@
-import type { CardGameplayType } from "./card-taxonomy";
+import type { CardCollectorCategory, CardGameplayType } from "./card-taxonomy";
 
 export const CARD_RARITIES = ["COMMON", "UNCOMMON", "RARE", "EPIC", "ULTIMATE", "UNKNOWN"] as const;
 export type CardRarity = (typeof CARD_RARITIES)[number];
@@ -12,6 +12,7 @@ export interface RiftboundCard {
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   hasShowcase?: boolean;
 }
 
