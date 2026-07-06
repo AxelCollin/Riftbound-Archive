@@ -6,7 +6,7 @@ The application is primarily designed for personal use.
 
 ## Goals
 
-- Track owned Riftbound cards and variants.
+- Track owned Riftbound printed cards and supported physical finishes.
 - Distinguish owned cards from actually available cards.
 - Reserve cards automatically for a binder.
 - Build theoretical and assembled decks.
