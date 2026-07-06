@@ -202,6 +202,6 @@ Recommended order:
 5. Adapt collection, binder, availability, deck allocation, booster opening, and card detail queries to the new model.
 6. Only then build Phase 8 pricing on top of the corrected structure.
 
-## Non-goals for the first documentation PR
+## Document scope
 
 This document does not implement schema changes, migrations, provider mapping, pricing, or UI changes. It defines the target vocabulary so later PRs can implement the model safely.
