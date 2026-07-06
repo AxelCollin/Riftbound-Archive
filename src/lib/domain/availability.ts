@@ -48,7 +48,7 @@ export function getAssembledDeckAllocatedCount(
 }
 
 export function getCardAvailability(
-  card: Pick<RiftboundCard, "id" | "kind" | "rarity" | "hasShowcase">,
+  card: Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "rarity" | "hasShowcase">,
   owned: VariantCounts,
   deckAllocationSets: DeckAllocationSet[] = [],
   binderReserved: VariantCounts = getBinderReservation(card, owned).reserved,

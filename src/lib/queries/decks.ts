@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import { getCardAvailability, type DeckAllocationSet } from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
 import type { CardKind, CardRarity } from "../domain/cards";
+import type { CardGameplayType } from "../domain/card-taxonomy";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import { calculateDeckMissingCards } from "../domain/deck-missing";
 import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "../domain/variants";
@@ -176,6 +177,7 @@ type DeckDetailCardRecord = {
   collectorNumber: string | null;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
   printTreatment: CardPrintTreatment;
   hasShowcase: boolean;
   set: { code: string; name: string };
@@ -218,6 +220,7 @@ export type DeckDetailCardDisplay = {
   collectorNumber: string;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
   printTreatment: CardPrintTreatment;
   hasShowcase: boolean;
   set: { code: string; name: string };
@@ -292,6 +295,7 @@ const deckDetailCardSelect = {
   collectorNumber: true,
   rarity: true,
   kind: true,
+  gameplayType: true,
   printTreatment: true,
   hasShowcase: true,
   set: { select: { code: true, name: true } },
@@ -303,7 +307,7 @@ const deckDetailCardWithCollectionSelect = {
   collectionEntries: { select: { variant: true, quantity: true } },
 } as const;
 
-function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "hasShowcase">): DeckCardVariantPreference[] {
+function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "hasShowcase">): DeckCardVariantPreference[] {
   return ["ANY", ...getAllowedVariants(card)] as DeckCardVariantPreference[];
 }
 
@@ -315,6 +319,7 @@ function mapDeckDetailCard(card: DeckDetailCardRecord): DeckDetailCardDisplay {
     collectorNumber: card.collectorNumber ?? "—",
     rarity: card.rarity,
     kind: card.kind,
+    gameplayType: card.gameplayType,
     printTreatment: card.printTreatment,
     hasShowcase: card.hasShowcase,
     set: card.set,
@@ -351,7 +356,7 @@ function createDeckAvailabilityInputs(
   const requirementByCardId = new Map(requirements.map((requirement) => [requirement.cardId, requirement]));
 
   return [...requirementByCardId.values()].map((requirement) => {
-    const card = { id: requirement.cardId, kind: requirement.kind, rarity: requirement.rarity, hasShowcase: requirement.hasShowcase };
+    const card = { id: requirement.cardId, kind: requirement.kind, gameplayType: requirement.gameplayType, rarity: requirement.rarity, hasShowcase: requirement.hasShowcase };
     const allowedVariants = getAllowedVariants(card);
     const ownedCounts = createOwnedVariantCounts(
       requirement.cardId,

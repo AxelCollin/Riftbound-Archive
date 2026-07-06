@@ -11,7 +11,7 @@ export interface BinderReservation {
 }
 
 export function getBinderReservation(
-  card: Pick<RiftboundCard, "id" | "kind" | "rarity">,
+  card: Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "rarity">,
   owned: VariantCounts,
 ): BinderReservation {
   const reserved: VariantCounts = {};
@@ -30,7 +30,7 @@ export function getBinderReservation(
 }
 
 function getDefaultBinderVariant(
-  card: Pick<RiftboundCard, "kind" | "rarity">,
+  card: Pick<RiftboundCard, "kind" | "gameplayType" | "rarity">,
   owned: VariantCounts,
 ): CardVariant | undefined {
   if (getVariantCount(owned, "FOIL") > 0) {

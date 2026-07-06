@@ -8,7 +8,7 @@ export type VariantCounts = Partial<Record<CardVariant, number>>;
 
 const normalAndFoilRarities = new Set<CardRarity>(["COMMON", "UNCOMMON"]);
 
-export function supportsNormalVariant(card: Pick<RiftboundCard, "rarity" | "kind">): boolean {
+export function supportsNormalVariant(card: Pick<RiftboundCard, "rarity" | "kind" | "gameplayType">): boolean {
   return isTrackableCard(card) && normalAndFoilRarities.has(card.rarity);
 }
 
@@ -16,7 +16,7 @@ export function isShowcaseVariant(variant: CardVariant): boolean {
   return variant === "SHOWCASE";
 }
 
-export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" | "hasShowcase">): CardVariant[] {
+export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" | "gameplayType" | "hasShowcase">): CardVariant[] {
   if (!isTrackableCard(card)) {
     return [];
   }

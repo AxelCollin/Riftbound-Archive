@@ -3,12 +3,14 @@ import type { DeckCardVariantPreference } from "@prisma/client";
 import type { DeckRequirementWriteInput } from "@/lib/domain/deck-requirement-write";
 import { normalizeDeckRequirementWriteInput } from "@/lib/domain/deck-requirement-write";
 import { isTrackableCard } from "@/lib/domain/cards";
+import type { CardGameplayType } from "@/lib/domain/card-taxonomy";
 import { getAllowedVariants } from "@/lib/domain/variants";
 import { prisma } from "@/lib/db";
 
 type RequirementCard = {
   id: string;
   kind: "GAMEPLAY" | "ENERGY" | "TOKEN" | "RULES";
+  gameplayType?: CardGameplayType | null;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
 };
@@ -44,7 +46,7 @@ async function getValidRequirementCard(
 ): Promise<RequirementCard> {
   const card = await tx.card.findUnique({
     where: { id: cardId },
-    select: { id: true, kind: true, rarity: true, hasShowcase: true },
+    select: { id: true, kind: true, gameplayType: true, rarity: true, hasShowcase: true },
   });
 
   if (!card) {

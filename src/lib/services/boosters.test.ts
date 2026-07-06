@@ -45,6 +45,7 @@ function cardOptionRecord(overrides: Partial<{ name: string; translations: { loc
     collectorNumber: "001",
     rarity: "COMMON",
     kind: "GAMEPLAY",
+    gameplayType: "UNIT",
     hasShowcase: false,
     set: { code: "OGN" },
     translations: [],
@@ -602,9 +603,20 @@ describe("booster opening service", () => {
 
   it("rejects TOKEN and RULES pulled cards without partial writes", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token", name: "Token", rarity: "COMMON", kind: "TOKEN", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token", name: "Token", rarity: "COMMON", kind: "TOKEN", gameplayType: "TOKEN", hasShowcase: false });
 
     await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "token", variant: "NORMAL", quantity: 1 }] }, openedAt)).rejects.toThrow("Seules les cartes GAMEPLAY et ENERGY");
+
+    expect(prismaMock.boosterOpening.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+
+  it("rejects gameplay-compatibility pulled cards whose gameplay type is TOKEN", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token-gameplay", name: "Token", rarity: "COMMON", kind: "GAMEPLAY", gameplayType: "TOKEN", hasShowcase: false });
+
+    await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "token-gameplay", variant: "NORMAL", quantity: 1 }] }, openedAt)).rejects.toThrow("Seules les cartes GAMEPLAY et ENERGY");
 
     expect(prismaMock.boosterOpening.create).not.toHaveBeenCalled();
     expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
