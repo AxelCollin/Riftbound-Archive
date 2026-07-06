@@ -98,7 +98,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 ## Phase 7.5 - Post-Phase 7 taxonomy and UX realignment
 
 - [x] Document corrected card taxonomy and post-Phase 7 UX target.
-- [ ] Normalize documentation structure before Phase 7.5 implementation.
+- [x] Normalize documentation structure before Phase 7.5 implementation.
 - [ ] Add gameplay identity and corrected card taxonomy fields.
 - [ ] Replace Showcase-as-variant with a finish-aware collection model.
 - [ ] Add related printings and gameplay-equivalence helpers.
