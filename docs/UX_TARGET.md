@@ -310,6 +310,6 @@ Do not start Phase 8 Pricing MVP until these are documented and either implement
 4. app shell foundation;
 5. collection display foundation that does not depend on the old `SHOWCASE`-as-variant mental model.
 
-## Non-goals for the first documentation PR
+## Document scope
 
 This document does not implement UI changes, schema changes, migrations, provider sync, pricing, or Electron work. It records the target UX and the decisions that later PRs must follow.
