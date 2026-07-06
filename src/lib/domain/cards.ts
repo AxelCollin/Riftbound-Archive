@@ -20,9 +20,13 @@ const ignoredCardKinds = new Set<CardKind>(["TOKEN", "RULES"]);
 const ignoredGameplayTypes = new Set<CardGameplayType>(["TOKEN", "RULES"]);
 
 export function isTrackableCard(card: Pick<RiftboundCard, "kind" | "gameplayType">): boolean {
+  if (ignoredCardKinds.has(card.kind)) {
+    return false;
+  }
+
   if (card.gameplayType && card.gameplayType !== "UNKNOWN") {
     return !ignoredGameplayTypes.has(card.gameplayType);
   }
 
-  return !ignoredCardKinds.has(card.kind);
+  return true;
 }
