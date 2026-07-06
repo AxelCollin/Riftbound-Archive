@@ -4,13 +4,22 @@ This repository is the source of truth for **Riftbound Archive**, a private loca
 
 The project is for personal use only. It is not a public service, a gameplay simulator, or a digital implementation of Riftbound matches.
 
+## Document status
+
+This file is a mandatory agent instruction file. It defines repository-wide implementation and review rules for AI coding agents.
+
+If this file conflicts with a more specific canonical domain document, stop and ask for clarification instead of guessing.
+
 ## Mandatory reading before coding
 
 Before making changes, always read:
 
 - `docs/PRODUCT_SPEC.md`
-- `docs/ARCHITECTURE.md`
+- `docs/CARD_TAXONOMY.md`
 - `docs/DOMAIN_RULES.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DATABASE_SCHEMA.md`
+- `docs/UX_TARGET.md`
 - `docs/UI_STYLE_GUIDE.md`
 - `docs/API_PROVIDERS.md`
 - `docs/ROADMAP.md`
@@ -28,7 +37,7 @@ If any implementation detail conflicts with those files, stop and ask for clarif
 - Keep all external API calls server-side.
 - Keep official card data separate from user-owned collection data.
 - Keep business logic in pure TypeScript modules under `src/lib/domain`.
-- Do not duplicate availability, binder, deck, booster, or price calculations inside React components.
+- Do not duplicate availability, binder, deck, booster, taxonomy, or price calculations inside React components.
 - Add or update tests for every business-rule change.
 - Prefer small pull requests with one clear purpose.
 - Do not modify unrelated files.
@@ -58,12 +67,26 @@ Every PR must include:
 - Price providers must be interchangeable.
 - Riot content sync must be optional so the app can run before Riot approval is obtained.
 
+## Taxonomy rule
+
+The old MVP `CardVariant = NORMAL | FOIL | SHOWCASE` model is a historical simplification. Phase 7.5 must move toward the taxonomy described in `docs/CARD_TAXONOMY.md`:
+
+- gameplay card type;
+- gameplay rarity;
+- physical finish;
+- collector category;
+- showcase treatment;
+- faction;
+- gameplay identity / rules equivalence.
+
+Agents must not introduce new code that deepens the old `SHOWCASE`-as-simple-variant assumption unless the PR explicitly documents it as temporary migration work.
+
 ## Core domain formula
 
-Availability is always computed as:
+Availability is conceptually computed as:
 
 ```text
 available = owned - binderReserved - assembledDeckAllocated
 ```
 
-This calculation must be performed per card and per variant.
+In the current MVP implementation this calculation is still applied per card and per implemented physical variant. During Phase 7.5, the target is to apply it per printed card and physical finish, while keeping the same conceptual formula.

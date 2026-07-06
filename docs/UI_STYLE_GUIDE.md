@@ -1,5 +1,11 @@
 # UI style guide
 
+## Document status
+
+This document defines the visual style direction for Riftbound Archive.
+
+It should describe look, density, layout feel, tokens, and asset rules. Product workflow decisions belong in `docs/UX_TARGET.md`. If this file conflicts with `docs/UX_TARGET.md`, the UX target wins for screen behavior and workflow structure.
+
 ## Direction
 
 The interface must feel like a premium trading card archive for Riftbound.
@@ -63,117 +69,106 @@ Initial CSS tokens:
 }
 ```
 
-## Layout
+Tokens are allowed to evolve when the app shell and visual components become real implementation work.
 
-Desktop shell:
+## Layout feel
+
+Desktop shell target:
 
 - persistent left sidebar;
-- persistent top KPI bar;
+- persistent top KPI/action bar;
 - central content area;
-- optional right inspector panel;
-- bottom summary strip when useful.
+- optional right inspector only when the screen needs it;
+- optional bottom summary strip only when it carries useful information.
 
 4K target:
 
 - sidebar: around 320px;
 - top bar: around 88px;
-- inspector panel: 520px;
+- inspector panel: around 520px;
 - card tile: around 236 x 330px;
-- main gap: 18px;
+- main gap: around 18px;
 - content max width: around 3600px.
 
 1080p adaptation:
 
 - sidebar: around 264px;
 - top bar: around 68px;
-- inspector panel: 380px;
+- inspector panel: around 380px;
 - card tile: around 184 x 258px;
-- main gap: 12px.
+- main gap: around 12px.
 
-## Main screens
+## Screen style notes
+
+These notes define visual direction only. They do not override `docs/UX_TARGET.md` decisions about what each screen should include or exclude.
 
 ### Dashboard
 
-Must show:
+Visual direction:
 
-- collection completion;
-- owned cards;
-- available cards;
-- missing cards;
-- assembled decks;
-- booster counter;
-- total collection value;
-- progress by set;
-- progress by rarity;
-- recent acquisitions;
-- incomplete decks;
-- price sync status.
+- global overview;
+- dense but not noisy;
+- panel-based composition;
+- progress widgets;
+- completion widgets;
+- meaningful recent activity when backed by real data.
+
+Do not add decorative advice blocks or rule-explanation panels here. Those belong in the help system.
 
 ### Collection
 
-Layout:
+Visual direction:
 
 - left filter panel;
 - top search and sort controls;
-- central card grid or dense table;
-- right card inspector;
-- bottom collection summary strip.
+- central card grid, line view, or compact view;
+- card tiles or rows that show useful ownership and availability state;
+- no deckbuilder panel on the collection page.
 
-Card tile badges should show:
+Card tile / row badges may show when implemented and backed by data:
 
 - cost;
-- faction/type icon if available;
-- rarity;
+- faction/type icon;
+- gameplay rarity;
 - owned quantity;
 - available quantity;
 - missing status;
 - binder reservation indicator;
-- value.
+- value after pricing exists.
 
 ### Card detail
 
-Must show:
+Visual direction:
 
-- large card image;
+- large card image or placeholder;
 - official card data;
-- variants owned;
-- variants available;
-- binder reservation;
+- possession state;
+- related printings;
 - deck usage;
-- price by variant;
 - acquisition history;
-- personal notes.
+- personal notes;
+- pricing only after Phase 8.
 
 ### Deckbuilder
 
-Layout:
+Visual direction:
 
-- deck list/contents panel;
-- central searchable card pool;
-- right deck summary panel.
-
-Must show:
-
-- deck completeness;
-- missing cards;
-- unavailable cards;
-- cost curve;
-- faction distribution;
-- value total, owned, missing;
-- assembled status.
+- filters on the left;
+- searchable card pool in the center;
+- deck contents and compact summary on the right;
+- missing-card state visible inline;
+- assembled status clearly visible.
 
 ### Booster opening
 
-Must feel like a ritual but remain efficient.
+Visual direction:
 
-Must show:
-
-- booster counter;
-- frequency setting;
-- set selection;
-- card entry table/grid;
+- efficient but slightly ritualized;
+- clear booster counter;
+- dynamic pulled-card rows;
 - decrement toggle;
-- post-opening summary.
+- post-opening summary;
+- opening history in a product-quality surface.
 
 ## UI assets to create
 
@@ -182,8 +177,10 @@ Use original CSS/SVG assets:
 - panel frame;
 - panel corner;
 - decorative divider;
-- rarity badge;
-- variant badge;
+- gameplay rarity badge;
+- physical finish badge;
+- collector treatment badge;
+- faction icon;
 - binder icon;
 - deck icon;
 - booster icon;
@@ -192,3 +189,5 @@ Use original CSS/SVG assets:
 - empty state illustrations.
 
 Official card art must only come from approved Riot sources.
+
+Do not use Legends of Runeterra assets, screenshots, icons, art, or assumptions.
