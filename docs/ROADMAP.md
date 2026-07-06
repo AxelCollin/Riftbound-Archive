@@ -99,9 +99,9 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 
 - [x] Document corrected card taxonomy and post-Phase 7 UX target.
 - [x] Normalize documentation structure before Phase 7.5 implementation.
-- [ ] Add gameplay identity and corrected card taxonomy fields.
+- [x] Add gameplay identity and corrected card taxonomy fields.
 - [ ] Replace Showcase-as-variant with a finish-aware collection model.
-- [ ] Add related printings and gameplay-equivalence helpers.
+- [x] Add related printings and gameplay-equivalence helpers.
 - [ ] Add a global app shell with persistent navigation.
 - [ ] Clean stale deck UI copy and remove user-facing phase labels.
 - [ ] Add collection display modes: grid, line, and compact.
