@@ -7,6 +7,18 @@ ALTER TABLE "Card" ADD COLUMN "gameplayRarity" TEXT NOT NULL DEFAULT 'UNKNOWN';
 ALTER TABLE "Card" ADD COLUMN "collectorCategory" TEXT NOT NULL DEFAULT 'STANDARD';
 ALTER TABLE "Card" ADD COLUMN "showcaseTreatment" TEXT;
 
+UPDATE "Card"
+SET
+    "collectorCategory" = 'SHOWCASE',
+    "showcaseTreatment" = 'ALTERNATIVE'
+WHERE "printTreatment" = 'ALT';
+
+UPDATE "Card"
+SET
+    "collectorCategory" = 'SHOWCASE',
+    "showcaseTreatment" = 'OVERNUMBER'
+WHERE "printTreatment" = 'OVERNUMBER';
+
 CREATE TABLE "CardFactionMembership" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "cardId" TEXT NOT NULL,
