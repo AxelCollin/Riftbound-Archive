@@ -19,6 +19,13 @@ SET
     "showcaseTreatment" = 'OVERNUMBER'
 WHERE "printTreatment" = 'OVERNUMBER';
 
+UPDATE "Card"
+SET
+    "collectorCategory" = 'SHOWCASE',
+    "showcaseTreatment" = 'ULTIMATE'
+WHERE "rarity" = 'ULTIMATE'
+  AND "showcaseTreatment" IS NULL;
+
 CREATE TABLE "CardFactionMembership" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "cardId" TEXT NOT NULL,

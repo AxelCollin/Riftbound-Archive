@@ -130,7 +130,7 @@
           "rarity": "ULTIMATE",
           "kind": "GAMEPLAY",
           "printTreatment": "REGULAR",
-          "hasShowcase": false,
+          "hasShowcase": true,
           "translations": [
             {
               "locale": "fr-FR",
@@ -142,8 +142,8 @@
           ],
           "gameplayType": "UNKNOWN",
           "gameplayRarity": "UNKNOWN",
-          "collectorCategory": "STANDARD",
-          "showcaseTreatment": null,
+          "collectorCategory": "SHOWCASE",
+          "showcaseTreatment": "ULTIMATE",
           "factionMemberships": [
             {
               "faction": "BODY"
