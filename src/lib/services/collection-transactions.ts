@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
+import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { getCollectionEntryQuantityDelta } from "../domain/collection";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
@@ -71,6 +72,8 @@ type CollectionTransactionCard = {
   name: string;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   kind: "GAMEPLAY" | "ENERGY" | "TOKEN" | "RULES";
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   hasShowcase: boolean;
 };
 

@@ -16,14 +16,14 @@ export function isShowcaseVariant(variant: CardVariant): boolean {
   return variant === "SHOWCASE";
 }
 
-export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" | "gameplayType" | "hasShowcase">): CardVariant[] {
+export function getAllowedVariants(card: Pick<RiftboundCard, "rarity" | "kind" | "gameplayType" | "collectorCategory" | "hasShowcase">): CardVariant[] {
   if (!isTrackableCard(card)) {
     return [];
   }
 
   const variants: CardVariant[] = supportsNormalVariant(card) ? ["NORMAL", "FOIL"] : ["FOIL"];
 
-  if (card.hasShowcase) {
+  if (card.collectorCategory !== "SHOWCASE" && card.hasShowcase) {
     variants.push("SHOWCASE");
   }
 

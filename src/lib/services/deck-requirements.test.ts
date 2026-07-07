@@ -45,6 +45,7 @@ const gameplayCard = {
   id: "card-1",
   kind: "GAMEPLAY" as const,
   gameplayType: "UNIT" as const,
+  collectorCategory: "STANDARD" as const,
   rarity: "COMMON" as const,
   hasShowcase: true,
 };
@@ -52,6 +53,7 @@ const energyCard = {
   id: "energy-1",
   kind: "ENERGY" as const,
   gameplayType: "RUNE" as const,
+  collectorCategory: "STANDARD" as const,
   rarity: "UNKNOWN" as const,
   hasShowcase: false,
 };
@@ -187,6 +189,25 @@ describe("deck requirement write service", () => {
         preferredVariant: "ANY",
       }),
     ).rejects.toThrow("trackable");
+
+    expect(txMock.deckCard.upsert).not.toHaveBeenCalled();
+  });
+
+
+  it("rejects legacy SHOWCASE preferences for showcase collector printings", async () => {
+    txMock.card.findUnique.mockResolvedValueOnce({
+      ...gameplayCard,
+      collectorCategory: "SHOWCASE",
+      hasShowcase: true,
+    });
+
+    await expect(
+      addDeckRequirement("deck-1", {
+        cardId: "showcase-printing",
+        quantity: 1,
+        preferredVariant: "SHOWCASE",
+      }),
+    ).rejects.toThrow("Preferred variant SHOWCASE is not supported");
 
     expect(txMock.deckCard.upsert).not.toHaveBeenCalled();
   });

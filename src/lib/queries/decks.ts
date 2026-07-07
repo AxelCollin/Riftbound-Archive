@@ -310,7 +310,7 @@ const deckDetailCardWithCollectionSelect = {
   collectionEntries: { select: { variant: true, quantity: true } },
 } as const;
 
-function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "hasShowcase">): DeckCardVariantPreference[] {
+function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "collectorCategory" | "hasShowcase">): DeckCardVariantPreference[] {
   if (!isTrackableCard(card)) {
     return [];
   }

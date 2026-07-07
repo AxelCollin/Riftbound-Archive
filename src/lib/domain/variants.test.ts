@@ -26,12 +26,17 @@ describe("variant rules", () => {
     expect(supportsNormalVariant({ ...gameplayCard, rarity: "UNKNOWN" })).toBe(false);
   });
 
-  it("tracks one showcase variant separately from regular foil when present", () => {
-    expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", hasShowcase: true })).toEqual(["FOIL", "SHOWCASE"]);
+  it("keeps legacy showcase compatibility for standard cards with showcase support", () => {
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", collectorCategory: "STANDARD", hasShowcase: true })).toEqual(["FOIL", "SHOWCASE"]);
+  });
+
+  it("does not expose the legacy showcase variant for showcase collector printings", () => {
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", collectorCategory: "SHOWCASE", hasShowcase: true })).toEqual(["FOIL"]);
+    expect(getAllowedVariants({ ...gameplayCard, rarity: "COMMON", collectorCategory: "SHOWCASE", hasShowcase: true })).toEqual(["NORMAL", "FOIL"]);
   });
 
   it("returns no variants for ignored tokens and rules cards", () => {
-    expect(getAllowedVariants({ ...gameplayCard, kind: "TOKEN", rarity: "COMMON" })).toEqual([]);
-    expect(getAllowedVariants({ ...gameplayCard, kind: "RULES", rarity: "COMMON" })).toEqual([]);
+    expect(getAllowedVariants({ ...gameplayCard, kind: "TOKEN", rarity: "COMMON", hasShowcase: true })).toEqual([]);
+    expect(getAllowedVariants({ ...gameplayCard, kind: "RULES", rarity: "COMMON", hasShowcase: true })).toEqual([]);
   });
 });
