@@ -31,6 +31,7 @@ type CardDetailTranslationRecord = {
 
 type CardDetailCollectionEntryRecord = {
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
 };
 
@@ -158,7 +159,7 @@ export async function getCardDetail(
             flavorText: true,
           },
         },
-        collectionEntries: { select: { variant: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
         userMeta: { select: { favorite: true, note: true } },
       },
     }),

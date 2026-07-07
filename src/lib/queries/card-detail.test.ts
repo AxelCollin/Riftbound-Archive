@@ -73,6 +73,38 @@ describe("card detail mapping", () => {
     expect(detail.displayName).toBe("Nom France");
   });
 
+  it("reads normal and foil ownership rows from physicalFinish when present", () => {
+    const detail = createCardDetail(
+      card({
+        rarity: "COMMON",
+        collectionEntries: [
+          { variant: "FOIL", physicalFinish: "NORMAL", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+        ],
+      }),
+    );
+
+    expect(detail.ownershipRows).toEqual([
+      { variant: "NORMAL", ownedQuantity: 2, binderReservedQuantity: 0, availableQuantity: 2 },
+      { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
+    ]);
+  });
+
+  it("does not crash or count legacy showcase rows as normal or foil ownership", () => {
+    const detail = createCardDetail(
+      card({
+        rarity: "COMMON",
+        hasShowcase: false,
+        collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 3 }],
+      }),
+    );
+
+    expect(detail.ownershipRows).toEqual([
+      { variant: "NORMAL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+    ]);
+  });
+
   it("shows quantity 0 for allowed variants without snapshots", () => {
     const detail = createCardDetail(
       card({
@@ -297,20 +329,6 @@ describe("card detail mapping", () => {
       ),
     ).toThrow(
       "Invalid CollectionEntry variant NORMAL for card bad-detail-rare",
-    );
-  });
-
-  it("surfaces SHOWCASE snapshots on non-showcase cards as invalid persisted data", () => {
-    expect(() =>
-      createCardDetail(
-        card({
-          id: "bad-detail-showcase",
-          hasShowcase: false,
-          collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
-        }),
-      ),
-    ).toThrow(
-      "Invalid CollectionEntry variant SHOWCASE for card bad-detail-showcase",
     );
   });
 

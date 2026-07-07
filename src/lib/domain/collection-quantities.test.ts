@@ -45,6 +45,32 @@ describe("owned variant count composition", () => {
     expect(getVariantCount(counts, "FOIL")).toBe(0);
   });
 
+  it("prefers physicalFinish for normal and foil ownership when present", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "FOIL", physicalFinish: "NORMAL", quantity: 2 },
+      { variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 2, FOIL: 1 });
+  });
+
+  it("falls back to legacy normal and foil variants when physicalFinish is null", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", physicalFinish: null, quantity: 2 },
+      { variant: "FOIL", physicalFinish: null, quantity: 1 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 2, FOIL: 1 });
+  });
+
+  it("does not convert legacy showcase compatibility rows into normal or foil ownership", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "SHOWCASE", physicalFinish: null, quantity: 5 },
+    ]);
+
+    expect(counts).toEqual({});
+  });
+
   it("converts positive valid entries into VariantCounts", () => {
     const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
       { variant: "NORMAL", quantity: 2 },
@@ -68,12 +94,6 @@ describe("owned variant count composition", () => {
     expect(() =>
       createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "FOIL", quantity: -1 }]),
     ).toThrow("Invalid negative CollectionEntry quantity for card card-1 variant FOIL");
-  });
-
-  it("throws the existing invalid variant error for persisted variants unsupported by the card", () => {
-    expect(() =>
-      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "SHOWCASE", quantity: 1 }]),
-    ).toThrow("Invalid CollectionEntry variant SHOWCASE for card card-1");
   });
 
   it("throws a clear error for duplicate snapshot rows for the same variant", () => {
