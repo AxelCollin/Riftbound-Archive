@@ -10,6 +10,7 @@ import {
   type NormalizedBoosterSettings,
 } from "@/lib/domain/boosters";
 import { isTrackableCard } from "@/lib/domain/cards";
+import { mapLegacyCardVariantToPhysicalFinish } from "@/lib/domain/physical-finishes";
 import { getAllowedVariants, type CardVariant } from "@/lib/domain/variants";
 import { getDisplayCardName } from "@/lib/queries/collection";
 
@@ -301,6 +302,8 @@ async function validatePulledCards(client: BoosterPrismaClient, pulls: { cardId:
 
 async function writePulledCardsToCollection(client: BoosterPrismaClient, openingId: string, pulls: { cardId: string; variant: CardVariant; quantity: number }[]): Promise<void> {
   for (const pull of pulls) {
+    const physicalFinish = mapLegacyCardVariantToPhysicalFinish(pull.variant);
+
     await client.boosterOpeningCard.create({
       data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity },
     });
@@ -308,6 +311,7 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
       data: {
         cardId: pull.cardId,
         variant: pull.variant,
+        physicalFinish,
         type: "ADD",
         quantity: pull.quantity,
         source: `booster-opening:${openingId}`,
@@ -316,7 +320,7 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
     });
     await client.collectionEntry.upsert({
       where: { cardId_variant: { cardId: pull.cardId, variant: pull.variant } },
-      create: { cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity },
+      create: { cardId: pull.cardId, variant: pull.variant, physicalFinish, quantity: pull.quantity },
       update: { quantity: { increment: pull.quantity } },
     });
   }
@@ -485,6 +489,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
         data: {
           cardId: card.cardId,
           variant: card.variant,
+          physicalFinish: mapLegacyCardVariantToPhysicalFinish(card.variant),
           type: "REMOVE",
           quantity: card.quantity,
           source: rollbackSource,

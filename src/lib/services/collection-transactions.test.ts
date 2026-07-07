@@ -5,6 +5,7 @@ import {
   type CollectionEntrySnapshot,
   type CollectionTransactionRepository,
 } from "./collection-transactions";
+import { mapLegacyCardVariantToPhysicalFinish } from "../domain/physical-finishes";
 
 type TestCard = Awaited<ReturnType<CollectionTransactionRepository["card"]["findUnique"]>>;
 
@@ -21,6 +22,7 @@ function createEntry(quantity: number, cardId = "card-common", variant = "NORMAL
     id: `entry-${cardId}-${variant}`,
     cardId,
     variant,
+    physicalFinish: mapLegacyCardVariantToPhysicalFinish(variant),
     quantity,
     createdAt: new Date("2026-06-28T00:00:00.000Z"),
     updatedAt: new Date("2026-06-28T00:00:00.000Z"),
@@ -127,6 +129,7 @@ describe("recordCollectionTransaction", () => {
       variant: "NORMAL",
       type: "ADD",
       quantity: 2,
+      physicalFinish: "NORMAL",
       note: "Première acquisition",
       source: "Boutique locale",
     });
@@ -135,7 +138,7 @@ describe("recordCollectionTransaction", () => {
     expect(repository.collectionEntry.upsert).toHaveBeenCalledTimes(1);
     expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
       where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
-      create: { cardId: "card-common", variant: "NORMAL", quantity: 2 },
+      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });
@@ -155,7 +158,7 @@ describe("recordCollectionTransaction", () => {
 
     expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
       where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
-      create: { cardId: "card-common", variant: "NORMAL", quantity: 2 },
+      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });

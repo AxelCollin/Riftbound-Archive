@@ -15,8 +15,7 @@ export type ShowcaseTreatment = (typeof SHOWCASE_TREATMENTS)[number];
 export const CARD_FACTIONS = ["FURY", "CALM", "MIND", "BODY", "CHAOS", "ORDER"] as const;
 export type CardFaction = (typeof CARD_FACTIONS)[number];
 
-export const PHYSICAL_FINISHES = ["NORMAL", "FOIL"] as const;
-export type PhysicalFinish = (typeof PHYSICAL_FINISHES)[number];
+export { PHYSICAL_FINISHES, type PhysicalFinish } from "./physical-finishes";
 
 export interface GameplayIdentityCard {
   id: string;

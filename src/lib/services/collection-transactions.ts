@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
 import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { getCollectionEntryQuantityDelta } from "../domain/collection";
+import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "../domain/physical-finishes";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
 
@@ -81,6 +82,7 @@ export type RecordedCollectionTransaction = {
   id: string;
   cardId: string;
   variant: CardVariant;
+  physicalFinish: PhysicalFinish | null;
   type: CollectionTransactionType;
   quantity: number;
   note: string | null;
@@ -92,6 +94,7 @@ export type CollectionEntrySnapshot = {
   id: string;
   cardId: string;
   variant: CardVariant;
+  physicalFinish: PhysicalFinish | null;
   quantity: number;
   createdAt: Date;
   updatedAt: Date;
@@ -103,7 +106,7 @@ type CollectionTransactionWriteClient = {
   collectionEntry: {
     upsert(args: {
       where: { cardId_variant: { cardId: string; variant: CardVariant } };
-      create: { cardId: string; variant: CardVariant; quantity: number };
+      create: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; quantity: number };
       update: { quantity: CollectionEntryQuantityMutation };
     }): Promise<CollectionEntrySnapshot>;
     updateMany(args: {
@@ -116,6 +119,7 @@ type CollectionTransactionWriteClient = {
       data: {
         cardId: string;
         variant: CardVariant;
+        physicalFinish: PhysicalFinish | null;
         type: CollectionTransactionType;
         quantity: number;
         note: string | null;
@@ -145,11 +149,12 @@ async function writeCollectionEntrySnapshot(
   client: CollectionTransactionWriteClient,
 ): Promise<void> {
   const delta = getCollectionEntryQuantityDelta(input);
+  const physicalFinish = mapLegacyCardVariantToPhysicalFinish(input.variant);
 
   if (delta === null) {
     await client.collectionEntry.upsert({
       where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-      create: { cardId: input.cardId, variant: input.variant, quantity: input.quantity },
+      create: { cardId: input.cardId, variant: input.variant, physicalFinish, quantity: input.quantity },
       update: { quantity: input.quantity },
     });
     return;
@@ -158,7 +163,7 @@ async function writeCollectionEntrySnapshot(
   if (delta > 0) {
     await client.collectionEntry.upsert({
       where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-      create: { cardId: input.cardId, variant: input.variant, quantity: delta },
+      create: { cardId: input.cardId, variant: input.variant, physicalFinish, quantity: delta },
       update: { quantity: { increment: delta } },
     });
     return;
@@ -189,6 +194,7 @@ async function writeTransactionAndSnapshot(
     data: {
       cardId: input.cardId,
       variant: input.variant,
+      physicalFinish: mapLegacyCardVariantToPhysicalFinish(input.variant),
       type: input.type,
       quantity: input.quantity,
       note: input.note,

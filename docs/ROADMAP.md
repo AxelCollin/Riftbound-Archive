@@ -101,6 +101,8 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 - [x] Normalize documentation structure before Phase 7.5 implementation.
 - [x] Add gameplay identity and corrected card taxonomy fields.
 - [ ] Replace Showcase-as-variant with a finish-aware collection model.
+  - [x] Phase 7.5B foundation: add `NORMAL`/`FOIL` physical finish persistence for collection snapshots and transaction history while keeping legacy `CardVariant` compatibility.
+  - [ ] Follow-up: migrate read paths, deck allocations, binder overrides, booster opening rows, and pricing tables away from legacy `SHOWCASE` variant compatibility.
 - [x] Add related printings and gameplay-equivalence helpers.
 - [ ] Add a global app shell with persistent navigation.
 - [ ] Clean stale deck UI copy and remove user-facing phase labels.

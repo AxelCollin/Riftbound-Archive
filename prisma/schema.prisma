@@ -29,6 +29,11 @@ enum CardVariant {
   SHOWCASE
 }
 
+enum PhysicalFinish {
+  NORMAL
+  FOIL
+}
+
 enum CardPrintTreatment {
   REGULAR
   ALT
@@ -275,12 +280,14 @@ model CollectionEntry {
   cardId    String
   card      Card        @relation(fields: [cardId], references: [id])
   variant   CardVariant
+  physicalFinish PhysicalFinish?
   quantity  Int         @default(0)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
   @@unique([cardId, variant])
   @@index([variant])
+  @@index([physicalFinish])
 }
 
 model CollectionTransaction {
@@ -288,6 +295,7 @@ model CollectionTransaction {
   cardId    String
   card      Card                      @relation(fields: [cardId], references: [id])
   variant   CardVariant
+  physicalFinish PhysicalFinish?
   type      CollectionTransactionType
   quantity  Int
   note      String?
@@ -296,6 +304,7 @@ model CollectionTransaction {
 
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
   @@index([type])
   @@index([createdAt])
 }
