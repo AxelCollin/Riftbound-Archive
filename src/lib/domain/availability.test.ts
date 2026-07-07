@@ -55,6 +55,42 @@ describe("availability rules", () => {
     ).toEqual({});
   });
 
+  it("falls back to legacy NORMAL and FOIL allocation variants when physicalFinish is null", () => {
+    expect(
+      getCardAvailability(
+        { ...card, rarity: "COMMON" },
+        { NORMAL: 3, FOIL: 2 },
+        [{ assembled: true, allocations: [
+          { cardId: "card-1", variant: "NORMAL", physicalFinish: null, quantity: 1 },
+          { cardId: "card-1", variant: "FOIL", physicalFinish: null, quantity: 1 },
+        ] }],
+        {},
+      ).available,
+    ).toEqual({ NORMAL: 2, FOIL: 1 });
+  });
+
+  it("prefers physicalFinish over legacy variant for deck allocations", () => {
+    expect(
+      getCardAvailability(
+        { ...card, rarity: "COMMON" },
+        { NORMAL: 2, FOIL: 2 },
+        [{ assembled: true, allocations: [{ cardId: "card-1", variant: "SHOWCASE", physicalFinish: "FOIL", quantity: 2 }] }],
+        {},
+      ).available,
+    ).toEqual({ NORMAL: 2 });
+  });
+
+  it("does not map legacy SHOWCASE allocation rows without physicalFinish to normal or foil", () => {
+    expect(
+      getCardAvailability(
+        { ...card, rarity: "COMMON" },
+        { NORMAL: 2, FOIL: 2 },
+        [{ assembled: true, allocations: [{ cardId: "card-1", variant: "SHOWCASE", physicalFinish: null, quantity: 2 }] }],
+        {},
+      ).available,
+    ).toEqual({ NORMAL: 2, FOIL: 2 });
+  });
+
   it("ignores tokens and rules cards in availability calculations", () => {
     expect(getCardAvailability({ ...card, kind: "TOKEN", rarity: "COMMON" }, { NORMAL: 2 }).available).toEqual({});
     expect(getCardAvailability({ ...card, kind: "RULES", rarity: "COMMON" }, { FOIL: 2 }).available).toEqual({});

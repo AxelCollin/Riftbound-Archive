@@ -14,7 +14,7 @@ type AssemblyCardRecord = {
   collectorCategory?: CardCollectorCategory | null;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
-  collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; quantity: number }[];
+  collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
 };
 
 export async function assembleDeck(deckId: string): Promise<void> {
@@ -37,7 +37,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
                 collectorCategory: true,
                 rarity: true,
                 hasShowcase: true,
-                collectionEntries: { select: { variant: true, quantity: true } },
+                collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
               },
             },
           },
@@ -68,7 +68,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
 
     const assembledDecks = await tx.deck.findMany({
       where: { status: "ASSEMBLED", id: { not: deckId } },
-      select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
+      select: { allocations: { select: { cardId: true, variant: true, physicalFinish: true, quantity: true } } },
     });
 
     const cards = uniqueCards(deck.deckCards.map((requirement) => requirement.card));
@@ -101,6 +101,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
           deckId,
           cardId: allocation.cardId,
           variant: allocation.variant,
+          physicalFinish: allocation.physicalFinish,
           quantity: allocation.quantity,
         },
       });

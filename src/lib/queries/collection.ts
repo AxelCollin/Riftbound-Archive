@@ -165,7 +165,7 @@ async function getAssembledDeckAllocationSets(): Promise<DeckAllocationSet[]> {
     where: { status: "ASSEMBLED" },
     select: {
       allocations: {
-        select: { cardId: true, variant: true, quantity: true },
+        select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
       },
     },
   });

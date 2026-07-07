@@ -1,12 +1,15 @@
 import type { RiftboundCard } from "./cards";
 import { isTrackableCard } from "./cards";
 import { getBinderReservation } from "./binder";
+import type { PhysicalFinish } from "./physical-finishes";
+import { mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
 import type { CardVariant, VariantCounts } from "./variants";
 import { getAllowedVariants, getVariantCount } from "./variants";
 
 export interface DeckVariantAllocation {
   cardId: string;
   variant: CardVariant;
+  physicalFinish?: PhysicalFinish | null;
   quantity: number;
 }
 
@@ -43,8 +46,18 @@ export function getAssembledDeckAllocatedCount(
   return deckAllocationSets
     .filter((deckAllocationSet) => deckAllocationSet.assembled)
     .flatMap((deckAllocationSet) => deckAllocationSet.allocations)
-    .filter((allocation) => allocation.cardId === cardId && allocation.variant === variant)
+    .filter((allocation) => allocation.cardId === cardId && getDeckAllocationQuantityVariant(allocation) === variant)
     .reduce((total, allocation) => total + Math.max(0, allocation.quantity), 0);
+}
+
+export function getDeckAllocationQuantityVariant(
+  allocation: Pick<DeckVariantAllocation, "variant" | "physicalFinish">,
+): CardVariant | null {
+  if (allocation.physicalFinish) {
+    return allocation.physicalFinish;
+  }
+
+  return mapLegacyCardVariantToPhysicalFinish(allocation.variant) ?? (allocation.variant === "SHOWCASE" ? "SHOWCASE" : null);
 }
 
 export function getCardAvailability(

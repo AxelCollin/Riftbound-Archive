@@ -52,7 +52,7 @@ describe("card availability explanation query", () => {
       include: {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
       },
     });
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({
@@ -63,7 +63,7 @@ describe("card availability explanation query", () => {
         status: true,
         allocations: {
           where: { cardId: "query-card" },
-          select: { cardId: true, variant: true, quantity: true },
+          select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
         },
       },
     });

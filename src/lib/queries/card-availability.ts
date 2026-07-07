@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import {
   getAssembledDeckAllocatedCount,
   getCardAvailability,
+  getDeckAllocationQuantityVariant,
   type DeckAllocationSet,
 } from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
@@ -23,6 +24,7 @@ type AvailabilityTranslationRecord = {
 
 type AvailabilityCollectionEntryRecord = {
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
 };
 
@@ -157,7 +159,7 @@ function getDeckAllocationBreakdown(
     .filter((deckAllocationSet) => deckAllocationSet.assembled)
     .flatMap((deckAllocationSet) =>
       deckAllocationSet.allocations
-        .filter((allocation) => allocation.cardId === cardId && allocation.variant === variant && allocation.quantity > 0)
+        .filter((allocation) => allocation.cardId === cardId && getDeckAllocationQuantityVariant(allocation) === variant && allocation.quantity > 0)
         .map((allocation) => ({
           deckId: deckAllocationSet.deckId,
           deckName: deckAllocationSet.deckName,
@@ -176,7 +178,7 @@ export async function getCardAvailabilityExplanation(
       include: {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
       },
     }),
     getDeckAllocationSetsForCard(cardId),
@@ -200,7 +202,7 @@ async function getDeckAllocationSetsForCard(cardId: string): Promise<NamedDeckAl
       status: true,
       allocations: {
         where: { cardId },
-        select: { cardId: true, variant: true, quantity: true },
+        select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
       },
     },
   });

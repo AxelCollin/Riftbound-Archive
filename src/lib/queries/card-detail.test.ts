@@ -292,7 +292,7 @@ describe("card detail mapping", () => {
       select: {
         allocations: {
           where: { cardId: "db-detail-card" },
-          select: { cardId: true, variant: true, quantity: true },
+          select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
         },
       },
     });
