@@ -569,11 +569,11 @@ describe("booster opening service", () => {
       data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", quantity: 2 },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
-      data: { cardId: "card-1", variant: "NORMAL", type: "ADD", quantity: 2, source: "booster-opening:opening-1", note: "Ouverture de booster" },
+      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", type: "ADD", quantity: 2, source: "booster-opening:opening-1", note: "Ouverture de booster" },
     });
     expect(prismaMock.collectionEntry.upsert).toHaveBeenCalledWith({
       where: { cardId_variant: { cardId: "card-1", variant: "NORMAL" } },
-      create: { cardId: "card-1", variant: "NORMAL", quantity: 2 },
+      create: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });
@@ -736,7 +736,7 @@ describe("booster opening rollback service", () => {
       data: { quantity: { decrement: 2 } },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
-      data: { cardId: "card-1", variant: "NORMAL", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
+      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
     });
     expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ type: "ROLLBACK", quantityDelta: 2, boosterOpeningId: "opening-1", occurredAt: now }),

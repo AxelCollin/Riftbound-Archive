@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, while preserving MVP compatibility. Collection, deck, booster, and price ownership units still use `CardVariant` until later Phase 7.5 migration work replaces `card + CardVariant` with `printed card + physical finish`.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck, binder, booster opening-card, and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`.
 
 ## Official card metadata
 
@@ -42,12 +42,12 @@ Current limitations:
 
 Implemented collection tables include:
 
-- `CollectionEntry`: current owned quantity snapshot for one card and one current physical `CardVariant`.
+- `CollectionEntry`: current owned quantity snapshot for one card and one legacy `CardVariant`, with a Phase 7.5B nullable `physicalFinish` column for `NORMAL`/`FOIL` ownership.
 - `CollectionTransaction`: append-only ownership history.
 - `CardUserMeta`: user-specific card metadata such as favorites and notes.
 - `BinderOverride`: optional future-facing user overrides for binder reservation behavior.
 
-Current implemented ownership unit:
+Current compatibility ownership key:
 
 ```text
 cardId + CardVariant
@@ -59,7 +59,13 @@ Current `CardVariant` values:
 - `FOIL`
 - `SHOWCASE`
 
-This is an MVP implementation simplification. The target Phase 7.5 ownership unit is:
+Phase 7.5B also persists this foundation for rows whose legacy variant is `NORMAL` or `FOIL`:
+
+```text
+cardId + physicalFinish
+```
+
+`physicalFinish` values are limited to `NORMAL` and `FOIL`. There is intentionally no `SHOWCASE` physical finish; legacy `SHOWCASE` compatibility rows keep `physicalFinish = NULL` until they are migrated to separate Showcase printed cards or otherwise removed from remaining compatibility paths. The target Phase 7.5 ownership unit is:
 
 ```text
 printedCardId + physicalFinish

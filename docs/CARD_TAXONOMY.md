@@ -77,6 +77,8 @@ Initial values:
 
 Important rules:
 
+- The implemented physical finish constants are exactly `NORMAL` and `FOIL`.
+- `SHOWCASE` is not a physical finish and must not be added to this axis.
 - Normal and Foil are not rarities.
 - Normal and Foil are not separate card records in the collection UI target.
 - A normal gameplay card that supports both finishes should appear as one collection card with separate Normal and Foil quantities.

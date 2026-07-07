@@ -43,7 +43,7 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
-Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Collection, deck, booster, and pricing flows still consume the old MVP `CardVariant` ownership units until later Phase 7.5 migration work.
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some collection, deck, booster, and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work.
 
 The target taxonomy separates:
 
@@ -63,7 +63,7 @@ The current pre-Phase-7.5 implementation still uses an MVP variant concept simil
 type CardVariant = "NORMAL" | "FOIL" | "SHOWCASE";
 ```
 
-That is historical implementation debt. It remains relevant only while the migration is in progress.
+That is historical implementation debt. It remains relevant only while the migration is in progress. When compatibility code maps this value to a physical finish, only `NORMAL` and `FOIL` map to finishes; `SHOWCASE` maps to no physical finish.
 
 ### Phase 7.5 target state
 
@@ -99,11 +99,19 @@ Target behavior:
 
 Collection transaction recording writes append-only ownership history and updates the owned snapshot for the same implemented ownership unit.
 
-Current implemented ownership unit:
+Current implemented compatibility ownership unit:
 
 ```text
 cardId + CardVariant
 ```
+
+Phase 7.5B persisted finish foundation:
+
+```text
+cardId + physicalFinish
+```
+
+for `NORMAL` and `FOIL` collection snapshot/history rows. Legacy `SHOWCASE` compatibility rows must not receive a physical finish.
 
 Target ownership unit after Phase 7.5:
 
