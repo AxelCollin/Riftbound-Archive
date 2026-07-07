@@ -6,6 +6,11 @@ import {
   type CardRarity,
 } from "../domain/cards";
 import {
+  isShowcaseCard,
+  type CardCollectorCategory,
+  type CardGameplayType,
+} from "../domain/card-taxonomy";
+import {
   createOwnedVariantCounts,
 } from "../domain/collection-quantities";
 import {
@@ -32,6 +37,8 @@ export type BinderCardRecord = {
   collectorNumber: string | null;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   hasShowcase: boolean;
   set: {
@@ -52,6 +59,8 @@ export type BinderRow = {
   collectorNumber: string;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
   allowedVariants: CardVariant[];
   owned: VariantCounts;
@@ -75,7 +84,7 @@ export type BinderPageData = {
 };
 
 export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
-  return cards.filter(isTrackableCard).map((card) => {
+  return cards.filter((card) => isTrackableCard(card) && !isShowcaseCard(card)).map((card) => {
     const allowedVariants = getAllowedVariants(card);
     const owned = createOwnedVariantCounts(
       card.id,
@@ -98,6 +107,8 @@ export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
       collectorNumber: card.collectorNumber ?? "—",
       rarity: card.rarity,
       kind: card.kind,
+      gameplayType: card.gameplayType,
+      collectorCategory: card.collectorCategory,
       printTreatment: card.printTreatment,
       allowedVariants,
       owned,
@@ -126,7 +137,10 @@ export function summarizeBinderRows(rows: BinderRow[]): BinderSummary {
 
 export async function getBinderPageData(): Promise<BinderPageData> {
   const cards = await prisma.card.findMany({
-    where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+    where: {
+      kind: { in: ["GAMEPLAY", "ENERGY"] },
+      collectorCategory: { not: "SHOWCASE" },
+    },
     orderBy: [
       { set: { code: "asc" } },
       { collectorNumber: "asc" },

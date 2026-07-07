@@ -43,6 +43,8 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Collection, deck, booster, and pricing flows still consume the old MVP `CardVariant` ownership units until later Phase 7.5 migration work.
+
 The target taxonomy separates:
 
 - gameplay card type;

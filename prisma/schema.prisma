@@ -36,6 +36,49 @@ enum CardPrintTreatment {
   UNKNOWN
 }
 
+enum CardGameplayType {
+  UNIT
+  CHAMPION
+  TERRAIN
+  LEGEND
+  SPELL
+  RUNE
+  TOKEN
+  RULES
+  UNKNOWN
+}
+
+enum CardGameplayRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  UNKNOWN
+}
+
+enum CardCollectorCategory {
+  STANDARD
+  SHOWCASE
+  UNKNOWN
+}
+
+enum ShowcaseTreatment {
+  ALTERNATIVE
+  OVERNUMBER
+  SIGNED
+  ULTIMATE
+  UNKNOWN
+}
+
+enum CardFaction {
+  FURY
+  CALM
+  MIND
+  BODY
+  CHAOS
+  ORDER
+}
+
 enum CollectionTransactionType {
   ADD
   REMOVE
@@ -164,6 +207,11 @@ model Card {
   rarity                 CardRarity              @default(UNKNOWN)
   officialRarityRaw      String?
   kind                   CardKind
+  gameplayIdentityKey    String?
+  gameplayType           CardGameplayType        @default(UNKNOWN)
+  gameplayRarity         CardGameplayRarity      @default(UNKNOWN)
+  collectorCategory      CardCollectorCategory   @default(STANDARD)
+  showcaseTreatment      ShowcaseTreatment?
   printTreatment         CardPrintTreatment      @default(REGULAR)
   printTreatmentRaw      String?
   hasShowcase            Boolean                 @default(false)
@@ -173,6 +221,7 @@ model Card {
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   translations           CardTranslation[]
+  factions               CardFactionMembership[]
   collectionEntries      CollectionEntry[]
   collectionTransactions CollectionTransaction[]
   userMeta               CardUserMeta?
@@ -186,6 +235,23 @@ model Card {
 
   @@unique([setId, collectorNumber])
   @@index([setId])
+  @@index([gameplayIdentityKey])
+  @@index([gameplayType])
+  @@index([gameplayRarity])
+  @@index([collectorCategory])
+  @@index([showcaseTreatment])
+}
+
+model CardFactionMembership {
+  id        String      @id @default(cuid())
+  cardId    String
+  card      Card        @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  faction   CardFaction
+  createdAt DateTime    @default(now())
+
+  @@unique([cardId, faction])
+  @@index([cardId])
+  @@index([faction])
 }
 
 model CardTranslation {

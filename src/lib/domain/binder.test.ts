@@ -27,6 +27,15 @@ describe("getBinderReservation", () => {
     expect(getBinderReservation({ ...card, rarity: "RARE" }, { FOIL: 1, SHOWCASE: 1 }).reserved).toEqual({ FOIL: 1 });
   });
 
+
+  it("does not auto-reserve showcase printed cards with normal or foil owned", () => {
+    const showcaseCard = { ...card, rarity: "COMMON", collectorCategory: "SHOWCASE" } as const;
+
+    expect(getBinderReservation(showcaseCard, { NORMAL: 2 }).reserved).toEqual({});
+    expect(getBinderReservation(showcaseCard, { FOIL: 1 }).reserved).toEqual({});
+    expect(getBinderReservation(showcaseCard, { NORMAL: 2, FOIL: 1 }).reserved).toEqual({});
+  });
+
   it("does not reserve ignored tokens or rules cards", () => {
     expect(getBinderReservation({ ...card, kind: "TOKEN", rarity: "COMMON" }, { FOIL: 1 }).reserved).toEqual({});
     expect(getBinderReservation({ ...card, kind: "RULES", rarity: "COMMON" }, { NORMAL: 1 }).reserved).toEqual({});

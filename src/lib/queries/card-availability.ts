@@ -6,6 +6,7 @@ import {
 } from "../domain/availability";
 import { getBinderReservation } from "../domain/binder";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
+import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
@@ -31,6 +32,8 @@ export type CardAvailabilityRecord = {
   collectorNumber: string | null;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   hasShowcase: boolean;
   set: {
     code: string;

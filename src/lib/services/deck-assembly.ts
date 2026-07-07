@@ -4,11 +4,14 @@ import { getBinderReservation } from "@/lib/domain/binder";
 import { planAssembledDeckAllocations } from "@/lib/domain/deck-assembly";
 import { createOwnedVariantCounts } from "@/lib/domain/collection-quantities";
 import { getAllowedVariants } from "@/lib/domain/variants";
+import type { CardCollectorCategory, CardGameplayType } from "@/lib/domain/card-taxonomy";
 
 
 type AssemblyCardRecord = {
   id: string;
   kind: "GAMEPLAY" | "ENERGY" | "TOKEN" | "RULES";
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
   collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; quantity: number }[];
@@ -30,6 +33,8 @@ export async function assembleDeck(deckId: string): Promise<void> {
               select: {
                 id: true,
                 kind: true,
+                gameplayType: true,
+                collectorCategory: true,
                 rarity: true,
                 hasShowcase: true,
                 collectionEntries: { select: { variant: true, quantity: true } },

@@ -44,12 +44,16 @@ import {
 const gameplayCard = {
   id: "card-1",
   kind: "GAMEPLAY" as const,
+  gameplayType: "UNIT" as const,
+  collectorCategory: "STANDARD" as const,
   rarity: "COMMON" as const,
   hasShowcase: true,
 };
 const energyCard = {
   id: "energy-1",
   kind: "ENERGY" as const,
+  gameplayType: "RUNE" as const,
+  collectorCategory: "STANDARD" as const,
   rarity: "UNKNOWN" as const,
   hasShowcase: false,
 };
@@ -136,6 +140,7 @@ describe("deck requirement write service", () => {
     txMock.card.findUnique.mockResolvedValueOnce({
       ...gameplayCard,
       kind: "TOKEN",
+      gameplayType: "UNKNOWN",
     });
     await expect(
       addDeckRequirement("deck-1", {
@@ -148,6 +153,7 @@ describe("deck requirement write service", () => {
     txMock.card.findUnique.mockResolvedValueOnce({
       ...gameplayCard,
       kind: "RULES",
+      gameplayType: "UNKNOWN",
     });
     await expect(
       addDeckRequirement("deck-1", {
@@ -156,6 +162,54 @@ describe("deck requirement write service", () => {
         preferredVariant: "ANY",
       }),
     ).rejects.toThrow("trackable");
+  });
+
+
+  it("rejects GAMEPLAY cards whose gameplay type is TOKEN or RULES", async () => {
+    txMock.card.findUnique.mockResolvedValueOnce({
+      ...gameplayCard,
+      gameplayType: "TOKEN",
+    });
+    await expect(
+      addDeckRequirement("deck-1", {
+        cardId: "token-gameplay",
+        quantity: 1,
+        preferredVariant: "ANY",
+      }),
+    ).rejects.toThrow("trackable");
+
+    txMock.card.findUnique.mockResolvedValueOnce({
+      ...gameplayCard,
+      gameplayType: "RULES",
+    });
+    await expect(
+      addDeckRequirement("deck-1", {
+        cardId: "rules-gameplay",
+        quantity: 1,
+        preferredVariant: "ANY",
+      }),
+    ).rejects.toThrow("trackable");
+
+    expect(txMock.deckCard.upsert).not.toHaveBeenCalled();
+  });
+
+
+  it("rejects legacy SHOWCASE preferences for showcase collector printings", async () => {
+    txMock.card.findUnique.mockResolvedValueOnce({
+      ...gameplayCard,
+      collectorCategory: "SHOWCASE",
+      hasShowcase: true,
+    });
+
+    await expect(
+      addDeckRequirement("deck-1", {
+        cardId: "showcase-printing",
+        quantity: 1,
+        preferredVariant: "SHOWCASE",
+      }),
+    ).rejects.toThrow("Preferred variant SHOWCASE is not supported");
+
+    expect(txMock.deckCard.upsert).not.toHaveBeenCalled();
   });
 
   it("accepts GAMEPLAY and ENERGY cards", async () => {

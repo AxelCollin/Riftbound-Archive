@@ -38,13 +38,15 @@ const record = {
   updatedAt: new Date("2026-07-02T00:00:00.000Z"),
 };
 
-function cardOptionRecord(overrides: Partial<{ name: string; translations: { locale: string; name: string }[] }> = {}) {
+function cardOptionRecord(overrides: Partial<{ name: string; translations: { locale: string; name: string }[]; collectorCategory: "STANDARD" | "SHOWCASE" }> = {}) {
   return {
     id: "card-1",
     name: "Ahri",
     collectorNumber: "001",
     rarity: "COMMON",
     kind: "GAMEPLAY",
+    gameplayType: "UNIT",
+    collectorCategory: "STANDARD" as const,
     hasShowcase: false,
     set: { code: "OGN" },
     translations: [],
@@ -134,6 +136,19 @@ describe("booster settings service", () => {
     const overview = await getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"));
 
     expect(overview.cardOptions[0]?.displayName).toBe("English Ahri · OGN #001");
+  });
+
+
+  it("does not expose legacy showcase variants for showcase collector printings in booster options", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce(record);
+    prismaMock.card.findMany.mockResolvedValueOnce([
+      cardOptionRecord({ collectorCategory: "SHOWCASE", name: "Alt Ahri" }),
+    ]);
+
+    const overview = await getBoosterOverview(new Date("2026-07-04T00:00:00.000Z"));
+
+    expect(overview.cardOptions[0]?.allowedVariants).toEqual(["NORMAL", "FOIL"]);
+    expect(overview.cardOptions[0]?.allowedVariants).not.toContain("SHOWCASE");
   });
 
   it("returns default settings and a safe zero counter when no row exists", async () => {
@@ -543,7 +558,7 @@ describe("booster opening service", () => {
 
   it("records pulled cards and adds them to the collection", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", collectorCategory: "STANDARD", hasShowcase: false });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
     const result = await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }] }, openedAt);
@@ -565,7 +580,7 @@ describe("booster opening service", () => {
 
   it("merges duplicate pulled card and variant rows deterministically", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", collectorCategory: "STANDARD", hasShowcase: false });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
     const result = await recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [
@@ -584,8 +599,8 @@ describe("booster opening service", () => {
   it("handles multiple pulled card rows", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
     prismaMock.card.findUnique
-      .mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false })
-      .mockResolvedValueOnce({ id: "card-2", name: "Rune", rarity: "RARE", kind: "ENERGY", hasShowcase: true });
+      .mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", collectorCategory: "STANDARD", hasShowcase: false })
+      .mockResolvedValueOnce({ id: "card-2", name: "Rune", rarity: "RARE", kind: "ENERGY", collectorCategory: "STANDARD", hasShowcase: true });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
     const result = await recordBoosterOpening({ boosterCount: 2, decrementCounter: false, note: "", pulls: [
@@ -602,9 +617,20 @@ describe("booster opening service", () => {
 
   it("rejects TOKEN and RULES pulled cards without partial writes", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token", name: "Token", rarity: "COMMON", kind: "TOKEN", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token", name: "Token", rarity: "COMMON", kind: "TOKEN", gameplayType: "TOKEN", hasShowcase: false });
 
     await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "token", variant: "NORMAL", quantity: 1 }] }, openedAt)).rejects.toThrow("Seules les cartes GAMEPLAY et ENERGY");
+
+    expect(prismaMock.boosterOpening.create).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+
+  it("rejects gameplay-compatibility pulled cards whose gameplay type is TOKEN", async () => {
+    prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "token-gameplay", name: "Token", rarity: "COMMON", kind: "GAMEPLAY", gameplayType: "TOKEN", hasShowcase: false });
+
+    await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "token-gameplay", variant: "NORMAL", quantity: 1 }] }, openedAt)).rejects.toThrow("Seules les cartes GAMEPLAY et ENERGY");
 
     expect(prismaMock.boosterOpening.create).not.toHaveBeenCalled();
     expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
@@ -620,7 +646,7 @@ describe("booster opening service", () => {
 
   it("rejects unsupported pulled variants", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", collectorCategory: "STANDARD", hasShowcase: false });
 
     await expect(recordBoosterOpening({ boosterCount: 1, decrementCounter: false, note: "", pulls: [{ cardId: "card-1", variant: "SHOWCASE", quantity: 1 }] }, openedAt)).rejects.toThrow("Variante de carte ouverte invalide.");
   });
@@ -645,7 +671,7 @@ describe("booster opening service", () => {
 
   it("records one valid pulled-card row while ignoring remaining blank fixed rows", async () => {
     prismaMock.boosterSettings.findFirst.mockResolvedValueOnce({ ...record, accrualAnchorAt: openedAt });
-    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", hasShowcase: false });
+    prismaMock.card.findUnique.mockResolvedValueOnce({ id: "card-1", name: "Ahri", rarity: "COMMON", kind: "GAMEPLAY", collectorCategory: "STANDARD", hasShowcase: false });
     prismaMock.boosterOpening.create.mockResolvedValueOnce(opening);
 
     await recordBoosterOpening({

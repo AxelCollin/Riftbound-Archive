@@ -175,7 +175,7 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
     prisma.boosterOpening.findMany({ orderBy: { openedAt: "desc" }, take: 5, include: { _count: { select: { cards: true } } } }),
     prisma.card.findMany({
       where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-      select: { id: true, name: true, collectorNumber: true, rarity: true, kind: true, hasShowcase: true, set: { select: { code: true } }, translations: { where: { locale: { in: ["fr-FR", "fr"] } }, select: { locale: true, name: true } } },
+      select: { id: true, name: true, collectorNumber: true, rarity: true, kind: true, gameplayType: true, collectorCategory: true, hasShowcase: true, set: { select: { code: true } }, translations: { where: { locale: { in: ["fr-FR", "fr"] } }, select: { locale: true, name: true } } },
       orderBy: [{ set: { code: "asc" } }, { collectorNumber: "asc" }, { name: "asc" }],
     }),
   ]);
@@ -187,7 +187,7 @@ export async function getBoosterOverview(now = new Date()): Promise<BoosterOverv
     accrualAnchorAt: new Date(settings.accrualAnchorAt),
   }, now);
 
-  const cardOptions = cards.map((card) => ({
+  const cardOptions = cards.filter(isTrackableCard).map((card) => ({
     cardId: card.id,
     displayName: `${getDisplayCardName(card)}${card.set?.code ? ` · ${card.set.code}` : ""}${card.collectorNumber ? ` #${card.collectorNumber}` : ""}`,
     allowedVariants: getAllowedVariants(card),
@@ -283,7 +283,7 @@ async function materializePendingAccrualIfNeeded(client: BoosterPrismaClient, se
 
 async function validatePulledCards(client: BoosterPrismaClient, pulls: { cardId: string; variant: CardVariant; quantity: number }[]): Promise<void> {
   for (const pull of pulls) {
-    const card = await client.card.findUnique({ where: { id: pull.cardId }, select: { id: true, name: true, rarity: true, kind: true, hasShowcase: true } });
+    const card = await client.card.findUnique({ where: { id: pull.cardId }, select: { id: true, name: true, rarity: true, kind: true, gameplayType: true, collectorCategory: true, hasShowcase: true } });
 
     if (!card) {
       throw new Error("Carte ouverte introuvable.");

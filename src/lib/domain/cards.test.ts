@@ -18,4 +18,28 @@ describe("isTrackableCard", () => {
     expect(isTrackableCard({ ...baseCard, kind: "TOKEN" })).toBe(false);
     expect(isTrackableCard({ ...baseCard, kind: "RULES" })).toBe(false);
   });
+
+  it("keeps compatibility for Energy and Rune cards", () => {
+    expect(isTrackableCard({ ...baseCard, kind: "ENERGY" })).toBe(true);
+    expect(isTrackableCard({ ...baseCard, kind: "GAMEPLAY", gameplayType: "RUNE" })).toBe(true);
+  });
+
+  it("keeps legacy Token and Rules kinds untrackable before considering gameplay type", () => {
+    expect(isTrackableCard({ ...baseCard, kind: "TOKEN", gameplayType: "UNIT" })).toBe(false);
+    expect(isTrackableCard({ ...baseCard, kind: "RULES", gameplayType: "SPELL" })).toBe(false);
+  });
+
+  it("uses richer gameplay type data to ignore Token and Rules cards when present", () => {
+    expect(isTrackableCard({ ...baseCard, kind: "GAMEPLAY", gameplayType: "TOKEN" })).toBe(false);
+    expect(isTrackableCard({ ...baseCard, kind: "GAMEPLAY", gameplayType: "RULES" })).toBe(false);
+  });
+
+  it("keeps Rune gameplay type trackable when the legacy kind is trackable", () => {
+    expect(isTrackableCard({ ...baseCard, kind: "GAMEPLAY", gameplayType: "RUNE" })).toBe(true);
+  });
+
+  it("falls back to existing kind when gameplay type is unknown", () => {
+    expect(isTrackableCard({ ...baseCard, kind: "ENERGY", gameplayType: "UNKNOWN" })).toBe(true);
+    expect(isTrackableCard({ ...baseCard, kind: "TOKEN", gameplayType: "UNKNOWN" })).toBe(false);
+  });
 });

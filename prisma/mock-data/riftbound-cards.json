@@ -30,6 +30,15 @@
               "rulesText": "Fictional text for checking common gameplay card display.",
               "flavorText": "A local-only card with no official source."
             }
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "COMMON",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": [
+            {
+              "faction": "CALM"
+            }
           ]
         },
         {
@@ -47,6 +56,15 @@
               "subtitle": "Carte de test peu commune",
               "rulesText": "Texte fictif pour valider une rareté intermédiaire.",
               "flavorText": "Les noms, textes et effets sont inventés."
+            }
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "UNCOMMON",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": [
+            {
+              "faction": "MIND"
             }
           ]
         },
@@ -66,7 +84,17 @@
               "rulesText": "Texte fictif avec hasShowcase activé pour les futurs tests de variantes.",
               "flavorText": "Aucune illustration officielle n'est référencée."
             }
-          ]
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "RARE",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": [
+            {
+              "faction": "FURY"
+            }
+          ],
+          "gameplayIdentityKey": "mock-identity-valley-duelist"
         },
         {
           "id": "mock-card-rba-001-004",
@@ -84,6 +112,15 @@
               "rulesText": "Texte fictif pour vérifier le traitement d'impression ALT.",
               "flavorText": "Données de développement uniquement."
             }
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "EPIC",
+          "collectorCategory": "SHOWCASE",
+          "showcaseTreatment": "ALTERNATIVE",
+          "factionMemberships": [
+            {
+              "faction": "ORDER"
+            }
           ]
         },
         {
@@ -93,7 +130,7 @@
           "rarity": "ULTIMATE",
           "kind": "GAMEPLAY",
           "printTreatment": "REGULAR",
-          "hasShowcase": false,
+          "hasShowcase": true,
           "translations": [
             {
               "locale": "fr-FR",
@@ -101,6 +138,15 @@
               "subtitle": "Carte de test ultime",
               "rulesText": "Texte fictif pour exercer les règles futures liées aux cartes ultimes.",
               "flavorText": "Cette carte n'existe pas dans un produit officiel."
+            }
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "UNKNOWN",
+          "collectorCategory": "SHOWCASE",
+          "showcaseTreatment": "ULTIMATE",
+          "factionMemberships": [
+            {
+              "faction": "BODY"
             }
           ]
         },
@@ -120,6 +166,15 @@
               "rulesText": "Texte fictif pour les tests de suivi des cartes énergie.",
               "flavorText": "Marqueur local sans mécanique officielle."
             }
+          ],
+          "gameplayType": "RUNE",
+          "gameplayRarity": "COMMON",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": [
+            {
+              "faction": "CHAOS"
+            }
           ]
         },
         {
@@ -138,7 +193,12 @@
               "rulesText": "Texte fictif pour vérifier que les jetons peuvent exister dans les métadonnées officielles.",
               "flavorText": "Non destiné au suivi de collection."
             }
-          ]
+          ],
+          "gameplayType": "TOKEN",
+          "gameplayRarity": "UNKNOWN",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": []
         },
         {
           "id": "mock-card-rba-001-008",
@@ -156,7 +216,12 @@
               "rulesText": "Texte fictif pour représenter une carte de règles locale.",
               "flavorText": "Incluse seulement pour les scénarios de développement."
             }
-          ]
+          ],
+          "gameplayType": "RULES",
+          "gameplayRarity": "UNKNOWN",
+          "collectorCategory": "STANDARD",
+          "showcaseTreatment": null,
+          "factionMemberships": []
         },
         {
           "id": "mock-card-rba-001-009",
@@ -174,7 +239,17 @@
               "rulesText": "Texte fictif pour vérifier le traitement d'impression OVERNUMBER.",
               "flavorText": "Numéro volontairement séparé des cartes régulières."
             }
-          ]
+          ],
+          "gameplayType": "UNKNOWN",
+          "gameplayRarity": "RARE",
+          "collectorCategory": "SHOWCASE",
+          "showcaseTreatment": "OVERNUMBER",
+          "factionMemberships": [
+            {
+              "faction": "FURY"
+            }
+          ],
+          "gameplayIdentityKey": "mock-identity-valley-duelist"
         }
       ]
     }

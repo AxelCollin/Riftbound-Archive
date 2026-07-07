@@ -41,7 +41,10 @@ describe("binder query", () => {
 
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+        where: {
+          kind: { in: ["GAMEPLAY", "ENERGY"] },
+          collectorCategory: { not: "SHOWCASE" },
+        },
         include: {
           set: { select: { code: true, name: true } },
           translations: { select: { locale: true, name: true } },
@@ -142,6 +145,26 @@ describe("binder query mapping", () => {
     });
   });
 
+
+  it("excludes showcase printed cards from binder target rows", () => {
+    const rows = createBinderRows([
+      card({
+        id: "standard-printing",
+        collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+      }),
+      card({
+        id: "showcase-printing",
+        collectorCategory: "SHOWCASE",
+        collectionEntries: [
+          { variant: "NORMAL", quantity: 2 },
+          { variant: "FOIL", quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows.map((row) => row.cardId)).toEqual(["standard-printing"]);
+  });
+
   it("includes ENERGY cards and reserves them according to allowed variant rules", () => {
     const [row] = createBinderRows([
       card({
@@ -196,10 +219,11 @@ describe("binder query mapping", () => {
     ).toThrow("Invalid CollectionEntry variant NORMAL for card bad-rare");
   });
 
-  it("summarizes tracked, reserved, and missing rows", () => {
+  it("summarizes only standard trackable binder targets as missing", () => {
     const rows = createBinderRows([
       card({ id: "reserved", collectionEntries: [{ variant: "NORMAL", quantity: 1 }] }),
       card({ id: "missing", rarity: "RARE" }),
+      card({ id: "showcase", collectorCategory: "SHOWCASE" }),
       card({ id: "ignored", kind: "TOKEN" }),
     ]);
 

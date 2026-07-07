@@ -19,21 +19,22 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema is still pre-Phase-7.5 for card taxonomy. It uses MVP concepts such as `CardVariant` and a normalized rarity enum that includes values which the target taxonomy will split differently.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, while preserving MVP compatibility. Collection, deck, booster, and price ownership units still use `CardVariant` until later Phase 7.5 migration work replaces `card + CardVariant` with `printed card + physical finish`.
 
 ## Official card metadata
 
 Implemented official metadata tables include:
 
 - `Set`: official set metadata.
-- `Card`: official card metadata, including normalized rarity, raw provider rarity, kind, print treatment, collector number, optional official image URL, optional official artist, and raw provider payload when available.
+- `Card`: official card metadata, including MVP compatibility fields (`rarity`, `kind`, `printTreatment`) and Phase 7.5A taxonomy fields (`gameplayIdentityKey`, `gameplayType`, `gameplayRarity`, `collectorCategory`, and optional `showcaseTreatment`).
+- `CardFactionMembership`: one-or-more faction memberships per card for the Phase 7.5A taxonomy foundation.
 - `CardTranslation`: localized official card text by locale.
 
 Current limitations:
 
-- `Card.kind` is a coarse MVP concept and does not yet represent the full target gameplay card type list from `docs/CARD_TAXONOMY.md`.
-- `Card.rarity` currently supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN`. This is current implementation state, not the target taxonomy. In the target model, `ULTIMATE` belongs to showcase treatment, not gameplay rarity.
-- `Card.printTreatment` stores a simplified official printing/treatment concept. This should evolve toward collector category and showcase treatment.
+- `Card.kind` remains as a coarse MVP compatibility concept while `Card.gameplayType` carries the corrected Phase 7.5A gameplay type axis.
+- `Card.rarity` still supports `COMMON`, `UNCOMMON`, `RARE`, `EPIC`, `ULTIMATE`, and `UNKNOWN` for compatibility. `Card.gameplayRarity` is the corrected Phase 7.5A gameplay rarity field and excludes `ULTIMATE`; Ultimate belongs to the showcase treatment axis.
+- `Card.printTreatment` remains as a simplified compatibility field. `Card.collectorCategory` and `Card.showcaseTreatment` are implemented as the Phase 7.5A target taxonomy fields.
 - `Card.collectorNumber` remains a nullable string because card numbers can include suffixes, letters, stars, or overnumbered values.
 - A dedicated `CardAsset` table does not exist yet. The current schema stores official image URL and artist metadata directly on `Card`.
 
@@ -210,18 +211,24 @@ Raw SQL `CHECK` constraints may be considered later as an additional database-le
 
 Phase 7.5 must correct the schema direction before Phase 8 pricing behavior is implemented.
 
-Target additions or replacements may include:
+Implemented in Phase 7.5A:
 
-- gameplay identity key or `GameplayIdentity` table;
-- richer gameplay card type field;
-- gameplay rarity separated from collector treatment;
-- collector category;
-- showcase treatment;
-- physical finish enum with `NORMAL` and `FOIL`;
-- printed-card-to-faction relation if provider data requires multiple factions;
-- related printings / rules-equivalence helpers.
+- `Card.gameplayIdentityKey`;
+- `Card.gameplayType`;
+- `Card.gameplayRarity`;
+- `Card.collectorCategory`;
+- `Card.showcaseTreatment`;
+- `CardFactionMembership`;
+- indexes for gameplay identity, gameplay type, gameplay rarity, collector category, showcase treatment, and faction filtering.
 
-Migration must be incremental and reviewable. Existing data should not be destructively rewritten without a clear migration plan and tests.
+Still pending for later Phase 7.5 work:
+
+- physical finish persistence with `NORMAL` and `FOIL` as the ownership axis;
+- migrating collection, deck, booster, and price ownership units away from `CardVariant`;
+- richer related-printings queries and UI;
+- optional dedicated `GameplayIdentity` table if string keys are not sufficient after provider sync work.
+
+Migration must remain incremental and reviewable. Existing data should not be destructively rewritten without a clear migration plan and tests.
 
 ## Historical note
 

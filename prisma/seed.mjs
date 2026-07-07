@@ -15,6 +15,10 @@ const translationSchema = z.object({
   flavorText: z.string().trim().min(1).optional(),
 });
 
+const cardFactionSchema = z.object({
+  faction: z.enum(["FURY", "CALM", "MIND", "BODY", "CHAOS", "ORDER"]),
+});
+
 const cardSchema = z.object({
   id: z.string().trim().min(1),
   collectorNumber: z.string().trim().min(1),
@@ -22,6 +26,12 @@ const cardSchema = z.object({
   rarity: z.enum(["COMMON", "UNCOMMON", "RARE", "EPIC", "ULTIMATE", "UNKNOWN"]),
   officialRarityRaw: z.string().trim().min(1).optional(),
   kind: z.enum(["GAMEPLAY", "ENERGY", "TOKEN", "RULES"]),
+  gameplayIdentityKey: z.string().trim().min(1).optional(),
+  gameplayType: z.enum(["UNIT", "CHAMPION", "TERRAIN", "LEGEND", "SPELL", "RUNE", "TOKEN", "RULES", "UNKNOWN"]).default("UNKNOWN"),
+  gameplayRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "EPIC", "UNKNOWN"]).default("UNKNOWN"),
+  collectorCategory: z.enum(["STANDARD", "SHOWCASE", "UNKNOWN"]).default("STANDARD"),
+  showcaseTreatment: z.enum(["ALTERNATIVE", "OVERNUMBER", "SIGNED", "ULTIMATE", "UNKNOWN"]).nullable().optional(),
+  factionMemberships: z.array(cardFactionSchema).default([]),
   printTreatment: z.enum(["REGULAR", "ALT", "OVERNUMBER", "UNKNOWN"]),
   printTreatmentRaw: z.string().trim().min(1).optional(),
   hasShowcase: z.boolean(),
@@ -93,6 +103,11 @@ async function seedOfficialMetadata(seedData) {
           rarity: card.rarity,
           officialRarityRaw: card.officialRarityRaw ?? null,
           kind: card.kind,
+          gameplayIdentityKey: card.gameplayIdentityKey ?? null,
+          gameplayType: card.gameplayType,
+          gameplayRarity: card.gameplayRarity,
+          collectorCategory: card.collectorCategory,
+          showcaseTreatment: card.showcaseTreatment ?? null,
           printTreatment: card.printTreatment,
           printTreatmentRaw: card.printTreatmentRaw ?? null,
           hasShowcase: card.hasShowcase,
@@ -105,6 +120,11 @@ async function seedOfficialMetadata(seedData) {
           rarity: card.rarity,
           officialRarityRaw: card.officialRarityRaw ?? null,
           kind: card.kind,
+          gameplayIdentityKey: card.gameplayIdentityKey ?? null,
+          gameplayType: card.gameplayType,
+          gameplayRarity: card.gameplayRarity,
+          collectorCategory: card.collectorCategory,
+          showcaseTreatment: card.showcaseTreatment ?? null,
           printTreatment: card.printTreatment,
           printTreatmentRaw: card.printTreatmentRaw ?? null,
           hasShowcase: card.hasShowcase,
@@ -114,6 +134,13 @@ async function seedOfficialMetadata(seedData) {
         },
       });
       cardCount += 1;
+
+      await prisma.cardFactionMembership.deleteMany({ where: { cardId: persistedCard.id } });
+      for (const membership of card.factionMemberships) {
+        await prisma.cardFactionMembership.create({
+          data: { cardId: persistedCard.id, faction: membership.faction },
+        });
+      }
 
       for (const translation of card.translations) {
         await prisma.cardTranslation.upsert({

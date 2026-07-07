@@ -3,7 +3,7 @@ import type { DeckCardVariantPreference, DeckRequirementInput } from "./decks";
 import { normalizeDeckRequirements } from "./decks";
 import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "./variants";
 
-export type DeckAssemblyCard = Pick<RiftboundCard, "id" | "kind" | "rarity" | "hasShowcase">;
+export type DeckAssemblyCard = Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "collectorCategory" | "rarity" | "hasShowcase">;
 
 export type DeckAssemblyAvailabilityInput = {
   cardId: string;

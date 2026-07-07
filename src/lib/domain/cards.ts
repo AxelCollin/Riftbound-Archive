@@ -1,3 +1,5 @@
+import type { CardCollectorCategory, CardGameplayType } from "./card-taxonomy";
+
 export const CARD_RARITIES = ["COMMON", "UNCOMMON", "RARE", "EPIC", "ULTIMATE", "UNKNOWN"] as const;
 export type CardRarity = (typeof CARD_RARITIES)[number];
 
@@ -9,11 +11,22 @@ export interface RiftboundCard {
   name: string;
   rarity: CardRarity;
   kind: CardKind;
+  gameplayType?: CardGameplayType | null;
+  collectorCategory?: CardCollectorCategory | null;
   hasShowcase?: boolean;
 }
 
 const ignoredCardKinds = new Set<CardKind>(["TOKEN", "RULES"]);
+const ignoredGameplayTypes = new Set<CardGameplayType>(["TOKEN", "RULES"]);
 
-export function isTrackableCard(card: Pick<RiftboundCard, "kind">): boolean {
-  return !ignoredCardKinds.has(card.kind);
+export function isTrackableCard(card: Pick<RiftboundCard, "kind" | "gameplayType">): boolean {
+  if (ignoredCardKinds.has(card.kind)) {
+    return false;
+  }
+
+  if (card.gameplayType && card.gameplayType !== "UNKNOWN") {
+    return !ignoredGameplayTypes.has(card.gameplayType);
+  }
+
+  return true;
 }
