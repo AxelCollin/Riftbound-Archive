@@ -25,6 +25,7 @@ type CollectionCardTranslation = {
 
 type CollectionCardEntry = {
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
 };
 
@@ -145,7 +146,7 @@ export async function getCollectionPageData(): Promise<CollectionPageData> {
       include: {
         set: { select: { code: true, name: true } },
         translations: { select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
       },
     }),
     getAssembledDeckAllocationSets(),

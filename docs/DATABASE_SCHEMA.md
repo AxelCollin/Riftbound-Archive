@@ -65,7 +65,7 @@ Phase 7.5B also persists this foundation for rows whose legacy variant is `NORMA
 cardId + physicalFinish
 ```
 
-`physicalFinish` values are limited to `NORMAL` and `FOIL`. There is intentionally no `SHOWCASE` physical finish; legacy `SHOWCASE` compatibility rows keep `physicalFinish = NULL` until they are migrated to separate Showcase printed cards or otherwise removed from remaining compatibility paths. The target Phase 7.5 ownership unit is:
+`physicalFinish` values are limited to `NORMAL` and `FOIL`. There is intentionally no `SHOWCASE` physical finish; legacy `SHOWCASE` compatibility rows keep `physicalFinish = NULL` until they are migrated to separate Showcase printed cards or otherwise removed from remaining compatibility paths. Collection and card-detail reads prefer `physicalFinish` for Normal/Foil quantities when present, with a legacy `CardVariant` fallback only for older Normal/Foil rows. The target Phase 7.5 ownership unit is:
 
 ```text
 printedCardId + physicalFinish
@@ -229,8 +229,8 @@ Implemented in Phase 7.5A:
 
 Still pending for later Phase 7.5 work:
 
-- physical finish persistence with `NORMAL` and `FOIL` as the ownership axis;
-- migrating collection, deck, booster, and price ownership units away from `CardVariant`;
+- remaining migration of deck allocations, binder overrides, booster opening rows, and pricing tables away from legacy `CardVariant`;
+- fully replacing compatibility `CardVariant` read paths after those remaining tables are migrated;
 - richer related-printings queries and UI;
 - optional dedicated `GameplayIdentity` table if string keys are not sufficient after provider sync work.
 

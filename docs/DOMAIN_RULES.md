@@ -111,7 +111,7 @@ Phase 7.5B persisted finish foundation:
 cardId + physicalFinish
 ```
 
-for `NORMAL` and `FOIL` collection snapshot/history rows. Legacy `SHOWCASE` compatibility rows must not receive a physical finish.
+for `NORMAL` and `FOIL` collection snapshot/history rows. Collection and card-detail read paths now prefer `physicalFinish` when it is present, fall back from legacy `NORMAL`/`FOIL` variants when it is absent, and ignore legacy `SHOWCASE` rows when deriving physical-finish ownership. Legacy `SHOWCASE` compatibility rows must not receive a physical finish.
 
 Target ownership unit after Phase 7.5:
 

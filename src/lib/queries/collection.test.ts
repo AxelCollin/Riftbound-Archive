@@ -122,6 +122,55 @@ describe("collection query mapping", () => {
     ).toEqual(["FOIL", "SHOWCASE"]);
   });
 
+  it("reads normal and foil quantities from physicalFinish when present", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "finish-owned-card",
+        collectionEntries: [
+          { variant: "FOIL", physicalFinish: "NORMAL", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "NORMAL", ownedQuantity: 2, binderReservedQuantity: 0, availableQuantity: 2 },
+      { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
+    ]);
+  });
+
+  it("falls back to legacy normal and foil variants when physicalFinish is null", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "legacy-owned-card",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: null, quantity: 2 },
+          { variant: "FOIL", physicalFinish: null, quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "NORMAL", ownedQuantity: 2 },
+      { variant: "FOIL", ownedQuantity: 1 },
+    ]);
+  });
+
+  it("ignores legacy showcase compatibility rows for standard normal and foil ownership", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "legacy-showcase-row",
+        hasShowcase: false,
+        collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 5 }],
+      }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { variant: "NORMAL", ownedQuantity: 0 },
+      { variant: "FOIL", ownedQuantity: 0 },
+    ]);
+  });
+
   it("maps existing snapshots and renders missing entries as quantity 0", () => {
     const rows = createCollectionRows([
       card({
@@ -406,18 +455,6 @@ describe("collection query mapping", () => {
         }),
       ]),
     ).toThrow("Invalid CollectionEntry variant NORMAL for card bad-rare");
-  });
-
-  it("surfaces SHOWCASE snapshots on non-showcase cards as invalid persisted data", () => {
-    expect(() =>
-      createCollectionRows([
-        card({
-          id: "bad-showcase",
-          hasShowcase: false,
-          collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
-        }),
-      ]),
-    ).toThrow("Invalid CollectionEntry variant SHOWCASE for card bad-showcase");
   });
 
   it("uses deterministic translation fallback order", () => {

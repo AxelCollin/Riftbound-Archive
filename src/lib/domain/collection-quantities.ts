@@ -1,9 +1,15 @@
+import type { PhysicalFinish } from "./physical-finishes";
+import { mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
 import type { CardVariant, VariantCounts } from "./variants";
 
 export type OwnedSnapshotQuantityInput = {
   cardId: string;
   variant: CardVariant;
   quantity: number;
+};
+
+export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity"> & {
+  physicalFinish?: PhysicalFinish | null;
 };
 
 export function normalizeOwnedSnapshotQuantity({
@@ -36,25 +42,48 @@ export function assertOwnedSnapshotVariantsAllowed(
   }
 }
 
+export function getOwnedSnapshotQuantityVariant(
+  entry: Pick<OwnedSnapshotFinishQuantityInput, "variant" | "physicalFinish">,
+): CardVariant | null {
+  if (entry.physicalFinish) {
+    return entry.physicalFinish;
+  }
+
+  return mapLegacyCardVariantToPhysicalFinish(entry.variant) ?? (entry.variant === "SHOWCASE" ? "SHOWCASE" : null);
+}
+
 export function createOwnedVariantCounts(
   cardId: string,
   allowedVariants: CardVariant[],
-  collectionEntries: Array<{ variant: CardVariant; quantity: number }>,
+  collectionEntries: OwnedSnapshotFinishQuantityInput[],
 ): VariantCounts {
-  assertOwnedSnapshotVariantsAllowed(
-    cardId,
-    collectionEntries,
-    allowedVariants,
-  );
-
+  const allowedVariantSet = new Set(allowedVariants);
   const entriesByVariant = new Map<CardVariant, number>();
 
   for (const entry of collectionEntries) {
-    if (entriesByVariant.has(entry.variant)) {
-      throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${entry.variant}`);
+    const quantityVariant = getOwnedSnapshotQuantityVariant(entry);
+
+    if (!quantityVariant) {
+      continue;
     }
 
-    entriesByVariant.set(entry.variant, entry.quantity);
+    if (!allowedVariantSet.has(quantityVariant)) {
+      if (entry.physicalFinish == null && entry.variant === "SHOWCASE") {
+        continue;
+      }
+
+      throw new Error(
+        `Invalid CollectionEntry variant ${quantityVariant} for card ${cardId}; allowed variants: ${
+          allowedVariants.length > 0 ? allowedVariants.join(", ") : "none"
+        }`,
+      );
+    }
+
+    if (entriesByVariant.has(quantityVariant)) {
+      throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);
+    }
+
+    entriesByVariant.set(quantityVariant, entry.quantity);
   }
 
   const ownedCounts: VariantCounts = {};
