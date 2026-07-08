@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getCardAvailability, type DeckAllocationSet } from "@/lib/domain/availability";
-import { getBinderReservation } from "@/lib/domain/binder";
+import { getBinderReservation, type BinderOverrideIntent } from "@/lib/domain/binder";
 import { planAssembledDeckAllocations } from "@/lib/domain/deck-assembly";
 import { createOwnedVariantCounts } from "@/lib/domain/collection-quantities";
 import { getAllowedVariants } from "@/lib/domain/variants";
@@ -15,6 +15,7 @@ type AssemblyCardRecord = {
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
   collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
+  binderOverride?: BinderOverrideIntent | null;
 };
 
 export async function assembleDeck(deckId: string): Promise<void> {
@@ -38,6 +39,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
                 rarity: true,
                 hasShowcase: true,
                 collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+                binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
               },
             },
           },
@@ -76,7 +78,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
     const availabilityByCard = cards.map((card) => {
       const allowedVariants = getAllowedVariants(card);
       const ownedCounts = createOwnedVariantCounts(card.id, allowedVariants, card.collectionEntries);
-      const binderReserved = getBinderReservation(card, ownedCounts).reserved;
+      const binderReserved = getBinderReservation(card, ownedCounts, card.binderOverride).reserved;
 
       return getCardAvailability(card, ownedCounts, deckAllocationSets, binderReserved);
     });

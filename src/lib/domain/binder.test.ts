@@ -36,6 +36,45 @@ describe("getBinderReservation", () => {
     expect(getBinderReservation(showcaseCard, { NORMAL: 2, FOIL: 1 }).reserved).toEqual({});
   });
 
+
+  it("prefers BinderOverride physicalFinish over legacy variant", () => {
+    expect(getBinderReservation(
+      { ...card, rarity: "COMMON" },
+      { NORMAL: 2, FOIL: 2 },
+      { mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+    ).reserved).toEqual({ FOIL: 1 });
+  });
+
+  it("falls back from legacy NORMAL and FOIL BinderOverride rows when physicalFinish is null", () => {
+    expect(getBinderReservation(
+      { ...card, rarity: "COMMON" },
+      { NORMAL: 2, FOIL: 2 },
+      { mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: null, quantity: 1 },
+    ).reserved).toEqual({ NORMAL: 1 });
+
+    expect(getBinderReservation(
+      { ...card, rarity: "COMMON" },
+      { NORMAL: 2, FOIL: 2 },
+      { mode: "FORCE_VARIANT", variant: "FOIL", physicalFinish: null, quantity: 1 },
+    ).reserved).toEqual({ FOIL: 1 });
+  });
+
+  it("does not turn legacy SHOWCASE BinderOverride rows into physical finish reservations", () => {
+    expect(getBinderReservation(
+      { ...card, rarity: "COMMON", hasShowcase: true },
+      { NORMAL: 2, FOIL: 2, SHOWCASE: 1 },
+      { mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
+    ).reserved).toEqual({});
+  });
+
+  it("preserves disabled BinderOverride behavior", () => {
+    expect(getBinderReservation(
+      { ...card, rarity: "COMMON" },
+      { NORMAL: 2, FOIL: 1 },
+      { mode: "DISABLED", variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+    ).reserved).toEqual({});
+  });
+
   it("does not reserve ignored tokens or rules cards", () => {
     expect(getBinderReservation({ ...card, kind: "TOKEN", rarity: "COMMON" }, { FOIL: 1 }).reserved).toEqual({});
     expect(getBinderReservation({ ...card, kind: "RULES", rarity: "COMMON" }, { NORMAL: 1 }).reserved).toEqual({});

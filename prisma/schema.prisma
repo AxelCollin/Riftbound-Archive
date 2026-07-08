@@ -276,14 +276,14 @@ model CardTranslation {
 }
 
 model CollectionEntry {
-  id        String      @id @default(cuid())
-  cardId    String
-  card      Card        @relation(fields: [cardId], references: [id])
-  variant   CardVariant
+  id             String          @id @default(cuid())
+  cardId         String
+  card           Card            @relation(fields: [cardId], references: [id])
+  variant        CardVariant
   physicalFinish PhysicalFinish?
-  quantity  Int         @default(0)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  quantity       Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@unique([cardId, variant])
   @@index([variant])
@@ -291,16 +291,16 @@ model CollectionEntry {
 }
 
 model CollectionTransaction {
-  id        String                    @id @default(cuid())
-  cardId    String
-  card      Card                      @relation(fields: [cardId], references: [id])
-  variant   CardVariant
+  id             String                    @id @default(cuid())
+  cardId         String
+  card           Card                      @relation(fields: [cardId], references: [id])
+  variant        CardVariant
   physicalFinish PhysicalFinish?
-  type      CollectionTransactionType
-  quantity  Int
-  note      String?
-  source    String?
-  createdAt DateTime                  @default(now())
+  type           CollectionTransactionType
+  quantity       Int
+  note           String?
+  source         String?
+  createdAt      DateTime                  @default(now())
 
   @@index([cardId])
   @@index([variant])
@@ -320,16 +320,18 @@ model CardUserMeta {
 }
 
 model BinderOverride {
-  id        String             @id @default(cuid())
-  cardId    String             @unique
-  card      Card               @relation(fields: [cardId], references: [id])
-  mode      BinderOverrideMode @default(AUTO)
-  variant   CardVariant?
-  quantity  Int?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id             String             @id @default(cuid())
+  cardId         String             @unique
+  card           Card               @relation(fields: [cardId], references: [id])
+  mode           BinderOverrideMode @default(AUTO)
+  variant        CardVariant?
+  physicalFinish PhysicalFinish?
+  quantity       Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([mode])
+  @@index([physicalFinish])
 }
 
 model Deck {

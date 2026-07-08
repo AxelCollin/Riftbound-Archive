@@ -5,7 +5,7 @@ import {
   getDeckAllocationQuantityVariant,
   type DeckAllocationSet,
 } from "../domain/availability";
-import { getBinderReservation } from "../domain/binder";
+import { getBinderReservation, type BinderOverrideIntent } from "../domain/binder";
 import { isTrackableCard, type CardKind, type CardRarity } from "../domain/cards";
 import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
@@ -43,6 +43,7 @@ export type CardAvailabilityRecord = {
   };
   translations: AvailabilityTranslationRecord[];
   collectionEntries: AvailabilityCollectionEntryRecord[];
+  binderOverride?: BinderOverrideIntent | null;
 };
 
 export type CardAvailabilityDeckAllocationBreakdown = {
@@ -94,7 +95,7 @@ export function createCardAvailabilityExplanation(
 ): CardAvailabilityExplanation {
   const allowedVariants = getAllowedVariants(record);
   const ownedCounts = createOwnedVariantCounts(record.id, allowedVariants, record.collectionEntries);
-  const binderReserved = getBinderReservation(record, ownedCounts).reserved;
+  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverride).reserved;
   const appFacingAvailable = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
 
   const rows = allowedVariants.map((variant) => {
@@ -186,6 +187,7 @@ export async function getCardAvailabilityExplanation(
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
       },
     }),
     getDeckAllocationSetsForCard(cardId),

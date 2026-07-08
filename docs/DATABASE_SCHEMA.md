@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Binder, booster opening-card, and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`. Deck allocations now persist a nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining the legacy `variant` column for compatibility.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Booster opening-card and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`. Deck allocations and binder overrides now persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility.
 
 ## Official card metadata
 
@@ -45,7 +45,7 @@ Implemented collection tables include:
 - `CollectionEntry`: current owned quantity snapshot for one card and one legacy `CardVariant`, with a Phase 7.5B nullable `physicalFinish` column for `NORMAL`/`FOIL` ownership.
 - `CollectionTransaction`: append-only ownership history.
 - `CardUserMeta`: user-specific card metadata such as favorites and notes.
-- `BinderOverride`: optional future-facing user overrides for binder reservation behavior.
+- `BinderOverride`: optional user overrides for binder reservation behavior. It keeps the legacy nullable `variant` column and now adds nullable `physicalFinish` for Normal/Foil intent; legacy `SHOWCASE` override rows keep `physicalFinish = NULL`.
 
 Current compatibility ownership key:
 

@@ -48,7 +48,8 @@ describe("binder query", () => {
         include: {
           set: { select: { code: true, name: true } },
           translations: { select: { locale: true, name: true } },
-          collectionEntries: { select: { variant: true, quantity: true } },
+          collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+          binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
         },
       }),
     );
@@ -92,6 +93,46 @@ describe("binder query mapping", () => {
       reservedVariant: "NORMAL",
       reservedQuantity: 1,
       binderStatus: "RESERVED",
+    });
+  });
+
+
+  it("applies finish-aware BinderOverride rows when present", () => {
+    const [row] = createBinderRows([
+      card({
+        id: "override-foil",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
+          { variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+        ],
+        binderOverride: { mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+      }),
+    ]);
+
+    expect(row).toMatchObject({
+      reservedVariant: "FOIL",
+      reservedQuantity: 1,
+      binderStatus: "RESERVED",
+    });
+  });
+
+  it("does not apply legacy SHOWCASE BinderOverride rows as normal or foil reservations", () => {
+    const [row] = createBinderRows([
+      card({
+        id: "override-showcase",
+        hasShowcase: true,
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
+          { variant: "SHOWCASE", quantity: 1 },
+        ],
+        binderOverride: { mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
+      }),
+    ]);
+
+    expect(row).toMatchObject({
+      reservedVariant: null,
+      reservedQuantity: 0,
+      binderStatus: "MISSING",
     });
   });
 
