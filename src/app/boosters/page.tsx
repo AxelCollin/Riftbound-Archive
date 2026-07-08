@@ -2,6 +2,13 @@ import Link from "next/link";
 
 import { recordBoosterOpeningAction, rollbackBoosterOpeningAction, updateBoosterSettingsAction } from "./actions";
 import { getBoosterOpeningSummary, getBoosterOverview } from "@/lib/services/boosters";
+import { cardVariantLabelsFr } from "@/lib/formatters/cards";
+
+function getPullFinishLabel(pull: { variant: keyof typeof cardVariantLabelsFr; physicalFinish: "NORMAL" | "FOIL" | null }): string {
+  if (pull.physicalFinish === "NORMAL") return "Normale";
+  if (pull.physicalFinish === "FOIL") return "Foil";
+  return `${cardVariantLabelsFr[pull.variant]} (compatibilité legacy)`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -79,10 +86,10 @@ export default async function BoostersPage({ searchParams }: BoostersPageProps =
 
             <div className="mt-6 overflow-hidden rounded-card border border-[rgba(199,168,102,0.24)]">
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[rgba(199,168,102,0.12)] text-xs uppercase tracking-[0.18em] text-archive-gold300"><tr><th className="px-4 py-3">Carte</th><th className="px-4 py-3">Set</th><th className="px-4 py-3">Variante</th><th className="px-4 py-3">Quantité</th><th className="px-4 py-3">Collection actuelle</th></tr></thead>
+                <thead className="bg-[rgba(199,168,102,0.12)] text-xs uppercase tracking-[0.18em] text-archive-gold300"><tr><th className="px-4 py-3">Carte</th><th className="px-4 py-3">Set</th><th className="px-4 py-3">Finition</th><th className="px-4 py-3">Quantité</th><th className="px-4 py-3">Collection actuelle</th></tr></thead>
                 <tbody>
                   {openingSummary.pulls.length > 0 ? openingSummary.pulls.map((pull) => (
-                    <tr className="border-t border-[rgba(199,168,102,0.14)] text-archive-text300" key={`${pull.cardId}:${pull.variant}`}><td className="px-4 py-3 font-semibold text-archive-text100">{pull.displayName}</td><td className="px-4 py-3">{pull.setCode ?? "—"}{pull.collectorNumber ? ` #${pull.collectorNumber}` : ""}</td><td className="px-4 py-3">{pull.variant}</td><td className="px-4 py-3">{pull.quantity}</td><td className="px-4 py-3">{pull.collectionQuantityAfterOpening} · {pull.wasNewCollectionEntry ? "nouvelle entrée" : "entrée incrémentée"}</td></tr>
+                    <tr className="border-t border-[rgba(199,168,102,0.14)] text-archive-text300" key={`${pull.cardId}:${pull.variant}`}><td className="px-4 py-3 font-semibold text-archive-text100">{pull.displayName}</td><td className="px-4 py-3">{pull.setCode ?? "—"}{pull.collectorNumber ? ` #${pull.collectorNumber}` : ""}</td><td className="px-4 py-3">{getPullFinishLabel(pull)}</td><td className="px-4 py-3">{pull.quantity}</td><td className="px-4 py-3">{pull.collectionQuantityAfterOpening} · {pull.wasNewCollectionEntry ? "nouvelle entrée" : "entrée incrémentée"}</td></tr>
                   )) : (
                     <tr className="border-t border-[rgba(199,168,102,0.14)] text-archive-text300"><td className="px-4 py-4" colSpan={5}>Aucune carte enregistrée pour cette ouverture.</td></tr>
                   )}

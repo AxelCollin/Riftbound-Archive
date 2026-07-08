@@ -259,6 +259,7 @@ describe("booster opening summary service", () => {
       {
         cardId: "card-1",
         variant: "NORMAL",
+        physicalFinish: "NORMAL",
         quantity: 2,
         card: { id: "card-1", name: "English Ahri", collectorNumber: "001", set: { code: "OGN" }, translations: [{ locale: "fr", name: "Ahri française" }] },
       },
@@ -298,7 +299,7 @@ describe("booster opening summary service", () => {
       newlyCreatedCollectionEntries: 1,
       incrementedCollectionEntries: 0,
       totalCardsAddedToCollection: 2,
-      pulls: [{ displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
+      pulls: [{ displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
     });
   });
 
@@ -307,7 +308,7 @@ describe("booster opening summary service", () => {
       ...summaryOpening,
       cards: [
         ...summaryOpening.cards,
-        { cardId: "card-2", variant: "FOIL", quantity: 1, card: { id: "card-2", name: "Rune", collectorNumber: null, set: { code: "OGN" }, translations: [] } },
+        { cardId: "card-2", variant: "FOIL", physicalFinish: "FOIL", quantity: 1, card: { id: "card-2", name: "Rune", collectorNumber: null, set: { code: "OGN" }, translations: [] } },
       ],
     });
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }, { cardId: "card-2", variant: "FOIL", quantity: 1, type: "ADD" }]);
@@ -317,9 +318,47 @@ describe("booster opening summary service", () => {
 
     expect(summary).toMatchObject({ distinctCardRows: 2, totalCardQuantity: 3, newlyCreatedCollectionEntries: 1, incrementedCollectionEntries: 1, totalCardsAddedToCollection: 3 });
     expect(summary?.pulls[0]).toMatchObject({ wasNewCollectionEntry: false });
-    expect(summary?.pulls[1]).toMatchObject({ displayName: "Rune", variant: "FOIL", quantity: 1, wasNewCollectionEntry: true });
+    expect(summary?.pulls[1]).toMatchObject({ displayName: "Rune", variant: "FOIL", physicalFinish: "FOIL", quantity: 1, wasNewCollectionEntry: true });
   });
 
+
+  it("prefers persisted physicalFinish over the legacy variant in the summary", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...summaryOpening,
+      cards: [{ ...summaryOpening.cards[0], variant: "SHOWCASE", physicalFinish: "FOIL" }],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "SHOWCASE", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "SHOWCASE", quantity: 2 }]);
+
+    await expect(getBoosterOpeningSummary("opening-1")).resolves.toMatchObject({
+      pulls: [{ variant: "SHOWCASE", physicalFinish: "FOIL" }],
+    });
+  });
+
+  it("falls back for legacy Normal/Foil rows but does not invent a Showcase physical finish", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...summaryOpening,
+      cards: [
+        { ...summaryOpening.cards[0], variant: "FOIL", physicalFinish: null },
+        { ...summaryOpening.cards[0], cardId: "card-2", variant: "SHOWCASE", physicalFinish: null },
+      ],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([
+      { cardId: "card-1", variant: "FOIL", quantity: 2, type: "ADD" },
+      { cardId: "card-2", variant: "SHOWCASE", quantity: 2, type: "ADD" },
+    ]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([
+      { cardId: "card-1", variant: "FOIL", quantity: 2 },
+      { cardId: "card-2", variant: "SHOWCASE", quantity: 2 },
+    ]);
+
+    const summary = await getBoosterOpeningSummary("opening-1");
+
+    expect(summary?.pulls).toMatchObject([
+      { variant: "FOIL", physicalFinish: "FOIL" },
+      { variant: "SHOWCASE", physicalFinish: null },
+    ]);
+  });
 
   it("shows rolled-back status and prevents another rollback in the summary", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...summaryOpening, status: "ROLLED_BACK" });
@@ -566,7 +605,7 @@ describe("booster opening service", () => {
     expect(result.recordedCardCount).toBe(1);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledWith({
-      data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", quantity: 2 },
+      data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
       data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", type: "ADD", quantity: 2, source: "booster-opening:opening-1", note: "Ouverture de booster" },
@@ -611,6 +650,12 @@ describe("booster opening service", () => {
     expect(result.recordedCardCount).toBe(2);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledTimes(2);
+    expect(prismaMock.boosterOpeningCard.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({ variant: "FOIL", physicalFinish: "FOIL" }),
+    });
+    expect(prismaMock.boosterOpeningCard.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({ variant: "SHOWCASE", physicalFinish: null }),
+    });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledTimes(2);
     expect(prismaMock.collectionEntry.upsert).toHaveBeenCalledTimes(2);
   });

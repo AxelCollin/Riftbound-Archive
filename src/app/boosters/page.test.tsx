@@ -107,7 +107,7 @@ describe("BoostersPage", () => {
       status: "RECORDED",
       canRollback: true,
       rollbackBlockedReason: null,
-      pulls: [{ cardId: "card-1", displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
+      pulls: [{ cardId: "card-1", displayName: "Ahri française", setCode: "OGN", collectorNumber: "001", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2, collectionQuantityAfterOpening: 2, wasNewCollectionEntry: true }],
     });
 
     await renderPage({ opened: "opening-1" });
@@ -117,7 +117,7 @@ describe("BoostersPage", () => {
     expect(screen.getAllByText("Boosters ouverts").length).toBeGreaterThan(0);
     expect(screen.getByText("Cartes enregistrées")).toBeInTheDocument();
     expect(screen.getByText("Ahri française")).toBeInTheDocument();
-    expect(screen.getByText("NORMAL")).toBeInTheDocument();
+    expect(screen.getAllByText("Normale").length).toBeGreaterThan(0);
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Annuler cette ouverture" })).toBeInTheDocument();
     expect(screen.getByText(/Aucun prix ni valeur/)).toBeInTheDocument();
