@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck allocations, binder overrides, and booster opening-card rows now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility. Price tables still use `CardVariant` until later Phase 7.5 migration work replaces the remaining `card + CardVariant` compatibility units with `printed card + physical finish`.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck allocations, binder overrides, and booster opening-card rows now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility. Price tables now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` compatibility rows while retaining legacy `CardVariant` columns until Phase 8 pricing behavior can use `printed card + physical finish` end to end.
 
 ## Official card metadata
 
@@ -139,14 +139,16 @@ Target Phase 7.5 direction:
 Implemented price tables include:
 
 - `PriceProvider`: interchangeable price provider definitions, status, priority, base URL, and non-secret configuration metadata.
-- `PriceMapping`: mapping between local card + current physical variant and provider product/listing/subtype identifiers.
-- `CardPrice`: provider price snapshots.
-- `ManualPriceOverride`: user-defined prices.
+- `PriceMapping`: mapping between local card + legacy `CardVariant` compatibility rows and provider product/listing/subtype identifiers, with nullable `physicalFinish` for Normal/Foil rows.
+- `CardPrice`: provider price snapshots, with nullable `physicalFinish` for Normal/Foil rows.
+- `ManualPriceOverride`: user-defined prices, with nullable `physicalFinish` for Normal/Foil rows.
 
 Current implementation state:
 
-- Price tables still use the current `card + variant` language.
-- That is schema foundation only; value calculation and price sync behavior are not implemented yet.
+- Price tables keep the current `card + variant` compatibility columns and unique constraints.
+- Phase 7.5G backfills `physicalFinish = NORMAL` for legacy `variant = NORMAL`, `physicalFinish = FOIL` for legacy `variant = FOIL`, and keeps legacy `variant = SHOWCASE` pricing rows at `physicalFinish = NULL`.
+- Pricing compatibility helpers prefer persisted `physicalFinish`, fall back only from legacy Normal/Foil variants, and never convert legacy Showcase rows into Normal/Foil price rows.
+- This is schema foundation only; value calculation, provider sync behavior, and pricing screens are not implemented yet.
 
 Target Phase 8 direction after Phase 7.5:
 
@@ -236,8 +238,7 @@ Implemented in Phase 7.5A:
 
 Still pending for later Phase 7.5 work:
 
-- remaining migration of pricing tables away from legacy `CardVariant`;
-- fully replacing compatibility `CardVariant` read paths after those remaining tables are migrated;
+- fully replacing compatibility `CardVariant` read paths after Phase 8 pricing and provider work can consume printed card + physical finish keys end to end;
 - richer related-printings queries and UI;
 - optional dedicated `GameplayIdentity` table if string keys are not sufficient after provider sync work.
 
