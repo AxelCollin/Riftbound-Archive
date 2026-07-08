@@ -43,7 +43,7 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
-Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some collection, deck, booster, and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work.
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some binder, booster, and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations now persist nullable `physicalFinish` for Normal/Foil allocations while retaining legacy `variant` compatibility.
 
 The target taxonomy separates:
 
@@ -133,7 +133,7 @@ Rules:
 - Do not directly allocate deck cards.
 - Do not persist availability.
 
-Binder reservation, deck allocation, and availability calculations are composed separately by domain, query, and service layers.
+Binder reservation, deck allocation, and availability calculations are composed separately by domain, query, and service layers. Assembled deck allocation reads prefer `physicalFinish` when present; older `NORMAL`/`FOIL` allocation rows with `physicalFinish = NULL` fall back to their legacy variant, while legacy `SHOWCASE` rows are not converted into a physical finish and therefore must not reduce Normal/Foil availability through finish-aware logic.
 
 ## Binder reservation
 
@@ -198,7 +198,7 @@ Deck statuses:
 When a deck is assembled:
 
 - allocate real owned copies;
-- persist allocations;
+- persist allocations with legacy `variant` compatibility and `physicalFinish = NORMAL`/`FOIL` for Normal/Foil allocations; legacy Showcase compatibility allocations keep no physical finish;
 - recompute global availability through existing query/domain composition;
 - show missing or unavailable cards.
 

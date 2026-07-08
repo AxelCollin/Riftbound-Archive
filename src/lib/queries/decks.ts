@@ -183,7 +183,7 @@ type DeckDetailCardRecord = {
   hasShowcase: boolean;
   set: { code: string; name: string };
   translations: { locale: string; name: string }[];
-  collectionEntries?: { variant: CardVariant; quantity: number }[];
+  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
 };
 
 type DeckDetailRequirementRecord = {
@@ -198,6 +198,7 @@ type DeckDetailAllocationRecord = {
   id: string;
   cardId: string;
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
   card: DeckDetailCardRecord;
 };
@@ -233,12 +234,13 @@ export type DeckRequirementRow = DeckDetailCardDisplay & {
   preferredVariant: DeckCardVariantPreference;
   allowedPreferences: DeckCardVariantPreference[];
   quantity: number;
-  collectionEntries?: { variant: CardVariant; quantity: number }[];
+  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
 };
 
 export type DeckAllocationRow = DeckDetailCardDisplay & {
   allocationId: string;
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
 };
 
@@ -307,7 +309,7 @@ const deckDetailCardSelect = {
 
 const deckDetailCardWithCollectionSelect = {
   ...deckDetailCardSelect,
-  collectionEntries: { select: { variant: true, quantity: true } },
+  collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
 } as const;
 
 function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "collectorCategory" | "hasShowcase">): DeckCardVariantPreference[] {
@@ -447,6 +449,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
       allocationId: row.id,
       ...mapDeckDetailCard(row.card),
       variant: row.variant,
+      physicalFinish: row.physicalFinish,
       quantity: row.quantity,
     }))
     .sort((left, right) => compareDeckDetailCardRows(left, right)
@@ -501,6 +504,7 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
           id: true,
           cardId: true,
           variant: true,
+          physicalFinish: true,
           quantity: true,
           card: { select: deckDetailCardSelect },
         },
@@ -519,7 +523,7 @@ export async function getDeckDetailPageData(deckId: string): Promise<DeckDetailP
     }),
     prisma.deck.findMany({
       where: { status: "ASSEMBLED", id: { not: deckId } },
-      select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
+      select: { allocations: { select: { cardId: true, variant: true, physicalFinish: true, quantity: true } } },
     }),
   ]);
 

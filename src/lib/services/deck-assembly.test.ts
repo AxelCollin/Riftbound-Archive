@@ -20,7 +20,7 @@ const commonCard = {
   kind: "GAMEPLAY",
   rarity: "COMMON",
   hasShowcase: true,
-  collectionEntries: [{ variant: "NORMAL", quantity: 3 }],
+  collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 }],
 } as const;
 
 function theoreticalDeck(overrides = {}) {
@@ -48,12 +48,12 @@ describe("assembleDeck service", () => {
     await assembleDeck("deck-1");
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", quantity: 2 } });
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 } });
     expect(txMock.deck.update).toHaveBeenCalledWith({ where: { id: "deck-1" }, data: { status: "ASSEMBLED" } });
   });
 
   it("fails without creating allocations or changing status when availability is insufficient", async () => {
-    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({ deckCards: [{ cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: { ...commonCard, collectionEntries: [{ variant: "NORMAL", quantity: 1 }] } }] }));
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({ deckCards: [{ cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: { ...commonCard, collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] } }] }));
 
     await expect(assembleDeck("deck-1")).rejects.toThrow("Insufficient availability");
 

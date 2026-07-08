@@ -1,6 +1,7 @@
 import { isTrackableCard, type RiftboundCard } from "./cards";
 import type { DeckCardVariantPreference, DeckRequirementInput } from "./decks";
 import { normalizeDeckRequirements } from "./decks";
+import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "./physical-finishes";
 import { getAllowedVariants, getVariantCount, type CardVariant, type VariantCounts } from "./variants";
 
 export type DeckAssemblyCard = Pick<RiftboundCard, "id" | "kind" | "gameplayType" | "collectorCategory" | "rarity" | "hasShowcase">;
@@ -13,6 +14,7 @@ export type DeckAssemblyAvailabilityInput = {
 export type DeckCardAllocationPlanRow = {
   cardId: string;
   variant: CardVariant;
+  physicalFinish: PhysicalFinish | null;
   quantity: number;
 };
 
@@ -112,7 +114,7 @@ function addAllocation(allocations: Map<string, DeckCardAllocationPlanRow>, card
   if (existing) {
     existing.quantity += quantity;
   } else {
-    allocations.set(key, { cardId, variant, quantity });
+    allocations.set(key, { cardId, variant, physicalFinish: mapLegacyCardVariantToPhysicalFinish(variant), quantity });
   }
 }
 

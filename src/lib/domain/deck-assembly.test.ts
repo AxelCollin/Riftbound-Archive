@@ -18,8 +18,8 @@ describe("planAssembledDeckAllocations", () => {
     ], [{ cardId: "common", available: { NORMAL: 1, FOIL: 1 } }])).toEqual({
       ok: true,
       allocations: [
-        { cardId: "common", variant: "FOIL", quantity: 1 },
-        { cardId: "common", variant: "NORMAL", quantity: 1 },
+        { cardId: "common", variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+        { cardId: "common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 },
       ],
     });
   });
@@ -28,9 +28,9 @@ describe("planAssembledDeckAllocations", () => {
     expect(plan([{ cardId: "common", quantity: 3, preferredVariant: "ANY" }], [{ cardId: "common", available: { NORMAL: 1, FOIL: 1, SHOWCASE: 1 } }])).toEqual({
       ok: true,
       allocations: [
-        { cardId: "common", variant: "NORMAL", quantity: 1 },
-        { cardId: "common", variant: "FOIL", quantity: 1 },
-        { cardId: "common", variant: "SHOWCASE", quantity: 1 },
+        { cardId: "common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 },
+        { cardId: "common", variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+        { cardId: "common", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
       ],
     });
   });
@@ -39,8 +39,8 @@ describe("planAssembledDeckAllocations", () => {
     expect(plan([{ cardId: "rare", quantity: 2, preferredVariant: "ANY" }], [{ cardId: "rare", available: { FOIL: 1, SHOWCASE: 1 } }])).toEqual({
       ok: true,
       allocations: [
-        { cardId: "rare", variant: "FOIL", quantity: 1 },
-        { cardId: "rare", variant: "SHOWCASE", quantity: 1 },
+        { cardId: "rare", variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+        { cardId: "rare", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
       ],
     });
   });
@@ -56,7 +56,7 @@ describe("planAssembledDeckAllocations", () => {
   it("allows theoretical deck copies when they are not removed from availability", () => {
     expect(plan([{ cardId: "common", quantity: 2, preferredVariant: "ANY" }], [{ cardId: "common", available: { NORMAL: 2 } }])).toEqual({
       ok: true,
-      allocations: [{ cardId: "common", variant: "NORMAL", quantity: 2 }],
+      allocations: [{ cardId: "common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 }],
     });
   });
 

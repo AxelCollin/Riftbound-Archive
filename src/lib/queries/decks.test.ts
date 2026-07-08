@@ -441,7 +441,7 @@ describe("deck detail query", () => {
 
     expect(prismaMock.deck.findMany).toHaveBeenLastCalledWith({
       where: { status: "ASSEMBLED", id: { not: "deck-detail" } },
-      select: { allocations: { select: { cardId: true, variant: true, quantity: true } } },
+      select: { allocations: { select: { cardId: true, variant: true, physicalFinish: true, quantity: true } } },
     });
   });
 

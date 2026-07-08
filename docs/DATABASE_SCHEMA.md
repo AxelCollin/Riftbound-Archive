@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck, binder, booster opening-card, and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Binder, booster opening-card, and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`. Deck allocations now persist a nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining the legacy `variant` column for compatibility.
 
 ## Official card metadata
 
@@ -83,14 +83,14 @@ Implemented deck tables include:
 
 - `Deck`: user-created deck metadata, status, and allocation strategy.
 - `DeckCard`: theoretical deck requirements.
-- `DeckCardAllocation`: real allocated physical copies for assembled decks.
+- `DeckCardAllocation`: real allocated physical copies for assembled decks. It keeps the legacy `variant` column and now stores nullable `physicalFinish` for `NORMAL`/`FOIL` allocation rows. Legacy `SHOWCASE` rows keep `physicalFinish = NULL`.
 
 Current implementation state:
 
 - `DeckCard.preferredVariant` uses `DeckCardVariantPreference`.
 - `ANY` means no specific implemented physical variant is required.
 - `NORMAL`, `FOIL`, and `SHOWCASE` still exist as current implementation preferences while Phase 7.5 migration is pending.
-- `DeckCardAllocation` currently allocates by card and implemented variant.
+- `DeckCardAllocation` currently allocates by card and implemented variant, with Phase 7.5D `physicalFinish` preferred for `NORMAL`/`FOIL` availability consumption.
 
 Target Phase 7.5 direction:
 
@@ -229,7 +229,7 @@ Implemented in Phase 7.5A:
 
 Still pending for later Phase 7.5 work:
 
-- remaining migration of deck allocations, binder overrides, booster opening rows, and pricing tables away from legacy `CardVariant`;
+- remaining migration of binder overrides, booster opening rows, and pricing tables away from legacy `CardVariant`;
 - fully replacing compatibility `CardVariant` read paths after those remaining tables are migrated;
 - richer related-printings queries and UI;
 - optional dedicated `GameplayIdentity` table if string keys are not sufficient after provider sync work.

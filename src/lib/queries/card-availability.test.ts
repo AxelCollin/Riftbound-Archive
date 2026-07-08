@@ -52,7 +52,7 @@ describe("card availability explanation query", () => {
       include: {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
       },
     });
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({
@@ -63,7 +63,7 @@ describe("card availability explanation query", () => {
         status: true,
         allocations: {
           where: { cardId: "query-card" },
-          select: { cardId: true, variant: true, quantity: true },
+          select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
         },
       },
     });
@@ -131,6 +131,64 @@ describe("card availability explanation mapping", () => {
       availableQuantity: 1,
       deckAllocations: [{ deckId: "deck-alpha", deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 2 }],
     });
+  });
+
+  it("reports physical-finish-aware deck allocations with the effective variant", () => {
+    const explanation = createCardAvailabilityExplanation(
+      card({ id: "finish-aware-card", collectionEntries: [{ variant: "FOIL", physicalFinish: "FOIL", quantity: 3 }] }),
+      [
+        {
+          deckId: "finish-aware-deck",
+          deckName: "Finish Aware",
+          assembled: true,
+          allocations: [{ cardId: "finish-aware-card", variant: "SHOWCASE", physicalFinish: "FOIL", quantity: 2 }],
+        },
+      ],
+    );
+
+    const foilRow = explanation.rows.find((row) => row.variant === "FOIL");
+
+    expect(foilRow).toMatchObject({
+      variant: "FOIL",
+      ownedQuantity: 3,
+      binderReservedQuantity: 1,
+      assembledDeckAllocatedQuantity: 2,
+      rawAvailableQuantity: 0,
+      availableQuantity: 0,
+      deckAllocations: [{ deckId: "finish-aware-deck", deckName: "Finish Aware", variant: "FOIL", allocatedQuantity: 2 }],
+    });
+    expect(foilRow?.deckAllocations[0]?.variant).toBe(foilRow?.variant);
+    expect(explanation.deckAllocations).toMatchObject([
+      { deckId: "finish-aware-deck", deckName: "Finish Aware", variant: "FOIL", allocatedQuantity: 2 },
+    ]);
+  });
+
+  it("does not include legacy showcase allocations without physical finish in normal or foil breakdowns", () => {
+    const explanation = createCardAvailabilityExplanation(
+      card({
+        id: "legacy-showcase-card",
+        hasShowcase: true,
+        collectionEntries: [
+          { variant: "NORMAL", quantity: 3 },
+          { variant: "FOIL", quantity: 2 },
+          { variant: "SHOWCASE", quantity: 1 },
+        ],
+      }),
+      [
+        {
+          deckId: "legacy-showcase-deck",
+          deckName: "Legacy Showcase",
+          assembled: true,
+          allocations: [{ cardId: "legacy-showcase-card", variant: "SHOWCASE", physicalFinish: null, quantity: 1 }],
+        },
+      ],
+    );
+
+    expect(explanation.rows.find((row) => row.variant === "NORMAL")?.deckAllocations).toEqual([]);
+    expect(explanation.rows.find((row) => row.variant === "FOIL")?.deckAllocations).toEqual([]);
+    expect(explanation.rows.find((row) => row.variant === "SHOWCASE")?.deckAllocations).toMatchObject([
+      { deckId: "legacy-showcase-deck", deckName: "Legacy Showcase", variant: "SHOWCASE", allocatedQuantity: 1 },
+    ]);
   });
 
   it("does not reduce availability for theoretical deck allocations", () => {

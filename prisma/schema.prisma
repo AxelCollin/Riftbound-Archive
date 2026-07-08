@@ -366,20 +366,22 @@ model DeckCard {
 }
 
 model DeckCardAllocation {
-  id        String      @id @default(cuid())
-  deckId    String
-  deck      Deck        @relation(fields: [deckId], references: [id], onDelete: Cascade)
-  cardId    String
-  card      Card        @relation(fields: [cardId], references: [id])
-  variant   CardVariant
-  quantity  Int
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id             String          @id @default(cuid())
+  deckId         String
+  deck           Deck            @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  cardId         String
+  card           Card            @relation(fields: [cardId], references: [id])
+  variant        CardVariant
+  physicalFinish PhysicalFinish?
+  quantity       Int
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@unique([deckId, cardId, variant])
   @@index([deckId])
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
 }
 
 model BoosterSettings {
