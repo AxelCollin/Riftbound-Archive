@@ -159,13 +159,20 @@ function getDeckAllocationBreakdown(
     .filter((deckAllocationSet) => deckAllocationSet.assembled)
     .flatMap((deckAllocationSet) =>
       deckAllocationSet.allocations
-        .filter((allocation) => allocation.cardId === cardId && getDeckAllocationQuantityVariant(allocation) === variant && allocation.quantity > 0)
-        .map((allocation) => ({
-          deckId: deckAllocationSet.deckId,
-          deckName: deckAllocationSet.deckName,
-          variant: allocation.variant,
-          allocatedQuantity: allocation.quantity,
-        })),
+        .flatMap((allocation) => {
+          const effectiveVariant = getDeckAllocationQuantityVariant(allocation);
+
+          if (effectiveVariant === null || allocation.cardId !== cardId || effectiveVariant !== variant || allocation.quantity <= 0) {
+            return [];
+          }
+
+          return [{
+            deckId: deckAllocationSet.deckId,
+            deckName: deckAllocationSet.deckName,
+            variant: effectiveVariant,
+            allocatedQuantity: allocation.quantity,
+          }];
+        }),
     );
 }
 
