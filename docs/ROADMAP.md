@@ -100,7 +100,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 - [x] Document corrected card taxonomy and post-Phase 7 UX target.
 - [x] Normalize documentation structure before Phase 7.5 implementation.
 - [x] Add gameplay identity and corrected card taxonomy fields.
-- [ ] Replace Showcase-as-variant with a finish-aware collection model.
+- [x] Replace Showcase-as-variant with a finish-aware collection model.
   - [x] Phase 7.5B foundation: add `NORMAL`/`FOIL` physical finish persistence for collection snapshots and transaction history while keeping legacy `CardVariant` compatibility.
   - [x] Follow-up: migrate read paths, deck allocations, binder overrides, booster opening rows, and pricing tables away from legacy `SHOWCASE` variant compatibility.
     - [x] Phase 7.5C read-path slice: collection and card-detail reads prefer `physicalFinish` for `NORMAL`/`FOIL`, fall back for legacy Normal/Foil rows, and do not convert legacy `SHOWCASE` rows into a physical finish.
@@ -108,6 +108,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
     - [x] Phase 7.5E BinderOverride slice: binder overrides persist nullable `physicalFinish` for Normal/Foil intent, prefer it over legacy `variant`, safely fall back for legacy Normal/Foil rows, and leave legacy Showcase rows unmapped.
     - [x] Phase 7.5F BoosterOpeningCard slice: booster opening rows persist nullable `physicalFinish` for Normal/Foil pulls, summaries prefer it when present, legacy Normal/Foil rows fall back safely, and legacy Showcase rows remain unmapped.
     - [x] Phase 7.5G pricing-table slice: PriceMapping, CardPrice, and ManualPriceOverride persist nullable `physicalFinish`, backfill legacy Normal/Foil rows, and leave legacy Showcase pricing rows unmapped while runtime pricing remains deferred to Phase 8.
+    - [x] Phase 7.5H closure audit: remaining `CardVariant.SHOWCASE` usage is classified as legacy storage/read fallback or UI/display compatibility, no known runtime path maps Showcase to a physical finish, and legacy compatibility columns remain deferred for future removal.
 - [x] Add related printings and gameplay-equivalence helpers.
 - [ ] Add a global app shell with persistent navigation.
 - [ ] Clean stale deck UI copy and remove user-facing phase labels.

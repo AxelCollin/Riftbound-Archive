@@ -79,6 +79,23 @@ The target model is:
 
 New code should move toward the target model and must not deepen the old `SHOWCASE`-as-simple-variant assumption unless explicitly documented as temporary migration work.
 
+## Phase 7.5H finish-aware compatibility boundary
+
+The closure audit found no known runtime path that still treats `SHOWCASE` as a physical finish. Remaining `CardVariant.SHOWCASE` usage is intentionally limited to temporary compatibility:
+
+- legacy storage and read fallback for rows that still have `variant` columns;
+- UI/display compatibility for filters, labels, deck preferences, and legacy availability/detail rows; and
+- migration history and tests that document old data shapes.
+
+These compatibility paths must respect the target model:
+
+- printed card identity lives on `Card` rows;
+- physical finish is `NORMAL` or `FOIL` only;
+- Showcase is modeled through `collectorCategory` and `showcaseTreatment`;
+- legacy `SHOWCASE` rows must keep `physicalFinish = NULL`;
+- helpers that derive `PhysicalFinish` from `CardVariant` must return `null` for `SHOWCASE`; and
+- the existing `variant` columns remain compatibility columns until a future removal PR can migrate storage and UI end to end.
+
 ## Physical finish support
 
 Current domain rules must keep supporting the implemented MVP until Phase 7.5 migrates it.
