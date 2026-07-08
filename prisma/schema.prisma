@@ -476,6 +476,7 @@ model PriceMapping {
   cardId               String
   card                 Card               @relation(fields: [cardId], references: [id])
   variant              CardVariant
+  physicalFinish       PhysicalFinish?
   externalId           String?
   externalVariantId    String             @default("DEFAULT")
   externalVariantLabel String?
@@ -491,6 +492,7 @@ model PriceMapping {
   @@unique([providerId, externalId, externalVariantId])
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
   @@index([status])
   @@index([confidence])
   @@index([externalVariantId])
@@ -502,8 +504,9 @@ model CardPrice {
   provider    PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
   cardId      String
   card        Card          @relation(fields: [cardId], references: [id])
-  variant     CardVariant
-  type        CardPriceType @default(MARKET)
+  variant        CardVariant
+  physicalFinish PhysicalFinish?
+  type           CardPriceType @default(MARKET)
   amountMinor Int
   currency    String        @default("EUR")
   fetchedAt   DateTime      @default(now())
@@ -514,6 +517,7 @@ model CardPrice {
   @@index([providerId])
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
   @@index([type])
   @@index([currency])
   @@index([fetchedAt])
@@ -523,8 +527,9 @@ model ManualPriceOverride {
   id          String      @id @default(cuid())
   cardId      String
   card        Card        @relation(fields: [cardId], references: [id])
-  variant     CardVariant
-  amountMinor Int
+  variant        CardVariant
+  physicalFinish PhysicalFinish?
+  amountMinor    Int
   currency    String      @default("EUR")
   note        String?
   createdAt   DateTime    @default(now())
@@ -533,6 +538,7 @@ model ManualPriceOverride {
   @@unique([cardId, variant, currency])
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
   @@index([currency])
 }
 

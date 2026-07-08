@@ -43,7 +43,7 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
-Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations, binder overrides, and booster opening-card rows now persist nullable `physicalFinish` for Normal/Foil rows while retaining legacy `variant` compatibility.
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Deck allocations, binder overrides, booster opening-card rows, and pricing compatibility tables now persist nullable `physicalFinish` for Normal/Foil rows while retaining legacy `variant` compatibility.
 
 The target taxonomy separates:
 
@@ -309,7 +309,7 @@ Target pricing granularity:
 printed card + physical finish + currency
 ```
 
-Current pre-Phase-7.5 schema still refers to `card + variant` in price tables. Treat that as current implementation state, not the long-term target.
+Current Phase 7.5G pricing tables keep legacy `card + variant` compatibility columns and add nullable `physicalFinish` for Normal/Foil rows. Treat `card + variant` as compatibility state, not the long-term target.
 
 The price system must support:
 
@@ -321,6 +321,15 @@ The price system must support:
 - last update date.
 
 Manual override must always win over provider price when active.
+
+Phase 7.5G pricing compatibility rules:
+
+- `PriceMapping`, `CardPrice`, and `ManualPriceOverride` persist nullable `physicalFinish`.
+- Legacy `variant = NORMAL` maps to `physicalFinish = NORMAL`.
+- Legacy `variant = FOIL` maps to `physicalFinish = FOIL`.
+- Legacy `variant = SHOWCASE` keeps `physicalFinish = NULL`; Showcase must not become a Normal/Foil price row and must not be added to `PhysicalFinish`.
+- Pricing read/helper code must prefer persisted `physicalFinish`, fall back only for legacy Normal/Foil rows, and leave legacy Showcase rows unmapped.
+- Runtime value calculation, provider synchronization, and pricing screens remain Phase 8 work.
 
 Values to compute later:
 
