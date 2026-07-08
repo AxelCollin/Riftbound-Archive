@@ -191,6 +191,23 @@ Printed card
 └─ gameplay identity / rules-equivalent group
 ```
 
+## Phase 7.5H closure audit
+
+The finish-aware model is coherent enough to close the Phase 7.5 parent item before the UX slices begin. The current boundary is:
+
+- printed card identity, numbering, art, collector category, showcase treatment, gameplay type, rarity, faction, and gameplay identity live on `Card` rows;
+- physical finish is the separate `PhysicalFinish` axis and is limited to `NORMAL` and `FOIL`;
+- Showcase is represented by `collectorCategory = SHOWCASE` plus an optional `showcaseTreatment`, not by a physical finish value;
+- `CardVariant.SHOWCASE` remains temporarily in `CARD_VARIANTS`, deck preferences, filters, persisted compatibility columns, and display helpers so existing storage and UI paths can keep reading legacy data;
+- compatibility helpers that derive a physical finish from a legacy variant must return `null` for `SHOWCASE`; and
+- the known legacy `variant` columns are compatibility columns, not the target domain model.
+
+Audit classification for remaining `SHOWCASE`-as-variant references:
+
+1. Legacy compatibility storage/read fallback: Prisma enum values and nullable `variant` columns remain on collection entries, transactions, binder overrides, deck allocations, booster opening cards, and pricing tables. Normal/Foil rows prefer `physicalFinish`; legacy Showcase rows keep `physicalFinish = NULL`.
+2. UI/display compatibility: existing labels, collection filters, deck preference controls, and availability/detail rows may still display legacy Showcase quantities where older paths expose them. This is compatibility surface only and does not add `SHOWCASE` to `PhysicalFinish`.
+3. Incorrect physical-finish behavior: no known runtime path remains that maps `SHOWCASE` to a physical finish.
+
 ## Migration direction
 
 The refactor should be incremental and reviewable.

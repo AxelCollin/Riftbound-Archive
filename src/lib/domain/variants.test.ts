@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { type RiftboundCard } from "./cards";
-import { getAllowedVariants, supportsNormalVariant } from "./variants";
+import { PHYSICAL_FINISHES, isPhysicalFinish, mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
+import { getAllowedVariants, isShowcaseVariant, supportsNormalVariant } from "./variants";
 
 const gameplayCard = {
   id: "card-1",
@@ -28,6 +29,16 @@ describe("variant rules", () => {
 
   it("keeps legacy showcase compatibility for standard cards with showcase support", () => {
     expect(getAllowedVariants({ ...gameplayCard, rarity: "RARE", collectorCategory: "STANDARD", hasShowcase: true })).toEqual(["FOIL", "SHOWCASE"]);
+  });
+
+  it("keeps legacy showcase display compatibility out of the physical finish axis", () => {
+    const allowedVariants = getAllowedVariants({ ...gameplayCard, rarity: "RARE", collectorCategory: "STANDARD", hasShowcase: true });
+
+    expect(allowedVariants).toEqual(["FOIL", "SHOWCASE"]);
+    expect(isShowcaseVariant("SHOWCASE")).toBe(true);
+    expect(PHYSICAL_FINISHES).toEqual(["NORMAL", "FOIL"]);
+    expect(isPhysicalFinish("SHOWCASE")).toBe(false);
+    expect(mapLegacyCardVariantToPhysicalFinish("SHOWCASE")).toBeNull();
   });
 
   it("does not expose the legacy showcase variant for showcase collector printings", () => {
