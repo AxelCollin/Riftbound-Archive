@@ -43,7 +43,7 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
-Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some binder, booster, and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations now persist nullable `physicalFinish` for Normal/Foil allocations while retaining legacy `variant` compatibility.
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some booster and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations and binder overrides now persist nullable `physicalFinish` for Normal/Foil rows while retaining legacy `variant` compatibility.
 
 The target taxonomy separates:
 
@@ -153,13 +153,7 @@ Examples under the current implemented model:
 - 1 showcase-only MVP variant: reserve nothing, 1 available.
 - 1 regular foil and 1 showcase MVP variant: reserve 1 regular foil, showcase remains available.
 
-Future overrides may exist later:
-
-```ts
-type BinderMode = "AUTO" | "DISABLED" | "FORCE_FINISH";
-```
-
-If the current implementation still uses `FORCE_VARIANT`, treat that name as temporary pre-taxonomy wording.
+Binder overrides are finish-aware compatibility records. Current persisted modes remain `AUTO`, `DISABLED`, and the temporary pre-taxonomy name `FORCE_VARIANT`. A forced override must prefer `physicalFinish` when present. When `physicalFinish = NULL`, legacy `variant = NORMAL` maps to Normal and legacy `variant = FOIL` maps to Foil. Legacy `variant = SHOWCASE` does not map to a physical finish and must not reserve Normal/Foil copies or target Showcase printings. `DISABLED` keeps reserving nothing for that card.
 
 ## Availability formula
 

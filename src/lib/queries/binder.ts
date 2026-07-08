@@ -1,5 +1,5 @@
 import { prisma } from "../db";
-import { getBinderReservation } from "../domain/binder";
+import { getBinderReservation, type BinderOverrideIntent } from "../domain/binder";
 import {
   isTrackableCard,
   type CardKind,
@@ -28,6 +28,7 @@ type BinderCardTranslation = {
 
 type BinderCollectionEntry = {
   variant: CardVariant;
+  physicalFinish?: "NORMAL" | "FOIL" | null;
   quantity: number;
 };
 
@@ -47,6 +48,7 @@ export type BinderCardRecord = {
   };
   translations: BinderCardTranslation[];
   collectionEntries: BinderCollectionEntry[];
+  binderOverride?: BinderOverrideIntent | null;
 };
 
 export type BinderStatus = "RESERVED" | "MISSING";
@@ -91,7 +93,7 @@ export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
       allowedVariants,
       card.collectionEntries,
     );
-    const reserved = getBinderReservation(card, owned).reserved;
+    const reserved = getBinderReservation(card, owned, card.binderOverride).reserved;
     const reservedVariant = allowedVariants.find(
       (variant) => getVariantCount(reserved, variant) > 0,
     ) ?? null;
@@ -149,7 +151,8 @@ export async function getBinderPageData(): Promise<BinderPageData> {
     include: {
       set: { select: { code: true, name: true } },
       translations: { select: { locale: true, name: true } },
-      collectionEntries: { select: { variant: true, quantity: true } },
+      collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+      binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
     },
   });
 

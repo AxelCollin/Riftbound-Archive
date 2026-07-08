@@ -53,6 +53,7 @@ describe("card availability explanation query", () => {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
       },
     });
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({

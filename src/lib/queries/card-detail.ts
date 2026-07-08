@@ -3,7 +3,7 @@ import {
   getCardAvailability,
   type DeckAllocationSet,
 } from "../domain/availability";
-import { getBinderReservation } from "../domain/binder";
+import { getBinderReservation, type BinderOverrideIntent } from "../domain/binder";
 import {
   isTrackableCard,
   type CardKind,
@@ -60,6 +60,7 @@ export type CardDetailRecord = {
   };
   translations: CardDetailTranslationRecord[];
   collectionEntries: CardDetailCollectionEntryRecord[];
+  binderOverride?: BinderOverrideIntent | null;
   userMeta: CardDetailUserMetaRecord;
 };
 
@@ -105,7 +106,7 @@ export function createCardDetail(
     allowedVariants,
     record.collectionEntries,
   );
-  const binderReserved = getBinderReservation(record, ownedCounts).reserved;
+  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverride).reserved;
   const available = getCardAvailability(
     record,
     ownedCounts,
@@ -160,6 +161,7 @@ export async function getCardDetail(
           },
         },
         collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
         userMeta: { select: { favorite: true, note: true } },
       },
     }),

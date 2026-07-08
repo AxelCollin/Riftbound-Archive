@@ -105,6 +105,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
   - [ ] Follow-up: migrate read paths, deck allocations, binder overrides, booster opening rows, and pricing tables away from legacy `SHOWCASE` variant compatibility.
     - [x] Phase 7.5C read-path slice: collection and card-detail reads prefer `physicalFinish` for `NORMAL`/`FOIL`, fall back for legacy Normal/Foil rows, and do not convert legacy `SHOWCASE` rows into a physical finish.
     - [x] Phase 7.5D deck-allocation slice: deck allocations persist nullable `physicalFinish` for Normal/Foil rows, availability reads prefer it when present, legacy Normal/Foil rows fall back safely, and legacy Showcase rows do not reduce Normal/Foil availability.
+    - [x] Phase 7.5E BinderOverride slice: binder overrides persist nullable `physicalFinish` for Normal/Foil intent, prefer it over legacy `variant`, safely fall back for legacy Normal/Foil rows, and leave legacy Showcase rows unmapped.
 - [x] Add related printings and gameplay-equivalence helpers.
 - [ ] Add a global app shell with persistent navigation.
 - [ ] Clean stale deck UI copy and remove user-facing phase labels.
