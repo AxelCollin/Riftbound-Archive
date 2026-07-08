@@ -43,7 +43,7 @@ It must return `false` for Token and Rules cards, and `true` for Rune / Energy c
 
 Do not collapse card taxonomy into a single `variant` field.
 
-Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Some booster and pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations and binder overrides now persist nullable `physicalFinish` for Normal/Foil rows while retaining legacy `variant` compatibility.
+Phase 7.5A implements the corrected taxonomy fields and gameplay identity foundation in the schema and domain helpers. Phase 7.5B adds a finish-aware foundation for collection snapshots and transaction history by persisting `physicalFinish` separately from the legacy `CardVariant`. Pricing flows still consume old MVP `CardVariant` compatibility units until later Phase 7.5 migration work. Deck allocations, binder overrides, and booster opening-card rows now persist nullable `physicalFinish` for Normal/Foil rows while retaining legacy `variant` compatibility.
 
 The target taxonomy separates:
 
@@ -252,6 +252,8 @@ Opening a booster:
 - ignores intentionally empty pulled-card rows and rejects partially filled rows;
 - merges duplicate pulled-card rows for the same ownership unit before persistence;
 - creates collection `ADD` transactions for valid pulled cards;
+- persists `physicalFinish` on pulled-card history and collection transactions for Normal/Foil rows while keeping the legacy `variant` column for compatibility;
+- leaves legacy Showcase pulled-card history with `physicalFinish = NULL` because Showcase is not a physical finish;
 - does not store availability directly;
 - does not mutate binder reservations or assembled deck allocations directly.
 
@@ -259,7 +261,7 @@ The Phase 7 implementation currently uses a small fixed pulled-card row set. Pha
 
 ## Booster opening summary
 
-The current post-opening summary reads persisted local rows only. It must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, or require pricing data.
+The current post-opening summary reads persisted local rows only. It must not mutate data, create extra collection transactions, re-run an opening, recalculate writes from form input, or require pricing data. It prefers persisted `physicalFinish` for Normal/Foil pulls when present, falls back to legacy Normal/Foil variants for older rows, and does not invent a physical finish for legacy Showcase rows.
 
 Current summary scope:
 

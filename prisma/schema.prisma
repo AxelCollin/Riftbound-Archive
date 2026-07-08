@@ -432,20 +432,22 @@ model BoosterOpening {
 }
 
 model BoosterOpeningCard {
-  id               String         @id @default(cuid())
+  id               String          @id @default(cuid())
   boosterOpeningId String
-  boosterOpening   BoosterOpening @relation(fields: [boosterOpeningId], references: [id], onDelete: Cascade)
+  boosterOpening   BoosterOpening  @relation(fields: [boosterOpeningId], references: [id], onDelete: Cascade)
   cardId           String
-  card             Card           @relation(fields: [cardId], references: [id])
+  card             Card            @relation(fields: [cardId], references: [id])
   variant          CardVariant
+  physicalFinish   PhysicalFinish?
   quantity         Int
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@unique([boosterOpeningId, cardId, variant])
   @@index([boosterOpeningId])
   @@index([cardId])
   @@index([variant])
+  @@index([physicalFinish])
 }
 
 model PriceProvider {

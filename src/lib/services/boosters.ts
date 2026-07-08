@@ -10,7 +10,7 @@ import {
   type NormalizedBoosterSettings,
 } from "@/lib/domain/boosters";
 import { isTrackableCard } from "@/lib/domain/cards";
-import { mapLegacyCardVariantToPhysicalFinish } from "@/lib/domain/physical-finishes";
+import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "@/lib/domain/physical-finishes";
 import { getAllowedVariants, type CardVariant } from "@/lib/domain/variants";
 import { getDisplayCardName } from "@/lib/queries/collection";
 
@@ -56,6 +56,7 @@ export type BoosterOpeningSummaryPullView = {
   setCode: string | null;
   collectorNumber: string | null;
   variant: CardVariant;
+  physicalFinish: PhysicalFinish | null;
   quantity: number;
   collectionQuantityAfterOpening: number;
   wasNewCollectionEntry: boolean;
@@ -91,6 +92,12 @@ type BoosterPrismaClient = {
   collectionTransaction: typeof prisma.collectionTransaction;
   card: typeof prisma.card;
 };
+
+type BoosterOpeningCardRecord = { cardId: string; variant: CardVariant; physicalFinish?: PhysicalFinish | null; quantity: number };
+
+function getEffectiveBoosterPhysicalFinish(record: { variant: CardVariant; physicalFinish?: PhysicalFinish | null }): PhysicalFinish | null {
+  return record.physicalFinish ?? mapLegacyCardVariantToPhysicalFinish(record.variant);
+}
 
 type BoosterSettingsRecord = {
   id: string;
@@ -305,7 +312,7 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
     const physicalFinish = mapLegacyCardVariantToPhysicalFinish(pull.variant);
 
     await client.boosterOpeningCard.create({
-      data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, quantity: pull.quantity },
+      data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, physicalFinish, quantity: pull.quantity },
     });
     await client.collectionTransaction.create({
       data: {
@@ -391,6 +398,7 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
       setCode: pull.card.set?.code ?? null,
       collectorNumber: pull.card.collectorNumber,
       variant: pull.variant,
+      physicalFinish: getEffectiveBoosterPhysicalFinish(pull),
       quantity: pull.quantity,
       collectionQuantityAfterOpening,
       wasNewCollectionEntry: collectionQuantityAfterOpening === transactionQuantity,
@@ -419,7 +427,7 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
 
 function getRollbackBlockedReason(
   status: "RECORDED" | "ROLLED_BACK",
-  cards: { cardId: string; variant: CardVariant; quantity: number }[],
+  cards: BoosterOpeningCardRecord[],
   transactions: { cardId: string; variant: CardVariant; quantity: number; type?: string }[],
   entries: { cardId: string; variant: CardVariant; quantity: number }[],
 ): string | null {
@@ -489,7 +497,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
         data: {
           cardId: card.cardId,
           variant: card.variant,
-          physicalFinish: mapLegacyCardVariantToPhysicalFinish(card.variant),
+          physicalFinish: getEffectiveBoosterPhysicalFinish(card),
           type: "REMOVE",
           quantity: card.quantity,
           source: rollbackSource,

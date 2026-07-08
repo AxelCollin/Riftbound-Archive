@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Booster opening-card and price tables still use `CardVariant` until later Phase 7.5 migration work replaces all remaining `card + CardVariant` ownership units with `printed card + physical finish`. Deck allocations and binder overrides now persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck allocations, binder overrides, and booster opening-card rows now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility. Price tables still use `CardVariant` until later Phase 7.5 migration work replaces the remaining `card + CardVariant` compatibility units with `printed card + physical finish`.
 
 ## Official card metadata
 
@@ -107,7 +107,7 @@ Implemented booster tables include:
 - `BoosterSettings`: user-configurable booster accrual settings.
 - `BoosterCounterEvent`: signed booster counter ledger events.
 - `BoosterOpening`: recorded booster opening sessions.
-- `BoosterOpeningCard`: aggregated pulled cards per opening, card, and current physical `CardVariant`.
+- `BoosterOpeningCard`: aggregated pulled cards per opening, card, and legacy `CardVariant`, with a Phase 7.5F nullable `physicalFinish` column for Normal/Foil pull intent.
 
 The current booster count is intentionally not stored directly. It is computed from booster settings, persisted counter events, and virtual accrual since the current anchor.
 
@@ -120,6 +120,13 @@ Phase 7 uses these tables for:
 - current owned snapshot updates;
 - read-only post-opening summaries;
 - safe rollback through compensating `REMOVE` transactions and optional `ROLLBACK` counter events.
+
+Phase 7.5F compatibility state:
+
+- New pulled-card rows persist `physicalFinish = NORMAL` for legacy `variant = NORMAL` and `physicalFinish = FOIL` for legacy `variant = FOIL`.
+- Legacy `BoosterOpeningCard` rows are backfilled the same way for Normal/Foil rows.
+- Legacy `SHOWCASE` booster rows intentionally keep `physicalFinish = NULL`; Showcase is not a physical finish and must not be converted into Normal/Foil pull history.
+- Booster summaries prefer persisted `physicalFinish` when present, fall back only for legacy Normal/Foil rows, and tolerate legacy Showcase rows without crashing.
 
 Target Phase 7.5 direction:
 
@@ -229,7 +236,7 @@ Implemented in Phase 7.5A:
 
 Still pending for later Phase 7.5 work:
 
-- remaining migration of binder overrides, booster opening rows, and pricing tables away from legacy `CardVariant`;
+- remaining migration of pricing tables away from legacy `CardVariant`;
 - fully replacing compatibility `CardVariant` read paths after those remaining tables are migrated;
 - richer related-printings queries and UI;
 - optional dedicated `GameplayIdentity` table if string keys are not sufficient after provider sync work.
