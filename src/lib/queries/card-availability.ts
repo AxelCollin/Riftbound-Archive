@@ -43,7 +43,7 @@ export type CardAvailabilityRecord = {
   };
   translations: AvailabilityTranslationRecord[];
   collectionEntries: AvailabilityCollectionEntryRecord[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 export type CardAvailabilityDeckAllocationBreakdown = {
@@ -95,7 +95,7 @@ export function createCardAvailabilityExplanation(
 ): CardAvailabilityExplanation {
   const allowedVariants = getAllowedVariants(record);
   const ownedCounts = createOwnedVariantCounts(record.id, allowedVariants, record.collectionEntries);
-  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverride).reserved;
+  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverrides?.[0]).reserved;
   const appFacingAvailable = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
 
   const rows = allowedVariants.map((variant) => {
@@ -187,7 +187,7 @@ export async function getCardAvailabilityExplanation(
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+        binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
       },
     }),
     getDeckAllocationSetsForCard(cardId),

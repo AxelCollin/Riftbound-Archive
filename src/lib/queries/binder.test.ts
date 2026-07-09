@@ -49,7 +49,7 @@ describe("binder query", () => {
           set: { select: { code: true, name: true } },
           translations: { select: { locale: true, name: true } },
           collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-          binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+          binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         },
       }),
     );
@@ -105,7 +105,7 @@ describe("binder query mapping", () => {
           { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
           { variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
         ],
-        binderOverride: { mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+        binderOverrides: [{ mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 }],
       }),
     ]);
 
@@ -125,7 +125,7 @@ describe("binder query mapping", () => {
           { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
           { variant: "SHOWCASE", quantity: 1 },
         ],
-        binderOverride: { mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
+        binderOverrides: [{ mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 }],
       }),
     ]);
 

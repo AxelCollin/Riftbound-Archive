@@ -112,6 +112,10 @@ Target behavior:
 - Standard printed cards can group Normal and Foil quantities in collection UI.
 - Showcase printed cards are separate printed cards and can have their own supported physical finishes according to real provider data.
 
+## Physical card language
+
+Physical card language is an owned-copy axis, not a translation metadata field. `CardTranslation.locale` continues to describe localized card/UI text, while `cardLanguage` describes the language printed on a physical copy owned by the user or represented by booster, deck, binder, and pricing compatibility rows. Supported physical values are `FR`, `EN`, and `ZH`; `UNKNOWN` is reserved for legacy rows, imports, and old data where the printed language is not known. Runtime collection quantity and availability behavior remains language-aggregated for now unless a helper explicitly accepts a physical language. The app must not infer physical language from UI locale or `APP_DEFAULT_LOCALE`.
+
 ## Collection transaction rules
 
 Collection transaction recording writes append-only ownership history and updates the owned snapshot for the same implemented ownership unit.

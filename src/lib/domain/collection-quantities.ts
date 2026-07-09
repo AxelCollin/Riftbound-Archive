@@ -1,3 +1,4 @@
+import type { CardLanguage } from "./card-languages";
 import type { PhysicalFinish } from "./physical-finishes";
 import { mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
 import type { CardVariant, VariantCounts } from "./variants";
@@ -6,6 +7,7 @@ export type OwnedSnapshotQuantityInput = {
   cardId: string;
   variant: CardVariant;
   quantity: number;
+  cardLanguage?: CardLanguage;
 };
 
 export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity"> & {
@@ -79,11 +81,11 @@ export function createOwnedVariantCounts(
       );
     }
 
-    if (entriesByVariant.has(quantityVariant)) {
+    if (entriesByVariant.has(quantityVariant) && !("cardLanguage" in entry)) {
       throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);
     }
 
-    entriesByVariant.set(quantityVariant, entry.quantity);
+    entriesByVariant.set(quantityVariant, (entriesByVariant.get(quantityVariant) ?? 0) + entry.quantity);
   }
 
   const ownedCounts: VariantCounts = {};

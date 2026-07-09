@@ -1,3 +1,4 @@
+import type { CardLanguage } from "./card-languages";
 import type { PhysicalFinish } from "./physical-finishes";
 import { mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
 import type { CardVariant } from "./variants";
@@ -5,6 +6,7 @@ import type { CardVariant } from "./variants";
 export type PricingFinishCompatibilityRow = {
   variant: CardVariant;
   physicalFinish?: PhysicalFinish | null;
+  cardLanguage?: CardLanguage;
 };
 
 export function getEffectivePricingPhysicalFinish(row: PricingFinishCompatibilityRow): PhysicalFinish | null {

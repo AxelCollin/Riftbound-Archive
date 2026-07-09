@@ -19,7 +19,7 @@ The current schema already contains foundations for:
 - price providers, mappings, provider price snapshots, and manual overrides;
 - sync settings and sync logs.
 
-The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B-7.5H finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck allocations, binder overrides, and booster opening-card rows now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility. Price tables now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` compatibility rows while retaining legacy `CardVariant` columns until Phase 8 pricing behavior can use `printed card + physical finish` end to end. Phase 7.5H audited the remaining compatibility surface and found no known runtime path that converts legacy `SHOWCASE` into a physical finish.
+The schema now includes Phase 7.5A foundations for corrected card taxonomy and gameplay identity, plus the Phase 7.5B-7.5H finish-aware collection foundation. `CollectionEntry` and `CollectionTransaction` now persist a separate nullable `physicalFinish` axis for `NORMAL` and `FOIL` while retaining legacy `CardVariant` for compatibility. Deck allocations, binder overrides, and booster opening-card rows now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` while retaining legacy `variant` columns for compatibility. Price tables now also persist nullable `physicalFinish` for `NORMAL`/`FOIL` compatibility rows while retaining legacy `CardVariant` columns until Phase 8 pricing behavior can use `printed card + physical finish` end to end. Phase 7.5H audited the remaining compatibility surface and found no known runtime path that converts legacy `SHOWCASE` into a physical finish. Phase 7.5J adds a separate physical `CardLanguage` axis (`FR`, `EN`, `ZH`, `UNKNOWN`) for owned copies, booster rows, deck allocations, binder overrides, and pricing compatibility rows. This axis is intentionally separate from `CardTranslation.locale`, which remains UI/card-text translation metadata.
 
 ## Official card metadata
 
@@ -68,8 +68,10 @@ cardId + physicalFinish
 `physicalFinish` values are limited to `NORMAL` and `FOIL`. There is intentionally no `SHOWCASE` physical finish; legacy `SHOWCASE` compatibility rows keep `physicalFinish = NULL` until they are migrated to separate Showcase printed cards or otherwise removed from remaining compatibility paths. Collection and card-detail reads prefer `physicalFinish` for Normal/Foil quantities when present, with a legacy `CardVariant` fallback only for older Normal/Foil rows. The target Phase 7.5 ownership unit is:
 
 ```text
-printedCardId + physicalFinish
+printedCardId + physicalFinish + cardLanguage
 ```
+
+`cardLanguage` is required on `CollectionEntry`, `CollectionTransaction`, `DeckCardAllocation`, `BinderOverride`, `BoosterOpeningCard`, `PriceMapping`, `CardPrice`, and `ManualPriceOverride`, with `UNKNOWN` as the legacy/import fallback. Existing quantity and availability reads currently aggregate across all physical languages unless a future function explicitly becomes language-aware.
 
 where Showcase is represented as a separate printed card / collector category, not as a simple physical finish beside Normal and Foil.
 
@@ -139,9 +141,9 @@ Target Phase 7.5 direction:
 Implemented price tables include:
 
 - `PriceProvider`: interchangeable price provider definitions, status, priority, base URL, and non-secret configuration metadata.
-- `PriceMapping`: mapping between local card + legacy `CardVariant` compatibility rows and provider product/listing/subtype identifiers, with nullable `physicalFinish` for Normal/Foil rows.
-- `CardPrice`: provider price snapshots, with nullable `physicalFinish` for Normal/Foil rows.
-- `ManualPriceOverride`: user-defined prices, with nullable `physicalFinish` for Normal/Foil rows.
+- `PriceMapping`: mapping between local card + legacy `CardVariant` compatibility rows and provider product/listing/subtype identifiers, with nullable `physicalFinish` for Normal/Foil rows and `cardLanguage` for future language-specific provider rows.
+- `CardPrice`: provider price snapshots, with nullable `physicalFinish` for Normal/Foil rows and `cardLanguage` for future language-specific rows.
+- `ManualPriceOverride`: user-defined prices, with nullable `physicalFinish` for Normal/Foil rows and `cardLanguage` for future language-specific overrides.
 
 Current implementation state:
 

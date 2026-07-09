@@ -184,7 +184,7 @@ type DeckDetailCardRecord = {
   set: { code: string; name: string };
   translations: { locale: string; name: string }[];
   collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 type DeckDetailRequirementRecord = {
@@ -236,7 +236,7 @@ export type DeckRequirementRow = DeckDetailCardDisplay & {
   allowedPreferences: DeckCardVariantPreference[];
   quantity: number;
   collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 export type DeckAllocationRow = DeckDetailCardDisplay & {
@@ -312,7 +312,7 @@ const deckDetailCardSelect = {
 const deckDetailCardWithCollectionSelect = {
   ...deckDetailCardSelect,
   collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-  binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+  binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
 } as const;
 
 function getAllowedDeckCardPreferences(card: Pick<DeckDetailCardRecord, "rarity" | "kind" | "gameplayType" | "collectorCategory" | "hasShowcase">): DeckCardVariantPreference[] {
@@ -370,7 +370,7 @@ function createDeckAvailabilityInputs(
   const requirementByCardId = new Map(requirements.map((requirement) => [requirement.cardId, requirement]));
 
   return [...requirementByCardId.values()].map((requirement) => {
-    const card = { id: requirement.cardId, kind: requirement.kind, gameplayType: requirement.gameplayType, collectorCategory: requirement.collectorCategory, rarity: requirement.rarity, hasShowcase: requirement.hasShowcase, binderOverride: requirement.binderOverride };
+    const card = { id: requirement.cardId, kind: requirement.kind, gameplayType: requirement.gameplayType, collectorCategory: requirement.collectorCategory, rarity: requirement.rarity, hasShowcase: requirement.hasShowcase, binderOverride: requirement.binderOverrides?.[0] };
     const allowedVariants = getAllowedVariants(card);
     const ownedCounts = createOwnedVariantCounts(
       requirement.cardId,
@@ -443,7 +443,7 @@ export function createDeckDetailPageData(deck: DeckDetailRecord, cardOptions: De
       allowedPreferences: getAllowedDeckCardPreferences(row.card),
       quantity: row.quantity,
       collectionEntries: row.card.collectionEntries,
-      binderOverride: row.card.binderOverride,
+      binderOverrides: row.card.binderOverrides,
     }))
     .sort((left, right) => compareDeckDetailCardRows(left, right)
       || left.preferredVariant.localeCompare(right.preferredVariant, "fr"));

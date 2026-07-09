@@ -34,6 +34,13 @@ enum PhysicalFinish {
   FOIL
 }
 
+enum CardLanguage {
+  FR
+  EN
+  ZH
+  UNKNOWN
+}
+
 enum CardPrintTreatment {
   REGULAR
   ALT
@@ -230,7 +237,7 @@ model Card {
   collectionEntries      CollectionEntry[]
   collectionTransactions CollectionTransaction[]
   userMeta               CardUserMeta?
-  binderOverride         BinderOverride?
+  binderOverrides        BinderOverride[]
   deckCards              DeckCard[]
   deckCardAllocations    DeckCardAllocation[]
   boosterOpeningCards    BoosterOpeningCard[]
@@ -281,12 +288,14 @@ model CollectionEntry {
   card           Card            @relation(fields: [cardId], references: [id])
   variant        CardVariant
   physicalFinish PhysicalFinish?
+  cardLanguage   CardLanguage    @default(UNKNOWN)
   quantity       Int             @default(0)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  @@unique([cardId, variant])
+  @@unique([cardId, variant, cardLanguage])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
 }
 
@@ -296,6 +305,7 @@ model CollectionTransaction {
   card           Card                      @relation(fields: [cardId], references: [id])
   variant        CardVariant
   physicalFinish PhysicalFinish?
+  cardLanguage   CardLanguage              @default(UNKNOWN)
   type           CollectionTransactionType
   quantity       Int
   note           String?
@@ -304,6 +314,7 @@ model CollectionTransaction {
 
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
   @@index([type])
   @@index([createdAt])
@@ -321,16 +332,19 @@ model CardUserMeta {
 
 model BinderOverride {
   id             String             @id @default(cuid())
-  cardId         String             @unique
+  cardId         String
   card           Card               @relation(fields: [cardId], references: [id])
   mode           BinderOverrideMode @default(AUTO)
   variant        CardVariant?
   physicalFinish PhysicalFinish?
+  cardLanguage   CardLanguage       @default(UNKNOWN)
   quantity       Int?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
+  @@unique([cardId, cardLanguage])
   @@index([mode])
+  @@index([cardLanguage])
   @@index([physicalFinish])
 }
 
@@ -375,14 +389,16 @@ model DeckCardAllocation {
   card           Card            @relation(fields: [cardId], references: [id])
   variant        CardVariant
   physicalFinish PhysicalFinish?
+  cardLanguage   CardLanguage    @default(UNKNOWN)
   quantity       Int
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  @@unique([deckId, cardId, variant])
+  @@unique([deckId, cardId, variant, cardLanguage])
   @@index([deckId])
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
 }
 
@@ -439,14 +455,16 @@ model BoosterOpeningCard {
   card             Card            @relation(fields: [cardId], references: [id])
   variant          CardVariant
   physicalFinish   PhysicalFinish?
+  cardLanguage     CardLanguage    @default(UNKNOWN)
   quantity         Int
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
-  @@unique([boosterOpeningId, cardId, variant])
+  @@unique([boosterOpeningId, cardId, variant, cardLanguage])
   @@index([boosterOpeningId])
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
 }
 
@@ -477,6 +495,7 @@ model PriceMapping {
   card                 Card               @relation(fields: [cardId], references: [id])
   variant              CardVariant
   physicalFinish       PhysicalFinish?
+  cardLanguage         CardLanguage       @default(UNKNOWN)
   externalId           String?
   externalVariantId    String             @default("DEFAULT")
   externalVariantLabel String?
@@ -488,10 +507,11 @@ model PriceMapping {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
-  @@unique([providerId, cardId, variant])
+  @@unique([providerId, cardId, variant, cardLanguage])
   @@unique([providerId, externalId, externalVariantId])
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
   @@index([status])
   @@index([confidence])
@@ -499,24 +519,26 @@ model PriceMapping {
 }
 
 model CardPrice {
-  id          String        @id @default(cuid())
-  providerId  String
-  provider    PriceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  cardId      String
-  card        Card          @relation(fields: [cardId], references: [id])
+  id             String          @id @default(cuid())
+  providerId     String
+  provider       PriceProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  cardId         String
+  card           Card            @relation(fields: [cardId], references: [id])
   variant        CardVariant
   physicalFinish PhysicalFinish?
-  type           CardPriceType @default(MARKET)
-  amountMinor Int
-  currency    String        @default("EUR")
-  fetchedAt   DateTime      @default(now())
-  sourceUrl   String?
-  rawJson     Json?
-  createdAt   DateTime      @default(now())
+  cardLanguage   CardLanguage    @default(UNKNOWN)
+  type           CardPriceType   @default(MARKET)
+  amountMinor    Int
+  currency       String          @default("EUR")
+  fetchedAt      DateTime        @default(now())
+  sourceUrl      String?
+  rawJson        Json?
+  createdAt      DateTime        @default(now())
 
   @@index([providerId])
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
   @@index([type])
   @@index([currency])
@@ -524,20 +546,22 @@ model CardPrice {
 }
 
 model ManualPriceOverride {
-  id          String      @id @default(cuid())
-  cardId      String
-  card        Card        @relation(fields: [cardId], references: [id])
+  id             String          @id @default(cuid())
+  cardId         String
+  card           Card            @relation(fields: [cardId], references: [id])
   variant        CardVariant
   physicalFinish PhysicalFinish?
+  cardLanguage   CardLanguage    @default(UNKNOWN)
   amountMinor    Int
-  currency    String      @default("EUR")
-  note        String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  currency       String          @default("EUR")
+  note           String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
-  @@unique([cardId, variant, currency])
+  @@unique([cardId, variant, cardLanguage, currency])
   @@index([cardId])
   @@index([variant])
+  @@index([cardLanguage])
   @@index([physicalFinish])
   @@index([currency])
 }

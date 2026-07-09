@@ -312,13 +312,14 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
     const physicalFinish = mapLegacyCardVariantToPhysicalFinish(pull.variant);
 
     await client.boosterOpeningCard.create({
-      data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, physicalFinish, quantity: pull.quantity },
+      data: { boosterOpeningId: openingId, cardId: pull.cardId, variant: pull.variant, physicalFinish, cardLanguage: "UNKNOWN", quantity: pull.quantity },
     });
     await client.collectionTransaction.create({
       data: {
         cardId: pull.cardId,
         variant: pull.variant,
         physicalFinish,
+        cardLanguage: "UNKNOWN",
         type: "ADD",
         quantity: pull.quantity,
         source: `booster-opening:${openingId}`,
@@ -326,8 +327,8 @@ async function writePulledCardsToCollection(client: BoosterPrismaClient, opening
       },
     });
     await client.collectionEntry.upsert({
-      where: { cardId_variant: { cardId: pull.cardId, variant: pull.variant } },
-      create: { cardId: pull.cardId, variant: pull.variant, physicalFinish, quantity: pull.quantity },
+      where: { cardId_variant_cardLanguage: { cardId: pull.cardId, variant: pull.variant, cardLanguage: "UNKNOWN" } },
+      create: { cardId: pull.cardId, variant: pull.variant, physicalFinish, cardLanguage: "UNKNOWN", quantity: pull.quantity },
       update: { quantity: { increment: pull.quantity } },
     });
   }
@@ -372,11 +373,11 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
   const [transactions, collectionEntries] = await Promise.all([
     prisma.collectionTransaction.findMany({
       where: { source },
-      select: { cardId: true, variant: true, quantity: true },
+      select: { cardId: true, variant: true, cardLanguage: true, quantity: true },
     }),
     prisma.collectionEntry.findMany({
       where: collectionEntryWhere,
-      select: { cardId: true, variant: true, quantity: true },
+      select: { cardId: true, variant: true, cardLanguage: true, quantity: true },
     }),
   ]);
 
@@ -481,8 +482,8 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
       ? { OR: record.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant })) }
       : { id: { in: [] } };
     const [transactions, entries] = await Promise.all([
-      client.collectionTransaction.findMany({ where: { source, type: "ADD" }, select: { cardId: true, variant: true, quantity: true, type: true } }),
-      client.collectionEntry.findMany({ where: collectionEntryWhere, select: { cardId: true, variant: true, quantity: true } }),
+      client.collectionTransaction.findMany({ where: { source, type: "ADD" }, select: { cardId: true, variant: true, cardLanguage: true, quantity: true, type: true } }),
+      client.collectionEntry.findMany({ where: collectionEntryWhere, select: { cardId: true, variant: true, cardLanguage: true, quantity: true } }),
     ]);
 
     const blockedReason = getRollbackBlockedReason(record.status, record.cards, transactions, entries);
@@ -490,7 +491,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
 
     for (const card of record.cards) {
       await client.collectionEntry.update({
-        where: { cardId_variant: { cardId: card.cardId, variant: card.variant } },
+        where: { cardId_variant_cardLanguage: { cardId: card.cardId, variant: card.variant, cardLanguage: card.cardLanguage ?? "UNKNOWN" } },
         data: { quantity: { decrement: card.quantity } },
       });
       await client.collectionTransaction.create({

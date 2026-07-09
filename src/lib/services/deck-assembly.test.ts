@@ -48,7 +48,7 @@ describe("assembleDeck service", () => {
     await assembleDeck("deck-1");
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 } });
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 } });
     expect(txMock.deck.update).toHaveBeenCalledWith({ where: { id: "deck-1" }, data: { status: "ASSEMBLED" } });
   });
 

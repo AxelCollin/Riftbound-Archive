@@ -23,6 +23,7 @@ function createEntry(quantity: number, cardId = "card-common", variant = "NORMAL
     cardId,
     variant,
     physicalFinish: mapLegacyCardVariantToPhysicalFinish(variant),
+    cardLanguage: "UNKNOWN",
     quantity,
     createdAt: new Date("2026-06-28T00:00:00.000Z"),
     updatedAt: new Date("2026-06-28T00:00:00.000Z"),
@@ -31,7 +32,7 @@ function createEntry(quantity: number, cardId = "card-common", variant = "NORMAL
 
 function createRepository(card: TestCard = baseCard, initialEntries: CollectionEntrySnapshot[] = []) {
   const transactions: unknown[] = [];
-  const entries = new Map(initialEntries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry]));
+  const entries = new Map(initialEntries.map((entry) => [`${entry.cardId}:${entry.variant}:${entry.cardLanguage}`, entry]));
   const applyQuantityMutation = (currentQuantity: number, mutation: number | { increment: number } | { decrement: number }) => {
     if (typeof mutation === "number") {
       return mutation;
@@ -43,8 +44,8 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
 
     return currentQuantity - mutation.decrement;
   };
-  const upsertEntry = vi.fn(async ({ where: { cardId_variant }, create, update }) => {
-    const key = `${cardId_variant.cardId}:${cardId_variant.variant}`;
+  const upsertEntry = vi.fn(async ({ where: { cardId_variant_cardLanguage }, create, update }) => {
+    const key = `${cardId_variant_cardLanguage.cardId}:${cardId_variant_cardLanguage.variant}:${cardId_variant_cardLanguage.cardLanguage}`;
     const existing = entries.get(key);
     const entry = existing
       ? {
@@ -52,13 +53,13 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
           quantity: applyQuantityMutation(existing.quantity, update.quantity),
           updatedAt: new Date("2026-06-28T00:00:01.000Z"),
         }
-      : createEntry(create.quantity, create.cardId, create.variant);
+      : { ...createEntry(create.quantity, create.cardId, create.variant), cardLanguage: create.cardLanguage };
 
     entries.set(key, entry);
     return entry;
   });
   const updateManyEntry = vi.fn(async ({ where, data }) => {
-    const key = `${where.cardId}:${where.variant}`;
+    const key = `${where.cardId}:${where.variant}:${where.cardLanguage ?? "UNKNOWN"}`;
     const existing = entries.get(key);
 
     if (!existing || (where.quantity?.gte !== undefined && existing.quantity < where.quantity.gte)) {
@@ -133,12 +134,12 @@ describe("recordCollectionTransaction", () => {
       note: "Première acquisition",
       source: "Boutique locale",
     });
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(2);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(2);
     expect(repository.collectionTransaction.create).toHaveBeenCalledTimes(1);
     expect(repository.collectionEntry.upsert).toHaveBeenCalledTimes(1);
     expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
-      where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
-      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
+      where: { cardId_variant_cardLanguage: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN" } },
+      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });
@@ -148,7 +149,7 @@ describe("recordCollectionTransaction", () => {
 
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADD", quantity: 2 }, repository);
 
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(5);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(5);
   });
 
   it("uses an atomic increment mutation for ADD snapshots", async () => {
@@ -157,8 +158,8 @@ describe("recordCollectionTransaction", () => {
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADD", quantity: 2 }, repository);
 
     expect(repository.collectionEntry.upsert).toHaveBeenCalledWith({
-      where: { cardId_variant: { cardId: "card-common", variant: "NORMAL" } },
-      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
+      where: { cardId_variant_cardLanguage: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN" } },
+      create: { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });
@@ -168,7 +169,7 @@ describe("recordCollectionTransaction", () => {
 
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "REMOVE", quantity: 2 }, repository);
 
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(1);
   });
 
   it("rejects REMOVE if it would make quantity negative", async () => {
@@ -181,9 +182,9 @@ describe("recordCollectionTransaction", () => {
     );
 
     expect(transactions).toHaveLength(0);
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(1);
     expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
-      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 2 } },
+      where: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: { gte: 2 } },
       data: { quantity: { decrement: 2 } },
     });
     expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
@@ -200,7 +201,7 @@ describe("recordCollectionTransaction", () => {
 
     expect(transactions).toHaveLength(0);
     expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
-      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 1 } },
+      where: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
       data: { quantity: { decrement: 1 } },
     });
   });
@@ -208,11 +209,11 @@ describe("recordCollectionTransaction", () => {
   it("creates or updates a CollectionEntry to the exact SET quantity", async () => {
     const created = createRepository(baseCard);
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "SET", quantity: 4 }, created.repository);
-    expect(created.entries.get("card-common:NORMAL")?.quantity).toBe(4);
+    expect(created.entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(4);
 
     const updated = createRepository(baseCard, [createEntry(9)]);
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "SET", quantity: 4 }, updated.repository);
-    expect(updated.entries.get("card-common:NORMAL")?.quantity).toBe(4);
+    expect(updated.entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(4);
   });
 
   it("accepts SET with quantity 0 and sets snapshot quantity to 0", async () => {
@@ -222,7 +223,7 @@ describe("recordCollectionTransaction", () => {
       recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "SET", quantity: 0 }, repository),
     ).resolves.toMatchObject({ type: "SET", quantity: 0 });
 
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(0);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(0);
   });
 
   it("increments an existing CollectionEntry for positive ADJUST", async () => {
@@ -230,7 +231,7 @@ describe("recordCollectionTransaction", () => {
 
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADJUST", quantity: 2 }, repository);
 
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(5);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(5);
   });
 
   it("decrements an existing CollectionEntry for negative ADJUST", async () => {
@@ -238,7 +239,7 @@ describe("recordCollectionTransaction", () => {
 
     await recordCollectionTransaction({ cardId: "card-common", variant: "NORMAL", type: "ADJUST", quantity: -2 }, repository);
 
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(1);
   });
 
   it("rejects ADJUST if it would make quantity negative", async () => {
@@ -251,9 +252,9 @@ describe("recordCollectionTransaction", () => {
     );
 
     expect(transactions).toHaveLength(0);
-    expect(entries.get("card-common:NORMAL")?.quantity).toBe(1);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(1);
     expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
-      where: { cardId: "card-common", variant: "NORMAL", quantity: { gte: 2 } },
+      where: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: { gte: 2 } },
       data: { quantity: { decrement: 2 } },
     });
     expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
@@ -265,7 +266,7 @@ describe("recordCollectionTransaction", () => {
     await expect(
       recordCollectionTransaction({ cardId: "energy", variant: "NORMAL", type: "ADD", quantity: 1 }, repository),
     ).resolves.toMatchObject({ cardId: "energy", variant: "NORMAL" });
-    expect(entries.get("energy:NORMAL")?.quantity).toBe(1);
+    expect(entries.get("energy:NORMAL:UNKNOWN")?.quantity).toBe(1);
   });
 
   it("rejects TOKEN card transactions without writing transaction or snapshot", async () => {

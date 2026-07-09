@@ -605,14 +605,14 @@ describe("booster opening service", () => {
     expect(result.recordedCardCount).toBe(1);
 
     expect(prismaMock.boosterOpeningCard.create).toHaveBeenCalledWith({
-      data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
+      data: { boosterOpeningId: "opening-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
-      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", type: "ADD", quantity: 2, source: "booster-opening:opening-1", note: "Ouverture de booster" },
+      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 2, source: "booster-opening:opening-1", note: "Ouverture de booster" },
     });
     expect(prismaMock.collectionEntry.upsert).toHaveBeenCalledWith({
-      where: { cardId_variant: { cardId: "card-1", variant: "NORMAL" } },
-      create: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
+      where: { cardId_variant_cardLanguage: { cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN" } },
+      create: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
       update: { quantity: { increment: 2 } },
     });
   });
@@ -777,7 +777,7 @@ describe("booster opening rollback service", () => {
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
     expect(prismaMock.collectionEntry.update).toHaveBeenCalledWith({
-      where: { cardId_variant: { cardId: "card-1", variant: "NORMAL" } },
+      where: { cardId_variant_cardLanguage: { cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN" } },
       data: { quantity: { decrement: 2 } },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({

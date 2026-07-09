@@ -15,7 +15,7 @@ type AssemblyCardRecord = {
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
   collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 export async function assembleDeck(deckId: string): Promise<void> {
@@ -39,7 +39,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
                 rarity: true,
                 hasShowcase: true,
                 collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-                binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+                binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
               },
             },
           },
@@ -78,7 +78,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
     const availabilityByCard = cards.map((card) => {
       const allowedVariants = getAllowedVariants(card);
       const ownedCounts = createOwnedVariantCounts(card.id, allowedVariants, card.collectionEntries);
-      const binderReserved = getBinderReservation(card, ownedCounts, card.binderOverride).reserved;
+      const binderReserved = getBinderReservation(card, ownedCounts, card.binderOverrides?.[0]).reserved;
 
       return getCardAvailability(card, ownedCounts, deckAllocationSets, binderReserved);
     });
@@ -104,6 +104,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
           cardId: allocation.cardId,
           variant: allocation.variant,
           physicalFinish: allocation.physicalFinish,
+          cardLanguage: "UNKNOWN",
           quantity: allocation.quantity,
         },
       });
