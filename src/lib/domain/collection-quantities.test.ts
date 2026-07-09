@@ -110,6 +110,15 @@ describe("owned variant count composition", () => {
     expect(counts).toEqual({ NORMAL: 3 });
   });
 
+  it("throws before aggregation when a negative language row would otherwise be masked", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+        { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: -1 },
+        { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 3 },
+      ]),
+    ).toThrow("Invalid negative CollectionEntry quantity for card card-1 variant NORMAL");
+  });
+
   it("throws the existing negative CollectionEntry error for negative quantities", () => {
     expect(() =>
       createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "FOIL", quantity: -1 }]),

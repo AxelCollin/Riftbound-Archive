@@ -81,11 +81,17 @@ export function createOwnedVariantCounts(
       );
     }
 
+    const entryQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant: quantityVariant,
+      quantity: entry.quantity,
+    });
+
     if (entriesByVariant.has(quantityVariant) && !("cardLanguage" in entry)) {
       throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);
     }
 
-    entriesByVariant.set(quantityVariant, (entriesByVariant.get(quantityVariant) ?? 0) + entry.quantity);
+    entriesByVariant.set(quantityVariant, (entriesByVariant.get(quantityVariant) ?? 0) + entryQuantity);
   }
 
   const ownedCounts: VariantCounts = {};
