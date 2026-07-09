@@ -290,8 +290,8 @@ describe("booster opening summary service", () => {
 
   it("summarizes one pulled card with French fallback, variant, quantity, and collection counts", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(summaryOpening);
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }]);
 
     await expect(getBoosterOpeningSummary("opening-1")).resolves.toMatchObject({
       distinctCardRows: 1,
@@ -311,8 +311,8 @@ describe("booster opening summary service", () => {
         { cardId: "card-2", variant: "FOIL", physicalFinish: "FOIL", quantity: 1, card: { id: "card-2", name: "Rune", collectorNumber: null, set: { code: "OGN" }, translations: [] } },
       ],
     });
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }, { cardId: "card-2", variant: "FOIL", quantity: 1, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }, { cardId: "card-2", variant: "FOIL", quantity: 1 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }, { cardId: "card-2", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 5 }, { cardId: "card-2", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1 }]);
 
     const summary = await getBoosterOpeningSummary("opening-1");
 
@@ -362,8 +362,8 @@ describe("booster opening summary service", () => {
 
   it("shows rolled-back status and prevents another rollback in the summary", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...summaryOpening, status: "ROLLED_BACK" });
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }]);
 
     await expect(getBoosterOpeningSummary("opening-1")).resolves.toMatchObject({
       status: "ROLLED_BACK",
@@ -762,15 +762,15 @@ describe("booster opening rollback service", () => {
     decrementCounter: true,
     status: "RECORDED" as const,
     note: null,
-    cards: [{ cardId: "card-1", variant: "NORMAL", quantity: 2 }],
+    cards: [{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }],
     counterEvents: [{ type: "OPENING_DECREMENT", quantityDelta: -2 }],
     _count: { cards: 1 },
   };
 
   it("rolls back a recorded opening atomically with collection, transaction, counter, and status writes", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 5 }]);
     prismaMock.boosterOpening.update.mockResolvedValueOnce({ ...rollbackOpening, status: "ROLLED_BACK" });
 
     await expect(rollbackBoosterOpening("opening-1", now)).resolves.toMatchObject({ status: "ROLLED_BACK" });
@@ -781,7 +781,7 @@ describe("booster opening rollback service", () => {
       data: { quantity: { decrement: 2 } },
     });
     expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
-      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
+      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
     });
     expect(prismaMock.boosterCounterEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ type: "ROLLBACK", quantityDelta: 2, boosterOpeningId: "opening-1", occurredAt: now }),
@@ -792,13 +792,63 @@ describe("booster opening rollback service", () => {
 
   it("does not create a counter rollback event when no opening decrement exists", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...rollbackOpening, decrementCounter: false, counterEvents: [] });
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }]);
     prismaMock.boosterOpening.update.mockResolvedValueOnce({ ...rollbackOpening, decrementCounter: false, status: "ROLLED_BACK" });
 
     await rollbackBoosterOpening("opening-1", now);
 
     expect(prismaMock.boosterCounterEvent.create).not.toHaveBeenCalledWith({ data: expect.objectContaining({ type: "ROLLBACK" }) });
+  });
+
+  it("rolls back a non-UNKNOWN language only when the matching collection entry and ADD transaction use the same language", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...rollbackOpening,
+      cards: [{ cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 }],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 2 }]);
+    prismaMock.boosterOpening.update.mockResolvedValueOnce({ ...rollbackOpening, status: "ROLLED_BACK" });
+
+    await expect(rollbackBoosterOpening("opening-1", now)).resolves.toMatchObject({ status: "ROLLED_BACK" });
+
+    expect(prismaMock.collectionEntry.findMany).toHaveBeenCalledWith({
+      where: { OR: [{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR" }] },
+      select: { cardId: true, variant: true, cardLanguage: true, quantity: true },
+    });
+    expect(prismaMock.collectionEntry.update).toHaveBeenCalledWith({
+      where: { cardId_variant_cardLanguage: { cardId: "card-1", variant: "NORMAL", cardLanguage: "FR" } },
+      data: { quantity: { decrement: 2 } },
+    });
+    expect(prismaMock.collectionTransaction.create).toHaveBeenCalledWith({
+      data: { cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", type: "REMOVE", quantity: 2, source: "booster-opening-rollback:opening-1", note: "Annulation d’ouverture de booster" },
+    });
+  });
+
+  it("blocks rollback when only another physical language has enough collection quantity", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...rollbackOpening,
+      cards: [{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 2 }],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "EN", quantity: 5 }]);
+
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : entrée de collection introuvable");
+    expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("blocks rollback when ADD transactions only match another physical language", async () => {
+    prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({
+      ...rollbackOpening,
+      cards: [{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 2 }],
+    });
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "EN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "FR", quantity: 5 }]);
+
+    await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : transactions d’ouverture incohérentes");
+    expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
+    expect(prismaMock.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
   it("blocks already rolled-back openings and does not double-reverse", async () => {
@@ -811,8 +861,8 @@ describe("booster opening rollback service", () => {
 
   it("blocks rollback when a collection entry would go negative", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 1 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 1 }]);
 
     await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : la collection ne contient plus assez d’exemplaires");
     expect(prismaMock.boosterOpening.update).not.toHaveBeenCalled();
@@ -820,7 +870,7 @@ describe("booster opening rollback service", () => {
 
   it("blocks rollback when a required collection entry is missing", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" }]);
     prismaMock.collectionEntry.findMany.mockResolvedValueOnce([]);
 
     await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : entrée de collection introuvable");
@@ -829,8 +879,8 @@ describe("booster opening rollback service", () => {
 
   it("blocks rollback when source collection transactions are inconsistent", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
-    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 1, type: "ADD" }]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
+    prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 1, type: "ADD" }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 5 }]);
 
     await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : transactions d’ouverture incohérentes");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
@@ -839,10 +889,10 @@ describe("booster opening rollback service", () => {
   it("blocks rollback when source collection transactions include an extra card variant", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce(rollbackOpening);
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([
-      { cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" },
-      { cardId: "card-2", variant: "FOIL", quantity: 1, type: "ADD" },
+      { cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" },
+      { cardId: "card-2", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1, type: "ADD" },
     ]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 5 }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 5 }]);
 
     await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : transactions d’ouverture incohérentes");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();
@@ -853,14 +903,14 @@ describe("booster opening rollback service", () => {
 
   it("keeps rollback writes atomic when one card cannot be reversed", async () => {
     prismaMock.boosterOpening.findUnique.mockResolvedValueOnce({ ...rollbackOpening, cards: [
-      { cardId: "card-1", variant: "NORMAL", quantity: 2 },
-      { cardId: "card-2", variant: "FOIL", quantity: 1 },
+      { cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
+      { cardId: "card-2", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1 },
     ] });
     prismaMock.collectionTransaction.findMany.mockResolvedValueOnce([
-      { cardId: "card-1", variant: "NORMAL", quantity: 2, type: "ADD" },
-      { cardId: "card-2", variant: "FOIL", quantity: 1, type: "ADD" },
+      { cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2, type: "ADD" },
+      { cardId: "card-2", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1, type: "ADD" },
     ]);
-    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", quantity: 2 }]);
+    prismaMock.collectionEntry.findMany.mockResolvedValueOnce([{ cardId: "card-1", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }]);
 
     await expect(rollbackBoosterOpening("opening-1", now)).rejects.toThrow("Annulation impossible : entrée de collection introuvable");
     expect(prismaMock.collectionEntry.update).not.toHaveBeenCalled();

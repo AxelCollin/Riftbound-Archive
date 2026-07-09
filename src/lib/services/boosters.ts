@@ -9,6 +9,7 @@ import {
   type BoosterSettingsInput,
   type NormalizedBoosterSettings,
 } from "@/lib/domain/boosters";
+import type { CardLanguage } from "@/lib/domain/card-languages";
 import { isTrackableCard } from "@/lib/domain/cards";
 import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "@/lib/domain/physical-finishes";
 import { getAllowedVariants, type CardVariant } from "@/lib/domain/variants";
@@ -93,7 +94,7 @@ type BoosterPrismaClient = {
   card: typeof prisma.card;
 };
 
-type BoosterOpeningCardRecord = { cardId: string; variant: CardVariant; physicalFinish?: PhysicalFinish | null; quantity: number };
+type BoosterOpeningCardRecord = { cardId: string; variant: CardVariant; physicalFinish?: PhysicalFinish | null; cardLanguage?: CardLanguage | null; quantity: number };
 
 function getEffectiveBoosterPhysicalFinish(record: { variant: CardVariant; physicalFinish?: PhysicalFinish | null }): PhysicalFinish | null {
   return record.physicalFinish ?? mapLegacyCardVariantToPhysicalFinish(record.variant);
@@ -367,7 +368,7 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
 
   const source = `booster-opening:${opening.id}`;
   const collectionEntryWhere = opening.cards.length > 0
-    ? { OR: opening.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant })) }
+    ? { OR: opening.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant, cardLanguage: pull.cardLanguage ?? "UNKNOWN" })) }
     : { id: { in: [] } };
 
   const [transactions, collectionEntries] = await Promise.all([
@@ -383,14 +384,14 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
 
   const transactionQuantityByKey = new Map<string, number>();
   for (const transaction of transactions) {
-    const key = `${transaction.cardId}:${transaction.variant}`;
+    const key = getRollbackConsistencyKey(transaction);
     transactionQuantityByKey.set(key, (transactionQuantityByKey.get(key) ?? 0) + transaction.quantity);
   }
 
-  const collectionQuantityByKey = new Map(collectionEntries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
+  const collectionQuantityByKey = new Map(collectionEntries.map((entry) => [getRollbackConsistencyKey(entry), entry.quantity]));
 
   const pulls = opening.cards.map((pull) => {
-    const key = `${pull.cardId}:${pull.variant}`;
+    const key = getRollbackConsistencyKey(pull);
     const collectionQuantityAfterOpening = collectionQuantityByKey.get(key) ?? 0;
     const transactionQuantity = transactionQuantityByKey.get(key) ?? pull.quantity;
     return {
@@ -426,27 +427,31 @@ export async function getBoosterOpeningSummary(openingId?: string | null): Promi
   };
 }
 
+function getRollbackConsistencyKey(record: { cardId: string; variant: CardVariant; cardLanguage?: CardLanguage | null }): string {
+  return `${record.cardId}:${record.variant}:${record.cardLanguage ?? "UNKNOWN"}`;
+}
+
 function getRollbackBlockedReason(
   status: "RECORDED" | "ROLLED_BACK",
   cards: BoosterOpeningCardRecord[],
-  transactions: { cardId: string; variant: CardVariant; quantity: number; type?: string }[],
-  entries: { cardId: string; variant: CardVariant; quantity: number }[],
+  transactions: { cardId: string; variant: CardVariant; cardLanguage?: CardLanguage | null; quantity: number; type?: string }[],
+  entries: { cardId: string; variant: CardVariant; cardLanguage?: CardLanguage | null; quantity: number }[],
 ): string | null {
   if (status === "ROLLED_BACK") return "Cette ouverture a déjà été annulée";
 
   const openingQuantityByKey = new Map<string, number>();
   for (const card of cards) {
-    const key = `${card.cardId}:${card.variant}`;
+    const key = getRollbackConsistencyKey(card);
     openingQuantityByKey.set(key, (openingQuantityByKey.get(key) ?? 0) + card.quantity);
   }
 
   const transactionQuantityByKey = new Map<string, number>();
   for (const transaction of transactions) {
     if (transaction.type && transaction.type !== "ADD") continue;
-    const key = `${transaction.cardId}:${transaction.variant}`;
+    const key = getRollbackConsistencyKey(transaction);
     transactionQuantityByKey.set(key, (transactionQuantityByKey.get(key) ?? 0) + transaction.quantity);
   }
-  const entryQuantityByKey = new Map(entries.map((entry) => [`${entry.cardId}:${entry.variant}`, entry.quantity]));
+  const entryQuantityByKey = new Map(entries.map((entry) => [getRollbackConsistencyKey(entry), entry.quantity]));
 
   for (const [key, openingQuantity] of openingQuantityByKey) {
     if (transactionQuantityByKey.get(key) !== openingQuantity) return "Annulation impossible : transactions d’ouverture incohérentes";
@@ -479,7 +484,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
     const source = `booster-opening:${record.id}`;
     const rollbackSource = `booster-opening-rollback:${record.id}`;
     const collectionEntryWhere = record.cards.length > 0
-      ? { OR: record.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant })) }
+      ? { OR: record.cards.map((pull) => ({ cardId: pull.cardId, variant: pull.variant, cardLanguage: pull.cardLanguage ?? "UNKNOWN" })) }
       : { id: { in: [] } };
     const [transactions, entries] = await Promise.all([
       client.collectionTransaction.findMany({ where: { source, type: "ADD" }, select: { cardId: true, variant: true, cardLanguage: true, quantity: true, type: true } }),
@@ -499,6 +504,7 @@ export async function rollbackBoosterOpening(openingId: string, now = new Date()
           cardId: card.cardId,
           variant: card.variant,
           physicalFinish: getEffectiveBoosterPhysicalFinish(card),
+          cardLanguage: card.cardLanguage ?? "UNKNOWN",
           type: "REMOVE",
           quantity: card.quantity,
           source: rollbackSource,
