@@ -183,7 +183,7 @@ type DeckDetailCardRecord = {
   hasShowcase: boolean;
   set: { code: string; name: string };
   translations: { locale: string; name: string }[];
-  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
+  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN"; quantity: number }[];
   binderOverrides?: BinderOverrideIntent[];
 };
 
@@ -200,6 +200,7 @@ type DeckDetailAllocationRecord = {
   cardId: string;
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
   card: DeckDetailCardRecord;
 };
@@ -235,7 +236,7 @@ export type DeckRequirementRow = DeckDetailCardDisplay & {
   preferredVariant: DeckCardVariantPreference;
   allowedPreferences: DeckCardVariantPreference[];
   quantity: number;
-  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
+  collectionEntries?: { variant: CardVariant; physicalFinish?: "NORMAL" | "FOIL" | null; cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN"; quantity: number }[];
   binderOverrides?: BinderOverrideIntent[];
 };
 
@@ -243,6 +244,7 @@ export type DeckAllocationRow = DeckDetailCardDisplay & {
   allocationId: string;
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
 };
 
@@ -311,7 +313,7 @@ const deckDetailCardSelect = {
 
 const deckDetailCardWithCollectionSelect = {
   ...deckDetailCardSelect,
-  collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+  collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
   binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
 } as const;
 

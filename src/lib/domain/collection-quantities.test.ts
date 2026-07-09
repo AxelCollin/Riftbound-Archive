@@ -90,6 +90,26 @@ describe("owned variant count composition", () => {
     expect(getVariantCount(counts, "NORMAL")).toBe(0);
   });
 
+
+  it("aggregates same variant rows when physical card languages are selected", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 6 });
+  });
+
+  it("keeps legacy UNKNOWN language rows in the same language-agnostic aggregate", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 3 });
+  });
+
   it("throws the existing negative CollectionEntry error for negative quantities", () => {
     expect(() =>
       createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [{ variant: "FOIL", quantity: -1 }]),

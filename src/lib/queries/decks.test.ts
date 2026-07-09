@@ -251,7 +251,15 @@ describe("deck detail query", () => {
         allocationStrategy: true,
         createdAt: true,
         updatedAt: true,
-        deckCards: expect.objectContaining({ select: expect.any(Object) }),
+        deckCards: expect.objectContaining({
+          select: expect.objectContaining({
+            card: expect.objectContaining({
+              select: expect.objectContaining({
+                collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+              }),
+            }),
+          }),
+        }),
         allocations: expect.objectContaining({ select: expect.any(Object) }),
       }),
     });
@@ -523,6 +531,23 @@ describe("deck missing detail composition", () => {
 
     expect(data.summary).toMatchObject({ missingCardQuantity: 0, satisfiedCardQuantity: 2, isComplete: true });
     expect(data.rows[0]).toMatchObject({ cardId: "card-1", displayName: "Carte Un", requiredQuantity: 2, satisfiedQuantity: 2, missingQuantity: 0, usedVariants: [{ variant: "NORMAL", quantity: 2 }] });
+  });
+
+
+  it("aggregates physical card languages for current language-agnostic deck missing rows", async () => {
+    const { createDeckMissingDetail } = await import("./decks");
+    const data = createDeckMissingDetail([
+      baseRequirement({
+        quantity: 5,
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+        ],
+      }),
+    ]);
+
+    expect(data.rows[0]).toMatchObject({ satisfiedQuantity: 5, missingQuantity: 0 });
   });
 
   it("shows correct partial missing quantities and summary totals", async () => {

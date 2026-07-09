@@ -52,7 +52,7 @@ describe("card availability explanation query", () => {
       include: {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
       },
     });
@@ -100,6 +100,20 @@ describe("card availability explanation mapping", () => {
       { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0, status: "UNAVAILABLE" },
     ]);
     expect(explanation.rows[1]?.reasons).toContain("BINDER_RESERVED_COPIES");
+  });
+
+  it("aggregates physical card languages for current language-agnostic availability rows", () => {
+    const explanation = createCardAvailabilityExplanation(
+      card({
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+        ],
+      }),
+    );
+
+    expect(explanation.rows[0]).toMatchObject({ variant: "NORMAL", ownedQuantity: 6, rawAvailableQuantity: 5, availableQuantity: 5 });
   });
 
   it("explains normal binder reservation when only normal is owned", () => {

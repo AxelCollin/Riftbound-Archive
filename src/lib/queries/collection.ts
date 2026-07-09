@@ -26,6 +26,7 @@ type CollectionCardTranslation = {
 type CollectionCardEntry = {
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
 };
 
@@ -147,7 +148,7 @@ export async function getCollectionPageData(): Promise<CollectionPageData> {
       include: {
         set: { select: { code: true, name: true } },
         translations: { select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
       },
     }),

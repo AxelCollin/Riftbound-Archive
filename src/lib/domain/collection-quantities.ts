@@ -10,7 +10,7 @@ export type OwnedSnapshotQuantityInput = {
   cardLanguage?: CardLanguage;
 };
 
-export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity"> & {
+export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity" | "cardLanguage"> & {
   physicalFinish?: PhysicalFinish | null;
 };
 

@@ -14,7 +14,7 @@ type AssemblyCardRecord = {
   collectorCategory?: CardCollectorCategory | null;
   rarity: "COMMON" | "UNCOMMON" | "RARE" | "EPIC" | "ULTIMATE" | "UNKNOWN";
   hasShowcase: boolean;
-  collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; physicalFinish?: "NORMAL" | "FOIL" | null; quantity: number }[];
+  collectionEntries: { variant: "NORMAL" | "FOIL" | "SHOWCASE"; physicalFinish?: "NORMAL" | "FOIL" | null; cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN"; quantity: number }[];
   binderOverrides?: BinderOverrideIntent[];
 };
 
@@ -38,7 +38,7 @@ export async function assembleDeck(deckId: string): Promise<void> {
                 collectorCategory: true,
                 rarity: true,
                 hasShowcase: true,
-                collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
+                collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
                 binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
               },
             },
