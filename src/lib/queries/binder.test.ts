@@ -48,8 +48,8 @@ describe("binder query", () => {
         include: {
           set: { select: { code: true, name: true } },
           translations: { select: { locale: true, name: true } },
-          collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-          binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+          collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+          binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         },
       }),
     );
@@ -59,6 +59,21 @@ describe("binder query", () => {
 });
 
 describe("binder query mapping", () => {
+  it("aggregates FR/EN/ZH ownership rows for current language-agnostic binder rows", () => {
+    const [row] = createBinderRows([
+      card({
+        id: "languages",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+        ],
+      }),
+    ]);
+
+    expect(row).toMatchObject({ ownedNormal: 6, reservedVariant: "NORMAL", reservedQuantity: 1 });
+  });
+
   it("reserves foil for common and uncommon cards when foil and normal are owned", () => {
     const [row] = createBinderRows([
       card({
@@ -105,7 +120,7 @@ describe("binder query mapping", () => {
           { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
           { variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
         ],
-        binderOverride: { mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
+        binderOverrides: [{ mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 }],
       }),
     ]);
 
@@ -125,7 +140,7 @@ describe("binder query mapping", () => {
           { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 },
           { variant: "SHOWCASE", quantity: 1 },
         ],
-        binderOverride: { mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 },
+        binderOverrides: [{ mode: "FORCE_VARIANT", variant: "SHOWCASE", physicalFinish: null, quantity: 1 }],
       }),
     ]);
 

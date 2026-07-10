@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
 import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { getCollectionEntryQuantityDelta } from "../domain/collection";
+import type { CardLanguage } from "../domain/card-languages";
 import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "../domain/physical-finishes";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
 import { prisma } from "../db";
@@ -23,6 +24,7 @@ export const collectionTransactionInputSchema = z
     quantity: z.number().int(),
     note: textFieldSchema,
     source: textFieldSchema,
+    cardLanguage: z.enum(["FR", "EN", "ZH", "UNKNOWN"]).default("UNKNOWN"),
   })
   .superRefine((input, context) => {
     const addQuantityIssue = (message: string) => {
@@ -83,6 +85,7 @@ export type RecordedCollectionTransaction = {
   cardId: string;
   variant: CardVariant;
   physicalFinish: PhysicalFinish | null;
+  cardLanguage: CardLanguage;
   type: CollectionTransactionType;
   quantity: number;
   note: string | null;
@@ -95,6 +98,7 @@ export type CollectionEntrySnapshot = {
   cardId: string;
   variant: CardVariant;
   physicalFinish: PhysicalFinish | null;
+  cardLanguage: CardLanguage;
   quantity: number;
   createdAt: Date;
   updatedAt: Date;
@@ -105,12 +109,12 @@ type CollectionEntryQuantityMutation = number | { increment: number } | { decrem
 type CollectionTransactionWriteClient = {
   collectionEntry: {
     upsert(args: {
-      where: { cardId_variant: { cardId: string; variant: CardVariant } };
-      create: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; quantity: number };
+      where: { cardId_variant_cardLanguage: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage } };
+      create: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; cardLanguage: CardLanguage; quantity: number };
       update: { quantity: CollectionEntryQuantityMutation };
     }): Promise<CollectionEntrySnapshot>;
     updateMany(args: {
-      where: { cardId: string; variant: CardVariant; quantity?: { gte: number } };
+      where: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage; quantity?: { gte: number } };
       data: { quantity: CollectionEntryQuantityMutation };
     }): Promise<{ count: number }>;
   };
@@ -120,6 +124,7 @@ type CollectionTransactionWriteClient = {
         cardId: string;
         variant: CardVariant;
         physicalFinish: PhysicalFinish | null;
+        cardLanguage: CardLanguage;
         type: CollectionTransactionType;
         quantity: number;
         note: string | null;
@@ -153,8 +158,8 @@ async function writeCollectionEntrySnapshot(
 
   if (delta === null) {
     await client.collectionEntry.upsert({
-      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-      create: { cardId: input.cardId, variant: input.variant, physicalFinish, quantity: input.quantity },
+      where: { cardId_variant_cardLanguage: { cardId: input.cardId, variant: input.variant, cardLanguage: input.cardLanguage } },
+      create: { cardId: input.cardId, variant: input.variant, physicalFinish, cardLanguage: input.cardLanguage, quantity: input.quantity },
       update: { quantity: input.quantity },
     });
     return;
@@ -162,8 +167,8 @@ async function writeCollectionEntrySnapshot(
 
   if (delta > 0) {
     await client.collectionEntry.upsert({
-      where: { cardId_variant: { cardId: input.cardId, variant: input.variant } },
-      create: { cardId: input.cardId, variant: input.variant, physicalFinish, quantity: delta },
+      where: { cardId_variant_cardLanguage: { cardId: input.cardId, variant: input.variant, cardLanguage: input.cardLanguage } },
+      create: { cardId: input.cardId, variant: input.variant, physicalFinish, cardLanguage: input.cardLanguage, quantity: delta },
       update: { quantity: { increment: delta } },
     });
     return;
@@ -174,6 +179,7 @@ async function writeCollectionEntrySnapshot(
     where: {
       cardId: input.cardId,
       variant: input.variant,
+      cardLanguage: input.cardLanguage,
       quantity: { gte: decrementAmount },
     },
     data: { quantity: { decrement: decrementAmount } },
@@ -195,6 +201,7 @@ async function writeTransactionAndSnapshot(
       cardId: input.cardId,
       variant: input.variant,
       physicalFinish: mapLegacyCardVariantToPhysicalFinish(input.variant),
+      cardLanguage: input.cardLanguage,
       type: input.type,
       quantity: input.quantity,
       note: input.note,

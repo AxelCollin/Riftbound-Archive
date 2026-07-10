@@ -20,7 +20,7 @@ const commonCard = {
   kind: "GAMEPLAY",
   rarity: "COMMON",
   hasShowcase: true,
-  collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 }],
+  collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 3 }],
 } as const;
 
 function theoreticalDeck(overrides = {}) {
@@ -48,12 +48,101 @@ describe("assembleDeck service", () => {
     await assembleDeck("deck-1");
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 } });
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 } });
     expect(txMock.deck.update).toHaveBeenCalledWith({ where: { id: "deck-1" }, data: { status: "ASSEMBLED" } });
   });
 
+  it("persists FR allocations instead of UNKNOWN when only FR owned copies back the plan", async () => {
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({
+      deckCards: [{
+        cardId: "card-1",
+        quantity: 2,
+        preferredVariant: "ANY",
+        card: { ...commonCard, collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 3 }] },
+      }],
+    }));
+
+    await assembleDeck("deck-1");
+
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 } });
+  });
+
+  it("keeps UNKNOWN allocations for legacy UNKNOWN owned rows", async () => {
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck());
+
+    await assembleDeck("deck-1");
+
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 } });
+  });
+
+  it("splits persisted allocations across concrete languages when one language cannot cover the planned quantity", async () => {
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({
+      deckCards: [{
+        cardId: "card-1",
+        quantity: 3,
+        preferredVariant: "NORMAL",
+        card: {
+          ...commonCard,
+          binderOverrides: [{ mode: "DISABLED" }],
+          collectionEntries: [
+            { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+            { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 3 },
+          ],
+        },
+      }],
+    }));
+
+    await assembleDeck("deck-1");
+
+    expect(txMock.deckCardAllocation.create).toHaveBeenNthCalledWith(1, { data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 } });
+    expect(txMock.deckCardAllocation.create).toHaveBeenNthCalledWith(2, { data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 } });
+  });
+
+  it("subtracts existing assembled deck allocations by concrete cardLanguage", async () => {
+    txMock.deck.findMany.mockResolvedValueOnce([{ allocations: [{ cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 }] }]);
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({
+      deckCards: [{
+        cardId: "card-1",
+        quantity: 2,
+        preferredVariant: "NORMAL",
+        card: {
+          ...commonCard,
+          binderOverrides: [{ mode: "DISABLED" }],
+          collectionEntries: [
+            { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 },
+            { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 1 },
+          ],
+        },
+      }],
+    }));
+
+    await assembleDeck("deck-1");
+
+    expect(txMock.deckCardAllocation.create).toHaveBeenNthCalledWith(1, { data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 } });
+    expect(txMock.deckCardAllocation.create).toHaveBeenNthCalledWith(2, { data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 1 } });
+  });
+
+  it("does not invent UNKNOWN when binder-reserved language rows are consumed before allocation", async () => {
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({
+      deckCards: [{
+        cardId: "card-1",
+        quantity: 1,
+        preferredVariant: "NORMAL",
+        card: {
+          ...commonCard,
+          collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 }],
+          binderOverrides: [{ mode: "FORCE_VARIANT", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 1 }],
+        },
+      }],
+    }));
+
+    await assembleDeck("deck-1");
+
+    expect(txMock.deckCardAllocation.create).toHaveBeenCalledWith({ data: { deckId: "deck-1", cardId: "card-1", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 } });
+  });
+
   it("fails without creating allocations or changing status when availability is insufficient", async () => {
-    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({ deckCards: [{ cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: { ...commonCard, collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] } }] }));
+    txMock.deck.findUnique.mockResolvedValueOnce(theoreticalDeck({ deckCards: [{ cardId: "card-1", quantity: 3, preferredVariant: "ANY", card: { ...commonCard, collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 1 }] } }] }));
 
     await expect(assembleDeck("deck-1")).rejects.toThrow("Insufficient availability");
 

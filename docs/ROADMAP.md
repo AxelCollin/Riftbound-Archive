@@ -109,6 +109,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
     - [x] Phase 7.5F BoosterOpeningCard slice: booster opening rows persist nullable `physicalFinish` for Normal/Foil pulls, summaries prefer it when present, legacy Normal/Foil rows fall back safely, and legacy Showcase rows remain unmapped.
     - [x] Phase 7.5G pricing-table slice: PriceMapping, CardPrice, and ManualPriceOverride persist nullable `physicalFinish`, backfill legacy Normal/Foil rows, and leave legacy Showcase pricing rows unmapped while runtime pricing remains deferred to Phase 8.
     - [x] Phase 7.5H closure audit: remaining `CardVariant.SHOWCASE` usage is classified as legacy storage/read fallback or UI/display compatibility, no known runtime path maps Showcase to a physical finish, and legacy compatibility columns remain deferred for future removal.
+    - [x] Phase 7.5J foundation: add physical card language persistence for owned copies, booster rows, deck allocations, binder overrides, and pricing compatibility without implementing language filters/display.
 - [x] Add related printings and gameplay-equivalence helpers.
 - [x] Add a global app shell with persistent navigation.
 - [ ] Clean stale deck UI copy and remove user-facing phase labels.

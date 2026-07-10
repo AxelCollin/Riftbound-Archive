@@ -32,6 +32,7 @@ type CardDetailTranslationRecord = {
 type CardDetailCollectionEntryRecord = {
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
 };
 
@@ -60,7 +61,7 @@ export type CardDetailRecord = {
   };
   translations: CardDetailTranslationRecord[];
   collectionEntries: CardDetailCollectionEntryRecord[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
   userMeta: CardDetailUserMetaRecord;
 };
 
@@ -106,7 +107,7 @@ export function createCardDetail(
     allowedVariants,
     record.collectionEntries,
   );
-  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverride).reserved;
+  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverrides?.[0]).reserved;
   const available = getCardAvailability(
     record,
     ownedCounts,
@@ -160,8 +161,8 @@ export async function getCardDetail(
             flavorText: true,
           },
         },
-        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+        binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         userMeta: { select: { favorite: true, note: true } },
       },
     }),

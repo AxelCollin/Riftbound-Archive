@@ -1,3 +1,4 @@
+import type { CardLanguage } from "./card-languages";
 import type { PhysicalFinish } from "./physical-finishes";
 import { mapLegacyCardVariantToPhysicalFinish } from "./physical-finishes";
 import type { CardVariant, VariantCounts } from "./variants";
@@ -6,9 +7,10 @@ export type OwnedSnapshotQuantityInput = {
   cardId: string;
   variant: CardVariant;
   quantity: number;
+  cardLanguage?: CardLanguage;
 };
 
-export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity"> & {
+export type OwnedSnapshotFinishQuantityInput = Pick<OwnedSnapshotQuantityInput, "variant" | "quantity" | "cardLanguage"> & {
   physicalFinish?: PhysicalFinish | null;
 };
 
@@ -59,6 +61,7 @@ export function createOwnedVariantCounts(
 ): VariantCounts {
   const allowedVariantSet = new Set(allowedVariants);
   const entriesByVariant = new Map<CardVariant, number>();
+  const seenEntryKeys = new Set<string>();
 
   for (const entry of collectionEntries) {
     const quantityVariant = getOwnedSnapshotQuantityVariant(entry);
@@ -79,11 +82,21 @@ export function createOwnedVariantCounts(
       );
     }
 
-    if (entriesByVariant.has(quantityVariant)) {
+    const entryQuantity = normalizeOwnedSnapshotQuantity({
+      cardId,
+      variant: quantityVariant,
+      quantity: entry.quantity,
+    });
+
+    const duplicateCardLanguage = "cardLanguage" in entry ? entry.cardLanguage : undefined;
+    const entryKey = `${quantityVariant}:${duplicateCardLanguage ?? "__legacy_missing_language__"}`;
+
+    if (seenEntryKeys.has(entryKey)) {
       throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);
     }
 
-    entriesByVariant.set(quantityVariant, entry.quantity);
+    seenEntryKeys.add(entryKey);
+    entriesByVariant.set(quantityVariant, (entriesByVariant.get(quantityVariant) ?? 0) + entryQuantity);
   }
 
   const ownedCounts: VariantCounts = {};

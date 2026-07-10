@@ -46,6 +46,9 @@ describe("collection query", () => {
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
+        include: expect.objectContaining({
+          collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+        }),
       }),
     );
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({
@@ -102,6 +105,21 @@ describe("collection query mapping", () => {
       "gameplay",
       "energy",
     ]);
+  });
+
+  it("aggregates FR/EN/ZH ownership rows for current language-agnostic collection rows", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "languages",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+        ],
+      }),
+    ]);
+
+    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({ ownedQuantity: 6, availableQuantity: 5 });
   });
 
   it("creates allowed variant rows without introducing showcase foil", () => {

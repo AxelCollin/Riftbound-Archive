@@ -25,6 +25,7 @@ type AvailabilityTranslationRecord = {
 type AvailabilityCollectionEntryRecord = {
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
 };
 
@@ -43,7 +44,7 @@ export type CardAvailabilityRecord = {
   };
   translations: AvailabilityTranslationRecord[];
   collectionEntries: AvailabilityCollectionEntryRecord[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 export type CardAvailabilityDeckAllocationBreakdown = {
@@ -95,7 +96,7 @@ export function createCardAvailabilityExplanation(
 ): CardAvailabilityExplanation {
   const allowedVariants = getAllowedVariants(record);
   const ownedCounts = createOwnedVariantCounts(record.id, allowedVariants, record.collectionEntries);
-  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverride).reserved;
+  const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverrides?.[0]).reserved;
   const appFacingAvailable = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
 
   const rows = allowedVariants.map((variant) => {
@@ -156,25 +157,38 @@ function getDeckAllocationBreakdown(
   variant: CardVariant,
   deckAllocationSets: NamedDeckAllocationSet[],
 ): CardAvailabilityDeckAllocationBreakdown[] {
-  return deckAllocationSets
-    .filter((deckAllocationSet) => deckAllocationSet.assembled)
-    .flatMap((deckAllocationSet) =>
-      deckAllocationSet.allocations
-        .flatMap((allocation) => {
-          const effectiveVariant = getDeckAllocationQuantityVariant(allocation);
+  const breakdownByDeckAndVariant = new Map<string, CardAvailabilityDeckAllocationBreakdown>();
 
-          if (effectiveVariant === null || allocation.cardId !== cardId || effectiveVariant !== variant || allocation.quantity <= 0) {
-            return [];
-          }
+  for (const deckAllocationSet of deckAllocationSets) {
+    if (!deckAllocationSet.assembled) {
+      continue;
+    }
 
-          return [{
-            deckId: deckAllocationSet.deckId,
-            deckName: deckAllocationSet.deckName,
-            variant: effectiveVariant,
-            allocatedQuantity: allocation.quantity,
-          }];
-        }),
-    );
+    for (const allocation of deckAllocationSet.allocations) {
+      const effectiveVariant = getDeckAllocationQuantityVariant(allocation);
+
+      if (effectiveVariant === null || allocation.cardId !== cardId || effectiveVariant !== variant || allocation.quantity <= 0) {
+        continue;
+      }
+
+      const breakdownKey = `${deckAllocationSet.deckId}:${deckAllocationSet.deckName}:${effectiveVariant}`;
+      const existingBreakdown = breakdownByDeckAndVariant.get(breakdownKey);
+
+      if (existingBreakdown) {
+        existingBreakdown.allocatedQuantity += allocation.quantity;
+        continue;
+      }
+
+      breakdownByDeckAndVariant.set(breakdownKey, {
+        deckId: deckAllocationSet.deckId,
+        deckName: deckAllocationSet.deckName,
+        variant: effectiveVariant,
+        allocatedQuantity: allocation.quantity,
+      });
+    }
+  }
+
+  return [...breakdownByDeckAndVariant.values()];
 }
 
 export async function getCardAvailabilityExplanation(
@@ -186,8 +200,8 @@ export async function getCardAvailabilityExplanation(
       include: {
         set: { select: { code: true, name: true } },
         translations: { orderBy: { locale: "asc" }, select: { locale: true, name: true } },
-        collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-        binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+        collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+        binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
       },
     }),
     getDeckAllocationSetsForCard(cardId),
@@ -211,7 +225,7 @@ async function getDeckAllocationSetsForCard(cardId: string): Promise<NamedDeckAl
       status: true,
       allocations: {
         where: { cardId },
-        select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
+        select: { cardId: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true },
       },
     },
   });

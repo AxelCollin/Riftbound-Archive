@@ -66,6 +66,10 @@ Important rules:
 - A `Legend` can be `RARE`.
 - A `Terrain` can be `UNCOMMON` and can still support Normal/Foil finishes.
 
+## Physical language
+
+Physical language describes the printed language of a real physical card copy. Initial supported values are `FR`, `EN`, and `ZH`, with `UNKNOWN` reserved for legacy/imported rows where the printed language is not known. This is independent from `CardTranslation.locale`, which describes translated metadata used for display and search. A single printed card can exist in several physical languages, so language must not be stored as one field on `Card`.
+
 ## Physical finish
 
 Physical finish describes the physical finish of a printed card.

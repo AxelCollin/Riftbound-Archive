@@ -1,3 +1,4 @@
+import type { CardLanguage } from "./card-languages";
 import type { RiftboundCard } from "./cards";
 import { isTrackableCard } from "./cards";
 import { getBinderReservation } from "./binder";
@@ -10,6 +11,7 @@ export interface DeckVariantAllocation {
   cardId: string;
   variant: CardVariant;
   physicalFinish?: PhysicalFinish | null;
+  cardLanguage?: CardLanguage;
   quantity: number;
 }
 

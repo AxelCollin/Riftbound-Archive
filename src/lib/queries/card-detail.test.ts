@@ -105,6 +105,21 @@ describe("card detail mapping", () => {
     ]);
   });
 
+  it("aggregates physical card languages for current language-agnostic ownership rows", () => {
+    const detail = createCardDetail(
+      card({
+        rarity: "COMMON",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 3 },
+        ],
+      }),
+    );
+
+    expect(detail.ownershipRows[0]).toMatchObject({ variant: "NORMAL", ownedQuantity: 6, availableQuantity: 5 });
+  });
+
   it("shows quantity 0 for allowed variants without snapshots", () => {
     const detail = createCardDetail(
       card({
@@ -284,6 +299,13 @@ describe("card detail mapping", () => {
 
     const detail = await getCardDetail("db-detail-card");
 
+    expect(prismaMock.card.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+        }),
+      }),
+    );
     expect(prismaMock.deck.findMany).toHaveBeenCalledWith({
       where: {
         status: "ASSEMBLED",

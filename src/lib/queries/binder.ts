@@ -29,6 +29,7 @@ type BinderCardTranslation = {
 type BinderCollectionEntry = {
   variant: CardVariant;
   physicalFinish?: "NORMAL" | "FOIL" | null;
+  cardLanguage?: "FR" | "EN" | "ZH" | "UNKNOWN";
   quantity: number;
 };
 
@@ -48,7 +49,7 @@ export type BinderCardRecord = {
   };
   translations: BinderCardTranslation[];
   collectionEntries: BinderCollectionEntry[];
-  binderOverride?: BinderOverrideIntent | null;
+  binderOverrides?: BinderOverrideIntent[];
 };
 
 export type BinderStatus = "RESERVED" | "MISSING";
@@ -93,7 +94,7 @@ export function createBinderRows(cards: BinderCardRecord[]): BinderRow[] {
       allowedVariants,
       card.collectionEntries,
     );
-    const reserved = getBinderReservation(card, owned, card.binderOverride).reserved;
+    const reserved = getBinderReservation(card, owned, card.binderOverrides?.[0]).reserved;
     const reservedVariant = allowedVariants.find(
       (variant) => getVariantCount(reserved, variant) > 0,
     ) ?? null;
@@ -151,8 +152,8 @@ export async function getBinderPageData(): Promise<BinderPageData> {
     include: {
       set: { select: { code: true, name: true } },
       translations: { select: { locale: true, name: true } },
-      collectionEntries: { select: { variant: true, physicalFinish: true, quantity: true } },
-      binderOverride: { select: { mode: true, variant: true, physicalFinish: true, quantity: true } },
+      collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+      binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
     },
   });
 
