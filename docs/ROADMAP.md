@@ -112,7 +112,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
     - [x] Phase 7.5J foundation: add physical card language persistence for owned copies, booster rows, deck allocations, binder overrides, and pricing compatibility without implementing language filters/display.
 - [x] Add related printings and gameplay-equivalence helpers.
 - [x] Add a global app shell with persistent navigation.
-- [ ] Clean stale deck UI copy and remove user-facing phase labels.
+- [x] Clean stale deck UI copy and remove user-facing phase labels.
 - [ ] Add collection display modes: grid, line, and compact.
 - [ ] Add collection faction-icon filters.
 - [ ] Add direct collection quantity editing through collection transactions.

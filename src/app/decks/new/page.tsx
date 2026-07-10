@@ -12,9 +12,9 @@ export default function NewDeckPage() {
       <section className="mx-auto grid max-w-4xl gap-6">
         <Link className="text-sm text-archive-gold300 hover:text-archive-text100" href="/decks">← Retour aux decks</Link>
         <header className="rounded-panel border border-[rgba(199,168,102,0.42)] bg-[rgba(8,17,27,0.88)] p-8 shadow-panel">
-          <p className="text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6C</p>
+          <p className="text-sm uppercase tracking-[0.42em] text-archive-gold300">Gestion des decks</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Nouveau deck</h1>
-          <p className="mt-4 text-base leading-7 text-archive-text300">Créer un deck vide. Les cartes seront ajoutées dans une prochaine étape.</p>
+          <p className="mt-4 text-base leading-7 text-archive-text300">Créer un deck théorique vide. Les exigences de cartes se gèrent ensuite depuis la page de détail du deck.</p>
         </header>
         <form action={createDeckAction} className="grid gap-5 rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
           <label className="grid gap-2 text-sm text-archive-text300">

@@ -26,13 +26,13 @@ export default async function DecksPage() {
             <Link className="hover:text-archive-text100" href="/binder">Binder →</Link>
             <Link className="hover:text-archive-text100" href="/decks/new">Créer un deck →</Link>
           </nav>
-          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6D</p>
+          <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Gestion des decks</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Decks</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Liste des decks enregistrés avec détail en lecture seule et modification des métadonnées.
+            Liste des decks enregistrés avec leur statut, leurs exigences, leurs allocations et leur synthèse.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
-            Les cartes, allocations, assemblage et désassemblage arriveront dans une prochaine étape.
+            Ouvrez un deck pour gérer ses exigences, consulter sa disponibilité, l’assembler ou le désassembler.
           </p>
         </header>
 
@@ -49,14 +49,14 @@ export default async function DecksPage() {
           <div className="border-b border-[rgba(199,168,102,0.22)] p-5">
             <h2 className="text-2xl font-semibold text-archive-text100">Decks enregistrés</h2>
             <p className="mt-2 text-sm text-archive-text300">
-              Cette vue donne accès au détail en lecture seule ; seules les métadonnées du deck sont modifiables pour le moment.
+              Cette vue résume les decks sauvegardés, leurs statuts, les cartes requises et les allocations physiques déjà enregistrées.
             </p>
           </div>
           {rows.length === 0 ? (
             <div className="p-10 text-center">
               <p className="text-xl font-semibold text-archive-gold300">Aucun deck enregistré.</p>
               <p className="mt-3 text-archive-text300">
-                Les cartes, allocations, assemblage et désassemblage arriveront dans une prochaine étape.
+                Créez un deck théorique, puis ajoutez ses exigences depuis sa page de détail.
               </p>
               <Link className="mt-5 inline-flex rounded-chip border border-[rgba(199,168,102,0.52)] bg-[rgba(199,168,102,0.16)] px-5 py-3 font-semibold text-archive-gold300 hover:text-archive-text100" href="/decks/new">Créer un deck →</Link>
             </div>
