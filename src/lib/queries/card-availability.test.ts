@@ -64,7 +64,7 @@ describe("card availability explanation query", () => {
         status: true,
         allocations: {
           where: { cardId: "query-card" },
-          select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
+          select: { cardId: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true },
         },
       },
     });
@@ -146,6 +146,57 @@ describe("card availability explanation mapping", () => {
       availableQuantity: 1,
       deckAllocations: [{ deckId: "deck-alpha", deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 2 }],
     });
+  });
+
+  it("aggregates language-split deck allocations by deck and effective variant", () => {
+    const explanation = createCardAvailabilityExplanation(
+      card({ id: "language-split-card", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 8 }] }),
+      [
+        {
+          deckId: "deck-alpha",
+          deckName: "Deck Alpha",
+          assembled: true,
+          allocations: [
+            { cardId: "language-split-card", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+            { cardId: "language-split-card", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+            { cardId: "language-split-card", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "ZH", quantity: 0 },
+          ],
+        },
+        {
+          deckId: "deck-beta",
+          deckName: "Deck Beta",
+          assembled: true,
+          allocations: [{ cardId: "language-split-card", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 }],
+        },
+        {
+          deckId: "deck-alpha",
+          deckName: "Deck Alpha",
+          assembled: true,
+          allocations: [{ cardId: "language-split-card", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "FR", quantity: 1 }],
+        },
+      ],
+    );
+
+    const normalRow = explanation.rows.find((row) => row.variant === "NORMAL");
+    const foilRow = explanation.rows.find((row) => row.variant === "FOIL");
+
+    expect(normalRow).toMatchObject({
+      assembledDeckAllocatedQuantity: 4,
+      deckAllocations: [
+        { deckId: "deck-alpha", deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 3 },
+        { deckId: "deck-beta", deckName: "Deck Beta", variant: "NORMAL", allocatedQuantity: 1 },
+      ],
+    });
+    expect(foilRow?.deckAllocations).toMatchObject([
+      { deckId: "deck-alpha", deckName: "Deck Alpha", variant: "FOIL", allocatedQuantity: 1 },
+    ]);
+    expect(explanation.deckAllocations).toMatchObject([
+      { deckId: "deck-alpha", deckName: "Deck Alpha", variant: "NORMAL", allocatedQuantity: 3 },
+      { deckId: "deck-beta", deckName: "Deck Beta", variant: "NORMAL", allocatedQuantity: 1 },
+      { deckId: "deck-alpha", deckName: "Deck Alpha", variant: "FOIL", allocatedQuantity: 1 },
+    ]);
+    expect(explanation.deckAllocations).toHaveLength(3);
+    expect(explanation.deckAllocations.every((allocation) => !("cardLanguage" in allocation))).toBe(true);
   });
 
   it("reports physical-finish-aware deck allocations with the effective variant", () => {

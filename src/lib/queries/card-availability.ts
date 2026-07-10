@@ -157,25 +157,38 @@ function getDeckAllocationBreakdown(
   variant: CardVariant,
   deckAllocationSets: NamedDeckAllocationSet[],
 ): CardAvailabilityDeckAllocationBreakdown[] {
-  return deckAllocationSets
-    .filter((deckAllocationSet) => deckAllocationSet.assembled)
-    .flatMap((deckAllocationSet) =>
-      deckAllocationSet.allocations
-        .flatMap((allocation) => {
-          const effectiveVariant = getDeckAllocationQuantityVariant(allocation);
+  const breakdownByDeckAndVariant = new Map<string, CardAvailabilityDeckAllocationBreakdown>();
 
-          if (effectiveVariant === null || allocation.cardId !== cardId || effectiveVariant !== variant || allocation.quantity <= 0) {
-            return [];
-          }
+  for (const deckAllocationSet of deckAllocationSets) {
+    if (!deckAllocationSet.assembled) {
+      continue;
+    }
 
-          return [{
-            deckId: deckAllocationSet.deckId,
-            deckName: deckAllocationSet.deckName,
-            variant: effectiveVariant,
-            allocatedQuantity: allocation.quantity,
-          }];
-        }),
-    );
+    for (const allocation of deckAllocationSet.allocations) {
+      const effectiveVariant = getDeckAllocationQuantityVariant(allocation);
+
+      if (effectiveVariant === null || allocation.cardId !== cardId || effectiveVariant !== variant || allocation.quantity <= 0) {
+        continue;
+      }
+
+      const breakdownKey = `${deckAllocationSet.deckId}:${deckAllocationSet.deckName}:${effectiveVariant}`;
+      const existingBreakdown = breakdownByDeckAndVariant.get(breakdownKey);
+
+      if (existingBreakdown) {
+        existingBreakdown.allocatedQuantity += allocation.quantity;
+        continue;
+      }
+
+      breakdownByDeckAndVariant.set(breakdownKey, {
+        deckId: deckAllocationSet.deckId,
+        deckName: deckAllocationSet.deckName,
+        variant: effectiveVariant,
+        allocatedQuantity: allocation.quantity,
+      });
+    }
+  }
+
+  return [...breakdownByDeckAndVariant.values()];
 }
 
 export async function getCardAvailabilityExplanation(
@@ -212,7 +225,7 @@ async function getDeckAllocationSetsForCard(cardId: string): Promise<NamedDeckAl
       status: true,
       allocations: {
         where: { cardId },
-        select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
+        select: { cardId: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true },
       },
     },
   });
