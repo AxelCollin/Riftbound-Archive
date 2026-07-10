@@ -27,9 +27,9 @@ export default async function EditDeckPage({ params }: EditDeckPageProps) {
       <section className="mx-auto grid max-w-4xl gap-6">
         <Link className="text-sm text-archive-gold300 hover:text-archive-text100" href="/decks">← Retour aux decks</Link>
         <header className="rounded-panel border border-[rgba(199,168,102,0.42)] bg-[rgba(8,17,27,0.88)] p-8 shadow-panel">
-          <p className="text-sm uppercase tracking-[0.42em] text-archive-gold300">Deckbuilding — Phase 6C</p>
+          <p className="text-sm uppercase tracking-[0.42em] text-archive-gold300">Gestion des decks</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Modifier le deck</h1>
-          <p className="mt-4 text-base leading-7 text-archive-text300">Les cartes, allocations et changements de statut arriveront dans une prochaine étape.</p>
+          <p className="mt-4 text-base leading-7 text-archive-text300">Modifiez les métadonnées du deck. Les exigences, l’assemblage et les allocations physiques se gèrent depuis la page de détail.</p>
           <p className="mt-3 text-sm text-archive-text500">Statut actuel : {deckStatusLabelsFr[deck.status]}</p>
         </header>
         <form action={updateAction} className="grid gap-5 rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
@@ -53,7 +53,7 @@ export default async function EditDeckPage({ params }: EditDeckPageProps) {
         </form>
         <section className="rounded-panel border border-[rgba(217,74,74,0.42)] bg-[rgba(5,8,14,0.72)] p-6 shadow-panel">
           <h2 className="text-2xl font-semibold text-archive-text100">Suppression</h2>
-          <p className="mt-3 text-sm leading-6 text-archive-text300">Cette action supprime uniquement un deck vide. La suppression est autorisée seulement si le deck ne contient aucune exigence de carte et aucune allocation ; la Phase 6C ne gère pas la suppression des cartes de deck ni des allocations.</p>
+          <p className="mt-3 text-sm leading-6 text-archive-text300">Cette action supprime uniquement un deck vide. La suppression est autorisée seulement si le deck ne contient aucune exigence de carte et aucune allocation physique.</p>
           <form action={deleteAction} className="mt-5">
             <button className="rounded-chip border border-[rgba(217,74,74,0.58)] bg-[rgba(217,74,74,0.16)] px-5 py-3 font-semibold text-red-200 hover:text-white" type="submit">Supprimer le deck</button>
           </form>

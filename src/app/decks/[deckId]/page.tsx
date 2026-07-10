@@ -118,14 +118,14 @@ export default async function DeckDetailPage({
             </Link>
           </nav>
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">
-            Deckbuilder — Phase 6K
+            Construction du deck
           </p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">
             {deck.name}
           </h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Deckbuilder avec catalogue recherchable, exigences groupées par set,
-            indicateurs de disponibilité renforcés et allocations en lecture claire.
+            Construction du deck avec catalogue recherchable, exigences groupées par set,
+            indicateurs de disponibilité, assemblage, désassemblage et allocations physiques.
           </p>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-archive-text500">
             Cette page conserve les règles existantes : les exigences restent

@@ -117,7 +117,7 @@ describe("DeckDetailPage deckbuilder catalog", () => {
 
     await renderPage();
 
-    expect(screen.getByText("Deckbuilder — Phase 6K")).toBeInTheDocument();
+    expect(screen.getByText("Construction du deck")).toBeInTheDocument();
     expect(screen.getByText("Statut et actions")).toBeInTheDocument();
     expect(screen.getByText("Synthèse du deck")).toBeInTheDocument();
     expect(
