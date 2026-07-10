@@ -133,4 +133,14 @@ describe("owned variant count composition", () => {
       ]),
     ).toThrow("Duplicate CollectionEntry snapshot for card card-1 variant NORMAL");
   });
+
+  it("throws for duplicate rows with the same effective finish and card language", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+        { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+        { variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 },
+      ]),
+    ).toThrow("Duplicate CollectionEntry snapshot for card card-1 variant NORMAL");
+  });
+
 });

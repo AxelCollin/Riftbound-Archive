@@ -61,6 +61,7 @@ export function createOwnedVariantCounts(
 ): VariantCounts {
   const allowedVariantSet = new Set(allowedVariants);
   const entriesByVariant = new Map<CardVariant, number>();
+  const seenEntryKeys = new Set<string>();
 
   for (const entry of collectionEntries) {
     const quantityVariant = getOwnedSnapshotQuantityVariant(entry);
@@ -87,10 +88,13 @@ export function createOwnedVariantCounts(
       quantity: entry.quantity,
     });
 
-    if (entriesByVariant.has(quantityVariant) && !("cardLanguage" in entry)) {
+    const entryKey = "cardLanguage" in entry ? `${quantityVariant}:${entry.cardLanguage}` : quantityVariant;
+
+    if (seenEntryKeys.has(entryKey)) {
       throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);
     }
 
+    seenEntryKeys.add(entryKey);
     entriesByVariant.set(quantityVariant, (entriesByVariant.get(quantityVariant) ?? 0) + entryQuantity);
   }
 
