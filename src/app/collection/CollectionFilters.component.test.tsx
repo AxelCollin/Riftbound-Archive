@@ -118,7 +118,9 @@ describe("CollectionFilters", () => {
   it("defaults to displaying owned quantities as the main row quantity", () => {
     renderFilters();
 
-    expect(screen.getByLabelText("Affichage")).toHaveProperty("value", "OWNED");
+    expect(screen.getByLabelText("Quantité affichée")).toHaveProperty("value", "OWNED");
+    expect(screen.getByLabelText("Vue")).toHaveProperty("value", "LINE");
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
     expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
 
     const energyQuantities = quantityCellsForCard("Énergie prismatique");
@@ -132,16 +134,59 @@ describe("CollectionFilters", () => {
   it("switches the main row quantity to available quantities and back to owned quantities", () => {
     renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
 
     expect(screen.getByText("Quantité affichée (Disponibles)")).toBeTruthy();
     expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
     expect(quantityCellsForCard("Énergie prismatique").binderReserved.textContent).toBe("1");
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "OWNED" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "OWNED" } });
 
     expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
     expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("4");
+  });
+
+
+  it("switches between grid, line, and compact visual views without changing filtered data", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "rba" } });
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "GRID" } });
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.queryByTestId("collection-line-view")).toBeNull();
+    expect(screen.getByText("3 résultats affichés / 4")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Énergie prismatique" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Aatrox l'Éveillé" }).getAttribute("href")).toBe(getCardDetailHref("set/001"));
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "COMPACT" } });
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Collection compacte" })).toBeTruthy();
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Lux dorée"]);
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "LINE" } });
+
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Collection en lignes" })).toBeTruthy();
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Lux dorée"]);
+  });
+
+  it("keeps quantity display independent from the selected visual view", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "COMPACT" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.getByText("Quantité affichée (Disponibles)")).toBeTruthy();
+    expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "GRID" } });
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.getAllByLabelText("Quantité affichée Disponibles").map((node) => node.textContent)).toContain("3");
+    expect(screen.getByRole("link", { name: "Énergie prismatique" }).getAttribute("href")).toBe(getCardDetailHref("energy-010"));
   });
 
   it("filters rows by card name from the search input", () => {
@@ -200,7 +245,7 @@ describe("CollectionFilters", () => {
   it("keeps search filtering stable after switching display modes", () => {
     renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
     fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "énergie" } });
 
     expectVisibleCards(["Énergie prismatique"]);

@@ -113,7 +113,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 - [x] Add related printings and gameplay-equivalence helpers.
 - [x] Add a global app shell with persistent navigation.
 - [x] Clean stale deck UI copy and remove user-facing phase labels.
-- [ ] Add collection display modes: grid, line, and compact.
+- [x] Add collection display modes: grid, line, and compact.
 - [ ] Add collection faction-icon filters.
 - [ ] Add direct collection quantity editing through collection transactions.
 - [ ] Redesign card detail around printings, possession, and related cards.
