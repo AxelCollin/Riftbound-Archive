@@ -88,7 +88,8 @@ export function createOwnedVariantCounts(
       quantity: entry.quantity,
     });
 
-    const entryKey = "cardLanguage" in entry ? `${quantityVariant}:${entry.cardLanguage}` : quantityVariant;
+    const duplicateCardLanguage = "cardLanguage" in entry ? entry.cardLanguage : undefined;
+    const entryKey = `${quantityVariant}:${duplicateCardLanguage ?? "__legacy_missing_language__"}`;
 
     if (seenEntryKeys.has(entryKey)) {
       throw new Error(`Duplicate CollectionEntry snapshot for card ${cardId} variant ${quantityVariant}`);

@@ -110,6 +110,33 @@ describe("owned variant count composition", () => {
     expect(counts).toEqual({ NORMAL: 3 });
   });
 
+  it("aggregates matching effective variants across different physical languages", () => {
+    const counts = createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+      { variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "EN", quantity: 2 },
+    ]);
+
+    expect(counts).toEqual({ NORMAL: 3 });
+  });
+
+  it("throws for duplicate rows with the same effective finish and repeated card language", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+        { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 1 },
+        { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 },
+      ]),
+    ).toThrow("Duplicate CollectionEntry snapshot for card card-1 variant NORMAL");
+  });
+
+  it("preserves the legacy duplicate guard when cardLanguage is absent and physicalFinish resolves to the same variant", () => {
+    expect(() =>
+      createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
+        { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 },
+        { variant: "FOIL", physicalFinish: "NORMAL", quantity: 2 },
+      ]),
+    ).toThrow("Duplicate CollectionEntry snapshot for card card-1 variant NORMAL");
+  });
+
   it("throws before aggregation when a negative language row would otherwise be masked", () => {
     expect(() =>
       createOwnedVariantCounts("card-1", ["NORMAL", "FOIL"], [
