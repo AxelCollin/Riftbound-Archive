@@ -9,61 +9,98 @@ const rows: CollectionDisplayRow[] = [
     rowId: "rba-001-normal",
     cardId: "set/001",
     cardName: "Aatrox l'Éveillé",
+    officialImageUrl: "https://assets.example/riftbound/aatrox.webp",
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "001",
     rarity: "COMMON",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
-    variant: "NORMAL",
-    ownedQuantity: 2,
-    binderReservedQuantity: 0,
-    availableQuantity: 2,
+    normalOwnedQuantity: 2,
+    normalBinderReservedQuantity: 0,
+    normalAvailableQuantity: 2,
+    foilOwnedQuantity: 1,
+    foilBinderReservedQuantity: 1,
+    foilAvailableQuantity: 0,
+    legacyShowcaseOwnedQuantity: 2,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 2,
+    totalOwnedQuantity: 5,
+    totalBinderReservedQuantity: 1,
+    totalAvailableQuantity: 4,
   },
   {
     rowId: "rba-002-foil",
     cardId: "rba-002",
     cardName: "Braum, Gardien du foyer",
+    officialImageUrl: null,
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "002",
     rarity: "RARE",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
-    variant: "FOIL",
-    ownedQuantity: 0,
-    binderReservedQuantity: 0,
-    availableQuantity: 0,
+    normalOwnedQuantity: 0,
+    normalBinderReservedQuantity: 0,
+    normalAvailableQuantity: 0,
+    foilOwnedQuantity: 0,
+    foilBinderReservedQuantity: 0,
+    foilAvailableQuantity: 0,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
+    totalOwnedQuantity: 0,
+    totalBinderReservedQuantity: 0,
+    totalAvailableQuantity: 0,
   },
   {
     rowId: "ene-010-foil",
     cardId: "energy-010",
     cardName: "Énergie prismatique",
+    officialImageUrl: "https://assets.example/riftbound/energy.webp",
     setCode: "ENE",
     setName: "Énergies",
     collectorNumber: "010",
     rarity: "UNKNOWN",
     kind: "ENERGY",
     printTreatment: "UNKNOWN",
-    variant: "FOIL",
-    ownedQuantity: 4,
-    binderReservedQuantity: 1,
-    availableQuantity: 3,
+    normalOwnedQuantity: 0,
+    normalBinderReservedQuantity: 0,
+    normalAvailableQuantity: 0,
+    foilOwnedQuantity: 4,
+    foilBinderReservedQuantity: 1,
+    foilAvailableQuantity: 3,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
+    totalOwnedQuantity: 4,
+    totalBinderReservedQuantity: 1,
+    totalAvailableQuantity: 3,
   },
   {
     rowId: "rba-099-showcase",
     cardId: "rba-099",
     cardName: "Lux dorée",
+    officialImageUrl: null,
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "099",
     rarity: "EPIC",
     kind: "GAMEPLAY",
     printTreatment: "ALT",
-    variant: "SHOWCASE",
-    ownedQuantity: 1,
-    binderReservedQuantity: 0,
-    availableQuantity: 1,
+    collectorCategory: "SHOWCASE",
+    normalOwnedQuantity: 0,
+    normalBinderReservedQuantity: 0,
+    normalAvailableQuantity: 0,
+    foilOwnedQuantity: 1,
+    foilBinderReservedQuantity: 0,
+    foilAvailableQuantity: 1,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
+    totalOwnedQuantity: 1,
+    totalBinderReservedQuantity: 0,
+    totalAvailableQuantity: 1,
   },
 ];
 
@@ -90,10 +127,10 @@ function quantityCellsForCard(cardName: string) {
   const cells = within(rowForCard(cardName)).getAllByRole("cell");
 
   return {
-    selected: cells[7],
-    owned: cells[8],
-    binderReserved: cells[9],
-    available: cells[10],
+    selected: cells[6],
+    owned: cells[7],
+    binderReserved: cells[8],
+    available: cells[9],
   };
 }
 
@@ -118,7 +155,9 @@ describe("CollectionFilters", () => {
   it("defaults to displaying owned quantities as the main row quantity", () => {
     renderFilters();
 
-    expect(screen.getByLabelText("Affichage")).toHaveProperty("value", "OWNED");
+    expect(screen.getByLabelText("Quantité affichée")).toHaveProperty("value", "OWNED");
+    expect(screen.getByRole("button", { name: "Ligne" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
     expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
 
     const energyQuantities = quantityCellsForCard("Énergie prismatique");
@@ -132,16 +171,102 @@ describe("CollectionFilters", () => {
   it("switches the main row quantity to available quantities and back to owned quantities", () => {
     renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
 
     expect(screen.getByText("Quantité affichée (Disponibles)")).toBeTruthy();
     expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
     expect(quantityCellsForCard("Énergie prismatique").binderReserved.textContent).toBe("1");
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "OWNED" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "OWNED" } });
 
     expect(screen.getByText("Quantité affichée (Possédées)")).toBeTruthy();
     expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("4");
+  });
+
+
+  it("switches between grid, line, and compact visual views without changing filtered data", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "rba" } });
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.queryByTestId("collection-line-view")).toBeNull();
+    expect(screen.getByText("3 résultats affichés / 4")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Énergie prismatique" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Aatrox l'Éveillé" }).getAttribute("href")).toBe(getCardDetailHref("set/001"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Collection compacte" })).toBeTruthy();
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Lux dorée"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ligne" }));
+
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Collection en lignes" })).toBeTruthy();
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Lux dorée"]);
+  });
+
+  it("keeps quantity display independent from the selected visual view", () => {
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.getByText("Quantité affichée (Disponibles)")).toBeTruthy();
+    expect(quantityCellsForCard("Énergie prismatique").selected.textContent).toBe("3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.getAllByLabelText("Quantité affichée Disponibles").map((node) => node.textContent)).toContain("3");
+    expect(screen.getByRole("link", { name: "Énergie prismatique" }).getAttribute("href")).toBe(getCardDetailHref("energy-010"));
+  });
+
+
+  it("renders card art and placeholders in grid mode while keeping detail links", () => {
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration de Aatrox l'Éveillé" }).getAttribute("src")).toBe("https://assets.example/riftbound/aatrox.webp");
+    expect(screen.getByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeTruthy();
+    expect(screen.getAllByText("Sans illustration").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Aatrox l'Éveillé" }).getAttribute("href")).toBe(getCardDetailHref("set/001"));
+  });
+
+  it("renders small card visuals in line mode and no visuals in compact mode", () => {
+    renderFilters();
+
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration de Aatrox l'Éveillé" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Braum, Gardien du foyer" }).getAttribute("href")).toBe(getCardDetailHref("rba-002"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: "Illustration de Aatrox l'Éveillé" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Braum, Gardien du foyer" }).getAttribute("href")).toBe(getCardDetailHref("rba-002"));
+  });
+
+
+  it("displays legacy Showcase compatibility quantities in grid, line, and compact modes", () => {
+    renderFilters();
+
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Showcase (compat.)");
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Possédées: 2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Disponibles: 2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Showcase (compat.)");
   });
 
   it("filters rows by card name from the search input", () => {
@@ -166,7 +291,6 @@ describe("CollectionFilters", () => {
   it.each([
     ["Rareté", "RARE", ["Braum, Gardien du foyer"]],
     ["Type", "ENERGY", ["Énergie prismatique"]],
-    ["Variante", "SHOWCASE", ["Lux dorée"]],
   ])("filters rows from the %s select", (label, value, expectedCardNames) => {
     renderFilters();
 
@@ -186,21 +310,26 @@ describe("CollectionFilters", () => {
     expectVisibleCards(expectedCardNames);
   });
 
+  it("removes the user-facing variant filter from grouped collection rows", () => {
+    renderFilters();
+
+    expect(screen.queryByLabelText("Variante")).toBeNull();
+  });
+
   it("combines filters to narrow the rendered rows", () => {
     renderFilters();
 
     fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "rba" } });
     fireEvent.change(screen.getByLabelText("Type"), { target: { value: "GAMEPLAY" } });
-    fireEvent.change(screen.getByLabelText("Variante"), { target: { value: "SHOWCASE" } });
     fireEvent.change(screen.getByLabelText("Statut"), { target: { value: "OWNED" } });
 
-    expectVisibleCards(["Lux dorée"]);
+    expectVisibleCards(["Aatrox l'Éveillé", "Lux dorée"]);
   });
 
   it("keeps search filtering stable after switching display modes", () => {
     renderFilters();
 
-    fireEvent.change(screen.getByLabelText("Affichage"), { target: { value: "AVAILABLE" } });
+    fireEvent.change(screen.getByLabelText("Quantité affichée"), { target: { value: "AVAILABLE" } });
     fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "énergie" } });
 
     expectVisibleCards(["Énergie prismatique"]);

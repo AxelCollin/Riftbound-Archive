@@ -25,6 +25,7 @@ function card(overrides: Partial<CollectionCardRecord>): CollectionCardRecord {
     id: "card-1",
     name: "Base Name",
     collectorNumber: "001",
+    officialImageUrl: null,
     rarity: "COMMON",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
@@ -46,7 +47,8 @@ describe("collection query", () => {
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-        include: expect.objectContaining({
+        select: expect.objectContaining({
+          officialImageUrl: true,
           collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         }),
       }),
@@ -70,29 +72,26 @@ describe("collection query", () => {
 
   it("loads assembled deck allocations when composing page availability", async () => {
     prismaMock.card.findMany.mockResolvedValueOnce([
-      card({
-        id: "deck-card",
-        collectionEntries: [{ variant: "NORMAL", quantity: 3 }],
-      }),
+      card({ id: "deck-card", collectionEntries: [{ variant: "NORMAL", quantity: 3 }] }),
     ]);
     prismaMock.deck.findMany.mockResolvedValueOnce([
-      {
-        allocations: [{ cardId: "deck-card", variant: "NORMAL", quantity: 2 }],
-      },
+      { allocations: [{ cardId: "deck-card", variant: "NORMAL", quantity: 2 }] },
     ]);
 
     const { rows } = await getCollectionPageData();
 
-    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({
-      ownedQuantity: 3,
-      binderReservedQuantity: 1,
-      availableQuantity: 0,
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 3,
+      normalBinderReservedQuantity: 1,
+      normalAvailableQuantity: 0,
+      totalOwnedQuantity: 3,
+      totalAvailableQuantity: 0,
     });
   });
 });
 
 describe("collection query mapping", () => {
-  it("includes trackable cards and excludes TOKEN/RULES cards", () => {
+  it("includes one grouped row per trackable printed card and excludes TOKEN/RULES cards", () => {
     const rows = createCollectionRows([
       card({ id: "gameplay", kind: "GAMEPLAY" }),
       card({ id: "energy", kind: "ENERGY", rarity: "UNKNOWN" }),
@@ -100,14 +99,46 @@ describe("collection query mapping", () => {
       card({ id: "rules", kind: "RULES" }),
     ]);
 
-    expect(rows.map((row) => row.cardId)).toEqual([
-      "gameplay",
-      "gameplay",
-      "energy",
+    expect(rows.map((row) => row.cardId)).toEqual(["gameplay", "energy"]);
+  });
+
+  it("passes official image URLs into grouped collection display rows", () => {
+    const rows = createCollectionRows([
+      card({ id: "image-card", officialImageUrl: "https://assets.example/riftbound/image-card.webp" }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { cardId: "image-card", rowId: "image-card", officialImageUrl: "https://assets.example/riftbound/image-card.webp" },
     ]);
   });
 
-  it("aggregates FR/EN/ZH ownership rows for current language-agnostic collection rows", () => {
+  it("groups Normal and Foil quantities on the same standard printed-card row", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "grouped-card",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 },
+          { variant: "FOIL", physicalFinish: "FOIL", quantity: 1 },
+        ],
+      }),
+    ]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      cardId: "grouped-card",
+      normalOwnedQuantity: 2,
+      normalBinderReservedQuantity: 0,
+      normalAvailableQuantity: 2,
+      foilOwnedQuantity: 1,
+      foilBinderReservedQuantity: 1,
+      foilAvailableQuantity: 0,
+      totalOwnedQuantity: 3,
+      totalBinderReservedQuantity: 1,
+      totalAvailableQuantity: 2,
+    });
+  });
+
+  it("aggregates FR/EN/ZH ownership rows into the grouped Normal quantity", () => {
     const rows = createCollectionRows([
       card({
         id: "languages",
@@ -119,42 +150,7 @@ describe("collection query mapping", () => {
       }),
     ]);
 
-    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({ ownedQuantity: 6, availableQuantity: 5 });
-  });
-
-  it("creates allowed variant rows without introducing showcase foil", () => {
-    const rows = createCollectionRows([
-      card({ id: "common", rarity: "COMMON" }),
-      card({ id: "rare", rarity: "RARE" }),
-      card({ id: "showcase", rarity: "EPIC", hasShowcase: true }),
-    ]);
-
-    expect(
-      rows.filter((row) => row.cardId === "common").map((row) => row.variant),
-    ).toEqual(["NORMAL", "FOIL"]);
-    expect(
-      rows.filter((row) => row.cardId === "rare").map((row) => row.variant),
-    ).toEqual(["FOIL"]);
-    expect(
-      rows.filter((row) => row.cardId === "showcase").map((row) => row.variant),
-    ).toEqual(["FOIL", "SHOWCASE"]);
-  });
-
-  it("reads normal and foil quantities from physicalFinish when present", () => {
-    const rows = createCollectionRows([
-      card({
-        id: "finish-owned-card",
-        collectionEntries: [
-          { variant: "FOIL", physicalFinish: "NORMAL", quantity: 2 },
-          { variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 },
-        ],
-      }),
-    ]);
-
-    expect(rows).toMatchObject([
-      { variant: "NORMAL", ownedQuantity: 2, binderReservedQuantity: 0, availableQuantity: 2 },
-      { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
-    ]);
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 6, normalAvailableQuantity: 5, totalOwnedQuantity: 6 });
   });
 
   it("falls back to legacy normal and foil variants when physicalFinish is null", () => {
@@ -168,51 +164,52 @@ describe("collection query mapping", () => {
       }),
     ]);
 
-    expect(rows).toMatchObject([
-      { variant: "NORMAL", ownedQuantity: 2 },
-      { variant: "FOIL", ownedQuantity: 1 },
-    ]);
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 2, foilOwnedQuantity: 1, totalOwnedQuantity: 3 });
   });
 
-  it("ignores legacy showcase compatibility rows for standard normal and foil ownership", () => {
+  it("keeps legacy showcase compatibility rows visible without polluting Normal/Foil totals", () => {
     const rows = createCollectionRows([
       card({
         id: "legacy-showcase-row",
-        hasShowcase: false,
+        hasShowcase: true,
         collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 5 }],
       }),
     ]);
 
-    expect(rows).toMatchObject([
-      { variant: "NORMAL", ownedQuantity: 0 },
-      { variant: "FOIL", ownedQuantity: 0 },
-    ]);
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 0,
+      foilOwnedQuantity: 0,
+      legacyShowcaseOwnedQuantity: 5,
+      legacyShowcaseBinderReservedQuantity: 0,
+      legacyShowcaseAvailableQuantity: 5,
+      totalOwnedQuantity: 5,
+      totalAvailableQuantity: 5,
+    });
   });
 
-  it("maps existing snapshots and renders missing entries as quantity 0", () => {
+  it("includes legacy Showcase compatibility ownership in collection summary", () => {
     const rows = createCollectionRows([
-      card({
-        id: "owned-card",
-        collectionEntries: [{ variant: "FOIL", quantity: 3 }],
-      }),
+      card({ id: "legacy-only", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 2 }] }),
+      card({ id: "missing", hasShowcase: true }),
     ]);
 
-    expect(rows).toMatchObject([
-      {
-        cardId: "owned-card",
-        variant: "NORMAL",
-        ownedQuantity: 0,
-        binderReservedQuantity: 0,
-        availableQuantity: 0,
-      },
-      {
-        cardId: "owned-card",
-        variant: "FOIL",
-        ownedQuantity: 3,
-        binderReservedQuantity: 1,
-        availableQuantity: 2,
-      },
+    expect(summarizeCollectionRows(rows)).toEqual({
+      totalOwnedCopies: 2,
+      ownedRows: 1,
+      trackableRows: 2,
+      missingRows: 1,
+    });
+  });
+
+  it("keeps Showcase printed cards as separate printed-card rows from standard cards", () => {
+    const rows = createCollectionRows([
+      card({ id: "standard", collectorCategory: "STANDARD", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", quantity: 2 }] }),
+      card({ id: "showcase-print", collectorCategory: "SHOWCASE", printTreatment: "ALT", collectionEntries: [{ variant: "FOIL", quantity: 1 }] }),
     ]);
+
+    expect(rows.map((row) => row.cardId)).toEqual(["standard", "showcase-print"]);
+    expect(rows[0]).toMatchObject({ collectorCategory: "STANDARD", legacyShowcaseOwnedQuantity: 2, normalOwnedQuantity: 0, foilOwnedQuantity: 0 });
+    expect(rows[1]).toMatchObject({ collectorCategory: "SHOWCASE", printTreatment: "ALT", foilOwnedQuantity: 1, legacyShowcaseOwnedQuantity: 0 });
   });
 
   it("reserves foil first for common and uncommon rows, then computes availability", () => {
@@ -227,250 +224,96 @@ describe("collection query mapping", () => {
       }),
     ]);
 
-    expect(rows).toMatchObject([
-      {
-        variant: "NORMAL",
-        ownedQuantity: 3,
-        binderReservedQuantity: 0,
-        availableQuantity: 3,
-      },
-      {
-        variant: "FOIL",
-        ownedQuantity: 1,
-        binderReservedQuantity: 1,
-        availableQuantity: 0,
-      },
-    ]);
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 3,
+      normalBinderReservedQuantity: 0,
+      normalAvailableQuantity: 3,
+      foilOwnedQuantity: 1,
+      foilBinderReservedQuantity: 1,
+      foilAvailableQuantity: 0,
+      totalOwnedQuantity: 4,
+      totalBinderReservedQuantity: 1,
+      totalAvailableQuantity: 3,
+    });
   });
 
   it("reserves normal for common and uncommon cards when only normal is owned", () => {
     const rows = createCollectionRows([
-      card({
-        id: "common-normal",
-        rarity: "UNCOMMON",
-        collectionEntries: [{ variant: "NORMAL", quantity: 2 }],
-      }),
+      card({ id: "common-normal", rarity: "UNCOMMON", collectionEntries: [{ variant: "NORMAL", quantity: 2 }] }),
     ]);
 
-    expect(rows).toMatchObject([
-      {
-        variant: "NORMAL",
-        ownedQuantity: 2,
-        binderReservedQuantity: 1,
-        availableQuantity: 1,
-      },
-      {
-        variant: "FOIL",
-        ownedQuantity: 0,
-        binderReservedQuantity: 0,
-        availableQuantity: 0,
-      },
-    ]);
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 2,
+      normalBinderReservedQuantity: 1,
+      normalAvailableQuantity: 1,
+      foilOwnedQuantity: 0,
+      totalOwnedQuantity: 2,
+      totalAvailableQuantity: 1,
+    });
   });
 
-  it("reserves foil for rare, epic, and ultimate foil-only cards", () => {
+  it("reserves foil for rare, epic, ultimate, and ENERGY foil-only cards", () => {
     const rows = createCollectionRows([
-      card({
-        id: "rare-foil",
-        rarity: "RARE",
-        collectionEntries: [{ variant: "FOIL", quantity: 2 }],
-      }),
-      card({
-        id: "epic-foil",
-        rarity: "EPIC",
-        collectionEntries: [{ variant: "FOIL", quantity: 1 }],
-      }),
-      card({
-        id: "ultimate-foil",
-        rarity: "ULTIMATE",
-        collectionEntries: [{ variant: "FOIL", quantity: 3 }],
-      }),
+      card({ id: "rare-foil", rarity: "RARE", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }),
+      card({ id: "epic-foil", rarity: "EPIC", collectionEntries: [{ variant: "FOIL", quantity: 1 }] }),
+      card({ id: "ultimate-foil", rarity: "ULTIMATE", collectionEntries: [{ variant: "FOIL", quantity: 3 }] }),
+      card({ id: "energy-card", kind: "ENERGY", rarity: "UNKNOWN", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }),
     ]);
 
-    expect(
-      rows.map(
-        ({
-          cardId,
-          variant,
-          ownedQuantity,
-          binderReservedQuantity,
-          availableQuantity,
-        }) => ({
-          cardId,
-          variant,
-          ownedQuantity,
-          binderReservedQuantity,
-          availableQuantity,
-        }),
-      ),
-    ).toEqual([
-      {
-        cardId: "rare-foil",
-        variant: "FOIL",
-        ownedQuantity: 2,
-        binderReservedQuantity: 1,
-        availableQuantity: 1,
-      },
-      {
-        cardId: "epic-foil",
-        variant: "FOIL",
-        ownedQuantity: 1,
-        binderReservedQuantity: 1,
-        availableQuantity: 0,
-      },
-      {
-        cardId: "ultimate-foil",
-        variant: "FOIL",
-        ownedQuantity: 3,
-        binderReservedQuantity: 1,
-        availableQuantity: 2,
-      },
-    ]);
-  });
-
-  it("never auto-reserves showcase and leaves owned showcase available", () => {
-    const rows = createCollectionRows([
-      card({
-        id: "showcase-owned",
-        rarity: "EPIC",
-        hasShowcase: true,
-        collectionEntries: [{ variant: "SHOWCASE", quantity: 1 }],
-      }),
-    ]);
-
-    expect(rows).toMatchObject([
-      {
-        variant: "FOIL",
-        ownedQuantity: 0,
-        binderReservedQuantity: 0,
-        availableQuantity: 0,
-      },
-      {
-        variant: "SHOWCASE",
-        ownedQuantity: 1,
-        binderReservedQuantity: 0,
-        availableQuantity: 1,
-      },
+    expect(rows.map(({ cardId, foilOwnedQuantity, foilBinderReservedQuantity, foilAvailableQuantity, totalOwnedQuantity, totalAvailableQuantity }) => ({
+      cardId,
+      foilOwnedQuantity,
+      foilBinderReservedQuantity,
+      foilAvailableQuantity,
+      totalOwnedQuantity,
+      totalAvailableQuantity,
+    }))).toEqual([
+      { cardId: "rare-foil", foilOwnedQuantity: 2, foilBinderReservedQuantity: 1, foilAvailableQuantity: 1, totalOwnedQuantity: 2, totalAvailableQuantity: 1 },
+      { cardId: "epic-foil", foilOwnedQuantity: 1, foilBinderReservedQuantity: 1, foilAvailableQuantity: 0, totalOwnedQuantity: 1, totalAvailableQuantity: 0 },
+      { cardId: "ultimate-foil", foilOwnedQuantity: 3, foilBinderReservedQuantity: 1, foilAvailableQuantity: 2, totalOwnedQuantity: 3, totalAvailableQuantity: 2 },
+      { cardId: "energy-card", foilOwnedQuantity: 2, foilBinderReservedQuantity: 1, foilAvailableQuantity: 1, totalOwnedQuantity: 2, totalAvailableQuantity: 1 },
     ]);
   });
 
   it("subtracts assembled deck allocations from available quantity", () => {
     const rows = createCollectionRows(
-      [
-        card({
-          id: "assembled-card",
-          collectionEntries: [{ variant: "NORMAL", quantity: 4 }],
-        }),
-      ],
-      [
-        {
-          assembled: true,
-          allocations: [
-            { cardId: "assembled-card", variant: "NORMAL", quantity: 2 },
-          ],
-        },
-      ],
+      [card({ id: "assembled-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] })],
+      [{ assembled: true, allocations: [{ cardId: "assembled-card", variant: "NORMAL", quantity: 2 }] }],
     );
 
-    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({
-      ownedQuantity: 4,
-      binderReservedQuantity: 1,
-      availableQuantity: 1,
-    });
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 4, normalBinderReservedQuantity: 1, normalAvailableQuantity: 1 });
   });
 
   it("does not subtract theoretical deck allocations from available quantity", () => {
     const rows = createCollectionRows(
-      [
-        card({
-          id: "theory-card",
-          collectionEntries: [{ variant: "NORMAL", quantity: 4 }],
-        }),
-      ],
-      [
-        {
-          assembled: false,
-          allocations: [
-            { cardId: "theory-card", variant: "NORMAL", quantity: 2 },
-          ],
-        },
-      ],
+      [card({ id: "theory-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] })],
+      [{ assembled: false, allocations: [{ cardId: "theory-card", variant: "NORMAL", quantity: 2 }] }],
     );
 
-    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({
-      ownedQuantity: 4,
-      binderReservedQuantity: 1,
-      availableQuantity: 3,
-    });
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 4, normalBinderReservedQuantity: 1, normalAvailableQuantity: 3 });
   });
 
   it("clamps availability to 0 when binder reservation plus assembled allocation exceeds owned", () => {
     const rows = createCollectionRows(
-      [
-        card({
-          id: "clamped-card",
-          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
-        }),
-      ],
-      [
-        {
-          assembled: true,
-          allocations: [
-            { cardId: "clamped-card", variant: "NORMAL", quantity: 2 },
-          ],
-        },
-      ],
+      [card({ id: "clamped-card", collectionEntries: [{ variant: "NORMAL", quantity: 1 }] })],
+      [{ assembled: true, allocations: [{ cardId: "clamped-card", variant: "NORMAL", quantity: 2 }] }],
     );
 
-    expect(rows.find((row) => row.variant === "NORMAL")).toMatchObject({
-      ownedQuantity: 1,
-      binderReservedQuantity: 1,
-      availableQuantity: 0,
-    });
-  });
-
-  it("keeps ENERGY trackable in ownership and availability rows", () => {
-    const rows = createCollectionRows([
-      card({
-        id: "energy-card",
-        kind: "ENERGY",
-        rarity: "UNKNOWN",
-        collectionEntries: [{ variant: "FOIL", quantity: 2 }],
-      }),
-    ]);
-
-    expect(rows).toMatchObject([
-      {
-        cardId: "energy-card",
-        variant: "FOIL",
-        ownedQuantity: 2,
-        binderReservedQuantity: 1,
-        availableQuantity: 1,
-      },
-    ]);
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 1, normalBinderReservedQuantity: 1, normalAvailableQuantity: 0 });
   });
 
   it("surfaces negative CollectionEntry snapshots as invalid data", () => {
     expect(() =>
       createCollectionRows([
-        card({
-          id: "bad-card",
-          collectionEntries: [{ variant: "FOIL", quantity: -1 }],
-        }),
+        card({ id: "bad-card", collectionEntries: [{ variant: "FOIL", quantity: -1 }] }),
       ]),
-    ).toThrow(
-      "Invalid negative CollectionEntry quantity for card bad-card variant FOIL",
-    );
+    ).toThrow("Invalid negative CollectionEntry quantity for card bad-card variant FOIL");
   });
 
   it("surfaces NORMAL snapshots on foil-only cards as invalid persisted data", () => {
     expect(() =>
       createCollectionRows([
-        card({
-          id: "bad-rare",
-          rarity: "RARE",
-          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
-        }),
+        card({ id: "bad-rare", rarity: "RARE", collectionEntries: [{ variant: "NORMAL", quantity: 1 }] }),
       ]),
     ).toThrow("Invalid CollectionEntry variant NORMAL for card bad-rare");
   });
@@ -489,27 +332,20 @@ describe("collection query mapping", () => {
       ),
     ).toBe("Nom France");
 
-    expect(
-      getDisplayCardName(
-        card({ translations: [{ locale: "de", name: "Deutsch" }] }),
-      ),
-    ).toBe("Base Name");
+    expect(getDisplayCardName(card({ translations: [{ locale: "de", name: "Deutsch" }] }))).toBe("Base Name");
   });
 
-  it("summarizes owned, trackable, and missing rows", () => {
+  it("summarizes owned, trackable, and missing grouped rows", () => {
     const rows = createCollectionRows([
-      card({
-        id: "first",
-        collectionEntries: [{ variant: "NORMAL", quantity: 2 }],
-      }),
+      card({ id: "first", collectionEntries: [{ variant: "NORMAL", quantity: 2 }] }),
       card({ id: "second", rarity: "RARE" }),
     ]);
 
     expect(summarizeCollectionRows(rows)).toEqual({
       totalOwnedCopies: 2,
       ownedRows: 1,
-      trackableRows: 3,
-      missingRows: 2,
+      trackableRows: 2,
+      missingRows: 1,
     });
   });
 });

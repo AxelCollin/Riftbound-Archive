@@ -34,6 +34,7 @@ export type CollectionCardRecord = {
   id: string;
   name: string;
   collectorNumber: string | null;
+  officialImageUrl: string | null;
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
@@ -99,21 +100,45 @@ export function createCollectionRows(
     ).available;
     const cardName = getDisplayCardName(card);
 
-    return allowedVariants.map((variant) => ({
-      rowId: `${card.id}:${variant}`,
+    const normalOwnedQuantity = getVariantCount(ownedCounts, "NORMAL");
+    const normalBinderReservedQuantity = getVariantCount(binderReserved, "NORMAL");
+    const normalAvailableQuantity = getVariantCount(available, "NORMAL");
+    const foilOwnedQuantity = getVariantCount(ownedCounts, "FOIL");
+    const foilBinderReservedQuantity = getVariantCount(binderReserved, "FOIL");
+    const foilAvailableQuantity = getVariantCount(available, "FOIL");
+    const legacyShowcaseOwnedQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(ownedCounts, "SHOWCASE");
+    const legacyShowcaseBinderReservedQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(binderReserved, "SHOWCASE");
+    const legacyShowcaseAvailableQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(available, "SHOWCASE");
+
+    // Legacy SHOWCASE CollectionEntry rows can still be written for standard
+    // cards with hasShowcase=true. Keep those copies visible as compatibility
+    // quantities, but do not merge them into Normal/Foil finish totals. Real
+    // Showcase printed cards remain separate Card records.
+    return [{
+      rowId: card.id,
       cardId: card.id,
       cardName,
+      officialImageUrl: card.officialImageUrl,
       setCode: card.set.code,
       setName: card.set.name,
       collectorNumber: card.collectorNumber ?? "—",
       rarity: card.rarity,
       kind: card.kind,
       printTreatment: card.printTreatment,
-      variant,
-      ownedQuantity: getVariantCount(ownedCounts, variant),
-      binderReservedQuantity: getVariantCount(binderReserved, variant),
-      availableQuantity: getVariantCount(available, variant),
-    }));
+      collectorCategory: card.collectorCategory,
+      normalOwnedQuantity,
+      normalBinderReservedQuantity,
+      normalAvailableQuantity,
+      foilOwnedQuantity,
+      foilBinderReservedQuantity,
+      foilAvailableQuantity,
+      legacyShowcaseOwnedQuantity,
+      legacyShowcaseBinderReservedQuantity,
+      legacyShowcaseAvailableQuantity,
+      totalOwnedQuantity: normalOwnedQuantity + foilOwnedQuantity + legacyShowcaseOwnedQuantity,
+      totalBinderReservedQuantity: normalBinderReservedQuantity + foilBinderReservedQuantity + legacyShowcaseBinderReservedQuantity,
+      totalAvailableQuantity: normalAvailableQuantity + foilAvailableQuantity + legacyShowcaseAvailableQuantity,
+    }];
   });
 }
 
@@ -122,10 +147,10 @@ export function summarizeCollectionRows(
 ): CollectionSummary {
   return rows.reduce<CollectionSummary>(
     (summary, row) => ({
-      totalOwnedCopies: summary.totalOwnedCopies + row.ownedQuantity,
-      ownedRows: summary.ownedRows + (row.ownedQuantity > 0 ? 1 : 0),
+      totalOwnedCopies: summary.totalOwnedCopies + row.totalOwnedQuantity,
+      ownedRows: summary.ownedRows + (row.totalOwnedQuantity > 0 ? 1 : 0),
       trackableRows: summary.trackableRows + 1,
-      missingRows: summary.missingRows + (row.ownedQuantity === 0 ? 1 : 0),
+      missingRows: summary.missingRows + (row.totalOwnedQuantity === 0 ? 1 : 0),
     }),
     {
       totalOwnedCopies: 0,
@@ -145,7 +170,17 @@ export async function getCollectionPageData(): Promise<CollectionPageData> {
         { collectorNumber: "asc" },
         { name: "asc" },
       ],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        collectorNumber: true,
+        officialImageUrl: true,
+        rarity: true,
+        kind: true,
+        gameplayType: true,
+        collectorCategory: true,
+        printTreatment: true,
+        hasShowcase: true,
         set: { select: { code: true, name: true } },
         translations: { select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
