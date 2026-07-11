@@ -5,6 +5,7 @@ export type CollectionDisplayRow = {
   rowId: string;
   cardId: string;
   cardName: string;
+  officialImageUrl: string | null;
   setCode: string;
   setName: string;
   collectorNumber: string;

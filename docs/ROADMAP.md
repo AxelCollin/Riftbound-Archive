@@ -115,7 +115,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 - [x] Clean stale deck UI copy and remove user-facing phase labels.
 - [ ] Add collection display modes: grid, line, and compact.
   - [x] Phase 7.5L initial visual-mode slice: add Grid, Line, and Compact view switching while preserving existing card+variant rows and quantity/filter behavior.
-  - [ ] Add collection card art/placeholders to grid and line views.
+  - [x] Add collection card art/placeholders to grid and line views.
   - [ ] Decide and implement grouping behavior for Normal/Foil quantities versus card+variant rows.
   - [ ] Keep Phase 8 blocked until this parent display-modes prerequisite is fully completed or explicitly deferred with a written decision.
 - [ ] Add collection faction-icon filters.

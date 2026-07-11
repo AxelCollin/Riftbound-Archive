@@ -11,6 +11,7 @@ function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
     rowId: "card-1:FOIL",
     cardId: "card-1",
     cardName: "Base Name",
+    officialImageUrl: null,
     setCode: "ORG",
     setName: "Origins",
     collectorNumber: "001",

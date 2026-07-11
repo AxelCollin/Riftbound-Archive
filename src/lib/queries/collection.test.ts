@@ -25,6 +25,7 @@ function card(overrides: Partial<CollectionCardRecord>): CollectionCardRecord {
     id: "card-1",
     name: "Base Name",
     collectorNumber: "001",
+    officialImageUrl: null,
     rarity: "COMMON",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
@@ -46,7 +47,8 @@ describe("collection query", () => {
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { kind: { in: ["GAMEPLAY", "ENERGY"] } },
-        include: expect.objectContaining({
+        select: expect.objectContaining({
+          officialImageUrl: true,
           collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         }),
       }),
@@ -104,6 +106,21 @@ describe("collection query mapping", () => {
       "gameplay",
       "gameplay",
       "energy",
+    ]);
+  });
+
+
+  it("passes official image URLs into collection display rows", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "image-card",
+        officialImageUrl: "https://assets.example/riftbound/image-card.webp",
+      }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { cardId: "image-card", variant: "NORMAL", officialImageUrl: "https://assets.example/riftbound/image-card.webp" },
+      { cardId: "image-card", variant: "FOIL", officialImageUrl: "https://assets.example/riftbound/image-card.webp" },
     ]);
   });
 

@@ -9,6 +9,7 @@ const rows: CollectionDisplayRow[] = [
     rowId: "rba-001-normal",
     cardId: "set/001",
     cardName: "Aatrox l'Éveillé",
+    officialImageUrl: "https://assets.example/riftbound/aatrox.webp",
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "001",
@@ -24,6 +25,7 @@ const rows: CollectionDisplayRow[] = [
     rowId: "rba-002-foil",
     cardId: "rba-002",
     cardName: "Braum, Gardien du foyer",
+    officialImageUrl: null,
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "002",
@@ -39,6 +41,7 @@ const rows: CollectionDisplayRow[] = [
     rowId: "ene-010-foil",
     cardId: "energy-010",
     cardName: "Énergie prismatique",
+    officialImageUrl: "https://assets.example/riftbound/energy.webp",
     setCode: "ENE",
     setName: "Énergies",
     collectorNumber: "010",
@@ -54,6 +57,7 @@ const rows: CollectionDisplayRow[] = [
     rowId: "rba-099-showcase",
     cardId: "rba-099",
     cardName: "Lux dorée",
+    officialImageUrl: null,
     setCode: "RBA",
     setName: "Origines de Runeterra",
     collectorNumber: "099",
@@ -187,6 +191,35 @@ describe("CollectionFilters", () => {
     expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
     expect(screen.getAllByLabelText("Quantité affichée Disponibles").map((node) => node.textContent)).toContain("3");
     expect(screen.getByRole("link", { name: "Énergie prismatique" }).getAttribute("href")).toBe(getCardDetailHref("energy-010"));
+  });
+
+
+  it("renders card art and placeholders in grid mode while keeping detail links", () => {
+    renderFilters();
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "GRID" } });
+
+    expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration de Aatrox l'Éveillé" }).getAttribute("src")).toBe("https://assets.example/riftbound/aatrox.webp");
+    expect(screen.getByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeTruthy();
+    expect(screen.getAllByText("No art").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Aatrox l'Éveillé" }).getAttribute("href")).toBe(getCardDetailHref("set/001"));
+  });
+
+  it("renders small card visuals in line mode and no visuals in compact mode", () => {
+    renderFilters();
+
+    expect(screen.getByTestId("collection-line-view")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration de Aatrox l'Éveillé" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Braum, Gardien du foyer" }).getAttribute("href")).toBe(getCardDetailHref("rba-002"));
+
+    fireEvent.change(screen.getByLabelText("Vue"), { target: { value: "COMPACT" } });
+
+    expect(screen.getByTestId("collection-compact-view")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: "Illustration de Aatrox l'Éveillé" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Braum, Gardien du foyer" }).getAttribute("href")).toBe(getCardDetailHref("rba-002"));
   });
 
   it("filters rows by card name from the search input", () => {

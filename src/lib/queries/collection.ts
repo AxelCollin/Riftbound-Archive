@@ -34,6 +34,7 @@ export type CollectionCardRecord = {
   id: string;
   name: string;
   collectorNumber: string | null;
+  officialImageUrl: string | null;
   rarity: CardRarity;
   kind: CardKind;
   gameplayType?: CardGameplayType | null;
@@ -103,6 +104,7 @@ export function createCollectionRows(
       rowId: `${card.id}:${variant}`,
       cardId: card.id,
       cardName,
+      officialImageUrl: card.officialImageUrl,
       setCode: card.set.code,
       setName: card.set.name,
       collectorNumber: card.collectorNumber ?? "—",
@@ -145,7 +147,17 @@ export async function getCollectionPageData(): Promise<CollectionPageData> {
         { collectorNumber: "asc" },
         { name: "asc" },
       ],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        collectorNumber: true,
+        officialImageUrl: true,
+        rarity: true,
+        kind: true,
+        gameplayType: true,
+        collectorCategory: true,
+        printTreatment: true,
+        hasShowcase: true,
         set: { select: { code: true, name: true } },
         translations: { select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },

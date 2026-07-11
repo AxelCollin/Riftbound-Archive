@@ -216,7 +216,14 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
           {rows.map((row) => (
             <tr className="text-archive-text300 hover:bg-[rgba(58,123,213,0.08)]" key={row.rowId}>
               <td className={`${cellPadding} font-medium text-archive-text100`}>
-                <CardDetailLink row={row} />
+                {compact ? (
+                  <CardDetailLink row={row} />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <CollectionCardImage cardName={row.cardName} officialImageUrl={row.officialImageUrl} mode="line" />
+                    <CardDetailLink row={row} />
+                  </div>
+                )}
               </td>
               <td className={cellPadding} title={row.setName}>{row.setCode}</td>
               <td className={cellPadding}>{row.collectorNumber}</td>
@@ -241,6 +248,7 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
     <div className="grid gap-4 p-5 md:grid-cols-2 2xl:grid-cols-3" data-testid="collection-grid-view">
       {rows.map((row) => (
         <article className="rounded-card border border-[rgba(199,168,102,0.24)] bg-[rgba(8,17,27,0.82)] p-4 shadow-panel" key={row.rowId}>
+          <CollectionCardImage cardName={row.cardName} officialImageUrl={row.officialImageUrl} mode="grid" />
           <div className="flex items-start justify-between gap-4">
             <div>
               <CardDetailLink row={row} />
@@ -260,6 +268,43 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
           </dl>
         </article>
       ))}
+    </div>
+  );
+}
+
+function CollectionCardImage({
+  cardName,
+  mode,
+  officialImageUrl,
+}: {
+  cardName: string;
+  mode: "grid" | "line";
+  officialImageUrl: string | null;
+}) {
+  const isGrid = mode === "grid";
+  const frameClassName = isGrid
+    ? "mb-4 aspect-[5/7] w-full overflow-hidden rounded-card border border-[rgba(199,168,102,0.34)] bg-[radial-gradient(circle_at_50%_18%,rgba(199,168,102,0.22),rgba(16,32,51,0.72)_44%,rgba(5,8,14,0.94)_100%)] shadow-inner"
+    : "h-16 w-12 shrink-0 overflow-hidden rounded-[0.75rem] border border-[rgba(199,168,102,0.28)] bg-[radial-gradient(circle_at_50%_18%,rgba(199,168,102,0.18),rgba(16,32,51,0.76)_48%,rgba(5,8,14,0.96)_100%)] shadow-inner";
+  const placeholderTextClassName = isGrid
+    ? "text-sm font-semibold tracking-[0.2em] text-archive-gold300"
+    : "text-[0.62rem] font-semibold tracking-[0.14em] text-archive-gold300";
+
+  if (officialImageUrl) {
+    return (
+      <div className={frameClassName} data-testid={`collection-card-image-${mode}`}>
+        <img
+          alt={`Illustration de ${cardName}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          src={officialImageUrl}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div aria-label={`Illustration non disponible pour ${cardName}`} className={`${frameClassName} flex items-center justify-center p-2 text-center`} data-testid={`collection-card-placeholder-${mode}`} role="img">
+      <span className={placeholderTextClassName}>No art</span>
     </div>
   );
 }
