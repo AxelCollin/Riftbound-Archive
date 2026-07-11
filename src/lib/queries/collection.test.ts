@@ -191,6 +191,47 @@ describe("collection query mapping", () => {
     });
   });
 
+
+  it("classifies UNKNOWN editable quantities by effective physical finish instead of legacy variant", () => {
+    const normalRows = createCollectionRows([
+      card({
+        id: "migrated-normal",
+        collectionEntries: [{ variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }],
+      }),
+    ]);
+    const foilRows = createCollectionRows([
+      card({
+        id: "migrated-foil",
+        collectionEntries: [{ variant: "NORMAL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", quantity: 3 }],
+      }),
+    ]);
+
+    expect(normalRows[0]).toMatchObject({ normalOwnedQuantity: 2, normalEditableQuantity: 2, foilOwnedQuantity: 0, foilEditableQuantity: 0 });
+    expect(foilRows[0]).toMatchObject({ normalOwnedQuantity: 0, normalEditableQuantity: 0, foilOwnedQuantity: 3, foilEditableQuantity: 3 });
+  });
+
+  it("excludes concrete-language and legacy Showcase rows from Normal/Foil editable quantities", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "non-editable-finishes",
+        hasShowcase: true,
+        collectionEntries: [
+          { variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "FOIL", cardLanguage: "EN", quantity: 3 },
+          { variant: "SHOWCASE", physicalFinish: null, cardLanguage: "UNKNOWN", quantity: 4 },
+        ],
+      }),
+    ]);
+
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 2,
+      normalEditableQuantity: 0,
+      foilOwnedQuantity: 3,
+      foilEditableQuantity: 0,
+      legacyShowcaseOwnedQuantity: 4,
+    });
+  });
+
   it("falls back to legacy normal and foil variants when physicalFinish is null", () => {
     const rows = createCollectionRows([
       card({

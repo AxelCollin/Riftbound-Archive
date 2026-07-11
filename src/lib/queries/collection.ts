@@ -11,7 +11,7 @@ import {
 } from "../domain/cards";
 import type { CardCollectorCategory, CardFaction, CardGameplayType } from "../domain/card-taxonomy";
 import type { CollectionDisplayRow } from "../domain/collection-display";
-import { createOwnedVariantCounts } from "../domain/collection-quantities";
+import { createOwnedVariantCounts, getOwnedSnapshotQuantityVariant } from "../domain/collection-quantities";
 import {
   getAllowedVariants,
   getVariantCount,
@@ -229,6 +229,7 @@ async function getAssembledDeckAllocationSets(): Promise<DeckAllocationSet[]> {
 
 function getEditableQuantity(entries: CollectionCardEntry[], variant: CardVariant): number {
   return entries
-    .filter((entry) => entry.variant === variant && (entry.cardLanguage ?? "UNKNOWN") === "UNKNOWN")
+    .filter((entry) => (entry.cardLanguage ?? "UNKNOWN") === "UNKNOWN")
+    .filter((entry) => getOwnedSnapshotQuantityVariant(entry) === variant)
     .reduce((total, entry) => total + entry.quantity, 0);
 }

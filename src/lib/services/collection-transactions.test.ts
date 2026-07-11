@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CollectionTransactionServiceError,
+  recordCollectionFinishAdjustment,
   recordCollectionTransaction,
   type CollectionEntrySnapshot,
   type CollectionTransactionRepository,
@@ -18,13 +19,13 @@ const baseCard = {
   hasShowcase: false,
 };
 
-function createEntry(quantity: number, cardId = "card-common", variant: CardVariant = "NORMAL"): CollectionEntrySnapshot {
+function createEntry(quantity: number, cardId = "card-common", variant: CardVariant = "NORMAL", physicalFinish = mapLegacyCardVariantToPhysicalFinish(variant), cardLanguage: CollectionEntrySnapshot["cardLanguage"] = "UNKNOWN"): CollectionEntrySnapshot {
   return {
     id: `entry-${cardId}-${variant}`,
     cardId,
     variant,
-    physicalFinish: mapLegacyCardVariantToPhysicalFinish(variant),
-    cardLanguage: "UNKNOWN",
+    physicalFinish,
+    cardLanguage,
     quantity,
     createdAt: new Date("2026-06-28T00:00:00.000Z"),
     updatedAt: new Date("2026-06-28T00:00:00.000Z"),
@@ -75,12 +76,35 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
     return { count: 1 };
   });
 
+  const findManyEntry = vi.fn(async ({ where }) =>
+    [...entries.values()].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+  );
+  const updateEntry = vi.fn(async ({ where: { cardId_variant_cardLanguage }, data }) => {
+    const key = `${cardId_variant_cardLanguage.cardId}:${cardId_variant_cardLanguage.variant}:${cardId_variant_cardLanguage.cardLanguage}`;
+    const existing = entries.get(key);
+
+    if (!existing) {
+      throw new Error("entry not found");
+    }
+
+    const updated = {
+      ...existing,
+      physicalFinish: data.physicalFinish ?? existing.physicalFinish,
+      quantity: applyQuantityMutation(existing.quantity, data.quantity),
+      updatedAt: new Date("2026-06-28T00:00:01.000Z"),
+    };
+    entries.set(key, updated);
+    return updated;
+  });
+
   const repository: CollectionTransactionRepository = {
     card: {
       findUnique: vi.fn(async () => card),
     },
     collectionEntry: {
       upsert: upsertEntry,
+      findMany: findManyEntry,
+      update: updateEntry,
       updateMany: updateManyEntry,
     },
     collectionTransaction: {
@@ -105,6 +129,129 @@ async function expectServiceError(
 ) {
   await expect(recordCollectionTransaction(input, repository)).rejects.toMatchObject({ code });
 }
+
+
+describe("recordCollectionFinishAdjustment", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("removes Normal from an UNKNOWN FOIL-keyed physical Normal snapshot and records the actual legacy variant", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(2, "card-common", "FOIL", "NORMAL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
+    expect(entries.has("card-common:NORMAL:UNKNOWN")).toBe(false);
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "REMOVE", quantity: 1 },
+    ]);
+  });
+
+  it("adds Normal to an UNKNOWN FOIL-keyed physical Normal snapshot without creating a canonical duplicate", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(2, "card-common", "FOIL", "NORMAL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(3);
+    expect(entries.has("card-common:NORMAL:UNKNOWN")).toBe(false);
+    expect(transactions).toMatchObject([
+      { variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 1 },
+    ]);
+  });
+
+  it("edits the inverse NORMAL-keyed physical Foil snapshot independently", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(4, "card-common", "NORMAL", "FOIL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "REMOVE", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(3);
+    expect(entries.has("card-common:FOIL:UNKNOWN")).toBe(false);
+    expect(transactions).toMatchObject([
+      { variant: "NORMAL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", type: "REMOVE", quantity: 1 },
+    ]);
+  });
+
+  it("creates a canonical row when adding with no existing effective-finish snapshot", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ variant: "FOIL", physicalFinish: "FOIL", quantity: 1 });
+    expect(transactions).toMatchObject([{ variant: "FOIL", physicalFinish: "FOIL", type: "ADD", quantity: 1 }]);
+  });
+
+  it("rejects removing when no matching effective-finish snapshot exists", async () => {
+    const { repository, transactions } = createRepository(baseCard);
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects decrementing below zero", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [createEntry(1, "card-common", "FOIL", "NORMAL")]);
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 2 }, repository))
+      .rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+  });
+
+  it("fails safely when duplicate UNKNOWN snapshots resolve to the same finish", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(1, "card-common", "NORMAL", "NORMAL"),
+      createEntry(2, "card-common", "FOIL", "NORMAL"),
+    ]);
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "DUPLICATE_COLLECTION_FINISH_SNAPSHOT" });
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(1);
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(2);
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+  });
+
+  it("preserves concrete-language snapshots while editing UNKNOWN rows", async () => {
+    const { repository, entries } = createRepository(baseCard, [
+      createEntry(2, "card-common", "NORMAL", "NORMAL", "UNKNOWN"),
+      createEntry(5, "card-common", "NORMAL", "NORMAL", "FR"),
+      createEntry(6, "card-common", "FOIL", "FOIL", "EN"),
+      createEntry(7, "card-common", "FOIL", "FOIL", "ZH"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(3);
+    expect(entries.get("card-common:NORMAL:FR")?.quantity).toBe(5);
+    expect(entries.get("card-common:FOIL:EN")?.quantity).toBe(6);
+    expect(entries.get("card-common:FOIL:ZH")?.quantity).toBe(7);
+  });
+
+  it("keeps Normal and Foil direct edits independent", async () => {
+    const { repository, entries } = createRepository(baseCard, [
+      createEntry(2, "card-common", "FOIL", "NORMAL"),
+      createEntry(3, "card-common", "NORMAL", "FOIL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository);
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "REMOVE", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(3);
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(2);
+  });
+});
 
 describe("recordCollectionTransaction", () => {
   beforeEach(() => {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
 import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
 import { getCollectionEntryQuantityDelta } from "../domain/collection";
+import { getOwnedSnapshotQuantityVariant } from "../domain/collection-quantities";
 import type { CardLanguage } from "../domain/card-languages";
 import { mapLegacyCardVariantToPhysicalFinish, type PhysicalFinish } from "../domain/physical-finishes";
 import { CARD_VARIANTS, getAllowedVariants, type CardVariant } from "../domain/variants";
@@ -57,6 +58,7 @@ export type CollectionTransactionServiceErrorCode =
   | "UNTRACKABLE_CARD_KIND"
   | "INVALID_VARIANT_FOR_CARD"
   | "NEGATIVE_COLLECTION_QUANTITY"
+  | "DUPLICATE_COLLECTION_FINISH_SNAPSHOT"
   | "DATABASE_WRITE_FAILED";
 
 export class CollectionTransactionServiceError extends Error {
@@ -106,12 +108,35 @@ export type CollectionEntrySnapshot = {
 
 type CollectionEntryQuantityMutation = number | { increment: number } | { decrement: number };
 
+type DirectEditOperation = "ADD" | "REMOVE";
+
+export type RecordCollectionFinishAdjustmentInput = {
+  cardId: string;
+  physicalFinish: PhysicalFinish;
+  operation: DirectEditOperation;
+  quantity: number;
+  cardLanguage?: CardLanguage;
+  source?: string | null;
+  note?: string | null;
+};
+
 type CollectionTransactionWriteClient = {
+  card: {
+    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
+  };
   collectionEntry: {
     upsert(args: {
       where: { cardId_variant_cardLanguage: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage } };
       create: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; cardLanguage: CardLanguage; quantity: number };
       update: { quantity: CollectionEntryQuantityMutation };
+    }): Promise<CollectionEntrySnapshot>;
+    findMany?(args: {
+      where: { cardId: string; cardLanguage: CardLanguage };
+      select?: { id: true; cardId: true; variant: true; physicalFinish: true; cardLanguage: true; quantity: true; createdAt: true; updatedAt: true };
+    }): Promise<CollectionEntrySnapshot[]>;
+    update(args: {
+      where: { cardId_variant_cardLanguage: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage } };
+      data: { physicalFinish?: PhysicalFinish | null; quantity: CollectionEntryQuantityMutation };
     }): Promise<CollectionEntrySnapshot>;
     updateMany(args: {
       where: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage; quantity?: { gte: number } };
@@ -135,9 +160,6 @@ type CollectionTransactionWriteClient = {
 };
 
 export type CollectionTransactionRepository = CollectionTransactionWriteClient & {
-  card: {
-    findUnique(args: { where: { id: string } }): Promise<CollectionTransactionCard | null>;
-  };
   $transaction?<T>(callback: (transactionClient: CollectionTransactionWriteClient) => Promise<T>): Promise<T>;
 };
 
@@ -208,6 +230,177 @@ async function writeTransactionAndSnapshot(
       source: input.source,
     },
   });
+}
+
+
+function assertEditableFinish(physicalFinish: PhysicalFinish): asserts physicalFinish is "NORMAL" | "FOIL" {
+  if (physicalFinish !== "NORMAL" && physicalFinish !== "FOIL") {
+    throw new CollectionTransactionServiceError(
+      "INVALID_INPUT",
+      `${physicalFinish} is not editable through direct collection editing`,
+    );
+  }
+}
+
+function toFinishAdjustmentNegativeQuantityError(input: RecordCollectionFinishAdjustmentInput, cause?: unknown) {
+  return new CollectionTransactionServiceError(
+    "NEGATIVE_COLLECTION_QUANTITY",
+    `Collection quantity for ${input.cardId} ${input.physicalFinish} cannot become negative`,
+    cause,
+  );
+}
+
+async function writeFinishAdjustmentTransactionAndSnapshot(
+  input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
+  client: CollectionTransactionWriteClient,
+): Promise<RecordedCollectionTransaction> {
+  const card = await client.card.findUnique({ where: { id: input.cardId } });
+
+  if (!card) {
+    throw new CollectionTransactionServiceError("CARD_NOT_FOUND", `Card ${input.cardId} was not found`);
+  }
+
+  if (!isTrackableCard(card)) {
+    throw new CollectionTransactionServiceError(
+      "UNTRACKABLE_CARD_KIND",
+      `${card.kind} cards cannot be tracked in the collection`,
+    );
+  }
+
+  const allowedVariants = getAllowedVariants(card);
+
+  if (!allowedVariants.includes(input.physicalFinish)) {
+    throw new CollectionTransactionServiceError(
+      "INVALID_VARIANT_FOR_CARD",
+      `${input.physicalFinish} is not allowed for card ${card.id}`,
+    );
+  }
+
+  if (!client.collectionEntry.findMany) {
+    throw new CollectionTransactionServiceError(
+      "DATABASE_WRITE_FAILED",
+      "Collection repository does not support finish-aware direct editing",
+    );
+  }
+
+  const unknownSnapshots = await client.collectionEntry.findMany({
+    where: { cardId: input.cardId, cardLanguage: input.cardLanguage },
+    select: { id: true, cardId: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true, createdAt: true, updatedAt: true },
+  });
+  const matchingSnapshots = unknownSnapshots.filter(
+    (snapshot) => getOwnedSnapshotQuantityVariant(snapshot) === input.physicalFinish,
+  );
+
+  if (matchingSnapshots.length > 1) {
+    throw new CollectionTransactionServiceError(
+      "DUPLICATE_COLLECTION_FINISH_SNAPSHOT",
+      `Multiple UNKNOWN CollectionEntry snapshots resolve to ${input.physicalFinish} for card ${input.cardId}`,
+    );
+  }
+
+  const existingSnapshot = matchingSnapshots[0];
+  const type: CollectionTransactionType = input.operation;
+
+  if (existingSnapshot) {
+    if (input.operation === "REMOVE" && existingSnapshot.quantity < input.quantity) {
+      throw toFinishAdjustmentNegativeQuantityError(input);
+    }
+
+    await client.collectionEntry.update({
+      where: {
+        cardId_variant_cardLanguage: {
+          cardId: input.cardId,
+          variant: existingSnapshot.variant,
+          cardLanguage: input.cardLanguage,
+        },
+      },
+      data: {
+        physicalFinish: input.physicalFinish,
+        quantity: input.operation === "ADD" ? { increment: input.quantity } : { decrement: input.quantity },
+      },
+    });
+
+    return client.collectionTransaction.create({
+      data: {
+        cardId: input.cardId,
+        variant: existingSnapshot.variant,
+        physicalFinish: input.physicalFinish,
+        cardLanguage: input.cardLanguage,
+        type,
+        quantity: input.quantity,
+        note: input.note ?? null,
+        source: input.source ?? null,
+      },
+    });
+  }
+
+  if (input.operation === "REMOVE") {
+    throw toFinishAdjustmentNegativeQuantityError(input);
+  }
+
+  await client.collectionEntry.upsert({
+    where: { cardId_variant_cardLanguage: { cardId: input.cardId, variant: input.physicalFinish, cardLanguage: input.cardLanguage } },
+    create: { cardId: input.cardId, variant: input.physicalFinish, physicalFinish: input.physicalFinish, cardLanguage: input.cardLanguage, quantity: input.quantity },
+    update: { quantity: { increment: input.quantity } },
+  });
+
+  return client.collectionTransaction.create({
+    data: {
+      cardId: input.cardId,
+      variant: input.physicalFinish,
+      physicalFinish: input.physicalFinish,
+      cardLanguage: input.cardLanguage,
+      type,
+      quantity: input.quantity,
+      note: input.note ?? null,
+      source: input.source ?? null,
+    },
+  });
+}
+
+export async function recordCollectionFinishAdjustment(
+  input: RecordCollectionFinishAdjustmentInput,
+  repository: CollectionTransactionRepository = prisma,
+): Promise<RecordedCollectionTransaction> {
+  const normalized = {
+    ...input,
+    cardLanguage: input.cardLanguage ?? "UNKNOWN",
+    source: input.source?.trim() ? input.source.trim() : null,
+    note: input.note?.trim() ? input.note.trim() : null,
+  };
+
+  assertEditableFinish(normalized.physicalFinish);
+
+  if (!normalized.cardId.trim() || (normalized.operation !== "ADD" && normalized.operation !== "REMOVE") || normalized.quantity <= 0) {
+    throw new CollectionTransactionServiceError("INVALID_INPUT", "Collection finish adjustment input is invalid");
+  }
+
+  if (normalized.cardLanguage !== "UNKNOWN") {
+    throw new CollectionTransactionServiceError(
+      "INVALID_INPUT",
+      "Direct collection editing only supports UNKNOWN-language snapshots",
+    );
+  }
+
+  try {
+    if (repository.$transaction) {
+      return await repository.$transaction((transactionClient) =>
+        writeFinishAdjustmentTransactionAndSnapshot(normalized, transactionClient),
+      );
+    }
+
+    return await writeFinishAdjustmentTransactionAndSnapshot(normalized, repository);
+  } catch (error) {
+    if (error instanceof CollectionTransactionServiceError) {
+      throw error;
+    }
+
+    throw new CollectionTransactionServiceError(
+      "DATABASE_WRITE_FAILED",
+      "Failed to record collection finish adjustment and update collection snapshot",
+      error,
+    );
+  }
 }
 
 export async function recordCollectionTransaction(

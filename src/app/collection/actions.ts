@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { recordCollectionTransaction } from "@/lib/services/collection-transactions";
+import { recordCollectionFinishAdjustment } from "@/lib/services/collection-transactions";
 
 const editableFinishes = ["NORMAL", "FOIL"] as const;
 type EditableFinish = (typeof editableFinishes)[number];
@@ -22,10 +22,10 @@ export async function updateCollectionQuantityAction(formData: FormData): Promis
   }
 
   try {
-    await recordCollectionTransaction({
+    await recordCollectionFinishAdjustment({
       cardId,
-      variant: finish,
-      type: operation,
+      physicalFinish: finish,
+      operation,
       quantity: 1,
       cardLanguage: "UNKNOWN",
       source: "COLLECTION_DIRECT_EDIT",
