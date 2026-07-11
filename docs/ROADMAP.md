@@ -119,7 +119,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
   - [x] Decide and implement grouping behavior for Normal/Foil quantities versus card+variant rows.
   - Note: Phase 8 remains blocked by the remaining Phase 7.5 roadmap items unless they are completed or explicitly deferred with a written decision.
 - [x] Add collection faction-icon filters.
-- [ ] Add direct collection quantity editing through collection transactions.
+- [x] Add direct collection quantity editing through collection transactions.
 - [ ] Redesign card detail around printings, possession, and related cards.
 - [ ] Improve booster UX with header access, dynamic opening rows, richer settings, and opening history.
 - [ ] Redesign deckbuilder layout around filters, card catalogue, compact deck summary, and inline missing-card visibility.

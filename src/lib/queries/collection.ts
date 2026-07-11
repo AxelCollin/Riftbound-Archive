@@ -106,9 +106,11 @@ export function createCollectionRows(
     const cardName = getDisplayCardName(card);
 
     const normalOwnedQuantity = getVariantCount(ownedCounts, "NORMAL");
+    const normalEditableQuantity = getEditableQuantity(card.collectionEntries, "NORMAL");
     const normalBinderReservedQuantity = getVariantCount(binderReserved, "NORMAL");
     const normalAvailableQuantity = getVariantCount(available, "NORMAL");
     const foilOwnedQuantity = getVariantCount(ownedCounts, "FOIL");
+    const foilEditableQuantity = getEditableQuantity(card.collectionEntries, "FOIL");
     const foilBinderReservedQuantity = getVariantCount(binderReserved, "FOIL");
     const foilAvailableQuantity = getVariantCount(available, "FOIL");
     const legacyShowcaseOwnedQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(ownedCounts, "SHOWCASE");
@@ -135,9 +137,13 @@ export function createCollectionRows(
       normalOwnedQuantity,
       normalBinderReservedQuantity,
       normalAvailableQuantity,
+      normalEditableQuantity,
+      normalEditable: allowedVariants.includes("NORMAL"),
       foilOwnedQuantity,
       foilBinderReservedQuantity,
       foilAvailableQuantity,
+      foilEditableQuantity,
+      foilEditable: allowedVariants.includes("FOIL"),
       legacyShowcaseOwnedQuantity,
       legacyShowcaseBinderReservedQuantity,
       legacyShowcaseAvailableQuantity,
@@ -219,4 +225,10 @@ async function getAssembledDeckAllocationSets(): Promise<DeckAllocationSet[]> {
     assembled: true,
     allocations: deck.allocations,
   }));
+}
+
+function getEditableQuantity(entries: CollectionCardEntry[], variant: CardVariant): number {
+  return entries
+    .filter((entry) => entry.variant === variant && (entry.cardLanguage ?? "UNKNOWN") === "UNKNOWN")
+    .reduce((total, entry) => total + entry.quantity, 0);
 }

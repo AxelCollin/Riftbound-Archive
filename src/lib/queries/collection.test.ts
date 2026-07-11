@@ -165,7 +165,30 @@ describe("collection query mapping", () => {
       }),
     ]);
 
-    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 6, normalAvailableQuantity: 5, totalOwnedQuantity: 6 });
+    expect(rows[0]).toMatchObject({ normalOwnedQuantity: 6, normalEditableQuantity: 0, normalAvailableQuantity: 5, totalOwnedQuantity: 6 });
+  });
+
+
+  it("keeps UNKNOWN-editable quantities separate from multilingual totals", () => {
+    const rows = createCollectionRows([
+      card({
+        id: "editable-languages",
+        collectionEntries: [
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 },
+          { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 3 },
+          { variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", quantity: 1 },
+          { variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "EN", quantity: 4 },
+        ],
+      }),
+    ]);
+
+    expect(rows[0]).toMatchObject({
+      normalOwnedQuantity: 5,
+      normalEditableQuantity: 2,
+      foilOwnedQuantity: 5,
+      foilEditableQuantity: 1,
+      totalOwnedQuantity: 10,
+    });
   });
 
   it("falls back to legacy normal and foil variants when physicalFinish is null", () => {

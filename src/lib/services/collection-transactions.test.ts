@@ -6,6 +6,7 @@ import {
   type CollectionTransactionRepository,
 } from "./collection-transactions";
 import { mapLegacyCardVariantToPhysicalFinish } from "../domain/physical-finishes";
+import type { CardVariant } from "../domain/variants";
 
 type TestCard = Awaited<ReturnType<CollectionTransactionRepository["card"]["findUnique"]>>;
 
@@ -17,7 +18,7 @@ const baseCard = {
   hasShowcase: false,
 };
 
-function createEntry(quantity: number, cardId = "card-common", variant = "NORMAL" as const): CollectionEntrySnapshot {
+function createEntry(quantity: number, cardId = "card-common", variant: CardVariant = "NORMAL"): CollectionEntrySnapshot {
   return {
     id: `entry-${cardId}-${variant}`,
     cardId,
@@ -133,6 +134,7 @@ describe("recordCollectionTransaction", () => {
       physicalFinish: "NORMAL",
       note: "Première acquisition",
       source: "Boutique locale",
+      cardLanguage: "UNKNOWN",
     });
     expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(2);
     expect(repository.collectionTransaction.create).toHaveBeenCalledTimes(1);
@@ -204,6 +206,31 @@ describe("recordCollectionTransaction", () => {
       where: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
       data: { quantity: { decrement: 1 } },
     });
+  });
+
+
+  it("edits Foil independently from Normal and preserves concrete-language rows", async () => {
+    const frenchNormalEntry: CollectionEntrySnapshot = {
+      ...createEntry(3, "card-common", "NORMAL"),
+      id: "entry-card-common-NORMAL-FR",
+      cardLanguage: "FR",
+    };
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(2, "card-common", "NORMAL"),
+      createEntry(1, "card-common", "FOIL"),
+      frenchNormalEntry,
+    ]);
+
+    await recordCollectionTransaction({ cardId: "card-common", variant: "FOIL", type: "ADD", quantity: 1 }, repository);
+    await recordCollectionTransaction({ cardId: "card-common", variant: "FOIL", type: "REMOVE", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(2);
+    expect(entries.get("card-common:NORMAL:FR")?.quantity).toBe(3);
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 1 },
+      { cardId: "card-common", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", type: "REMOVE", quantity: 1 },
+    ]);
   });
 
   it("creates or updates a CollectionEntry to the exact SET quantity", async () => {

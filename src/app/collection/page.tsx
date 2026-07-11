@@ -4,7 +4,19 @@ import { getCollectionPageData } from "@/lib/queries/collection";
 
 export const dynamic = "force-dynamic";
 
-export default async function CollectionPage() {
+type CollectionPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function readSingleSearchParam(params: Record<string, string | string[] | undefined>, key: string): string | undefined {
+  const value = params[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+export default async function CollectionPage({ searchParams }: CollectionPageProps = {}) {
+  const params = searchParams ? await searchParams : {};
+  const quantityUpdated = readSingleSearchParam(params, "quantityUpdated") === "1";
+  const quantityError = readSingleSearchParam(params, "quantityError");
   const { rows, summary } = await getCollectionPageData();
   const kpis = [
     { label: "Copies possédées", value: summary.totalOwnedCopies, hint: "Somme des snapshots CollectionEntry" },
@@ -28,8 +40,8 @@ export default async function CollectionPage() {
           <p className="mt-6 text-sm uppercase tracking-[0.42em] text-archive-gold300">Collection</p>
           <h1 className="mt-4 text-5xl font-semibold text-archive-text100">Collection</h1>
           <p className="mt-4 max-w-4xl text-base leading-7 text-archive-text300">
-            Vue locale en lecture seule de la collection possédée. Les quantités affichées viennent des snapshots
-            CollectionEntry et restent séparées des données officielles des cartes.
+            Vue locale de la collection possédée. Les quantités affichées viennent des snapshots
+            CollectionEntry, et les boutons +/- écrivent des transactions de collection côté serveur.
           </p>
         </header>
 
@@ -42,6 +54,14 @@ export default async function CollectionPage() {
             </article>
           ))}
         </div>
+
+        {quantityUpdated ? (
+          <p className="rounded-card border border-[rgba(77,214,138,0.36)] bg-[rgba(77,214,138,0.12)] px-4 py-3 text-sm font-semibold text-[rgb(165,245,197)]" role="status">Quantité de collection mise à jour.</p>
+        ) : null}
+
+        {quantityError ? (
+          <p className="rounded-card border border-[rgba(255,107,107,0.36)] bg-[rgba(255,107,107,0.12)] px-4 py-3 text-sm font-semibold text-[rgb(255,190,190)]" role="alert">{quantityError}</p>
+        ) : null}
 
         {rows.length === 0 ? (
           <section className="overflow-hidden rounded-panel border border-[rgba(199,168,102,0.34)] bg-[rgba(5,8,14,0.72)] shadow-panel">
