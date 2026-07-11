@@ -106,10 +106,14 @@ export function createCollectionRows(
     const foilOwnedQuantity = getVariantCount(ownedCounts, "FOIL");
     const foilBinderReservedQuantity = getVariantCount(binderReserved, "FOIL");
     const foilAvailableQuantity = getVariantCount(available, "FOIL");
+    const legacyShowcaseOwnedQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(ownedCounts, "SHOWCASE");
+    const legacyShowcaseBinderReservedQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(binderReserved, "SHOWCASE");
+    const legacyShowcaseAvailableQuantity = card.collectorCategory === "SHOWCASE" ? 0 : getVariantCount(available, "SHOWCASE");
 
-    // Legacy SHOWCASE CollectionEntry rows are intentionally excluded from the
-    // grouped collection display totals. Showcase printed cards are represented
-    // by their own Card records rather than as a third finish on a standard card.
+    // Legacy SHOWCASE CollectionEntry rows can still be written for standard
+    // cards with hasShowcase=true. Keep those copies visible as compatibility
+    // quantities, but do not merge them into Normal/Foil finish totals. Real
+    // Showcase printed cards remain separate Card records.
     return [{
       rowId: card.id,
       cardId: card.id,
@@ -128,9 +132,12 @@ export function createCollectionRows(
       foilOwnedQuantity,
       foilBinderReservedQuantity,
       foilAvailableQuantity,
-      totalOwnedQuantity: normalOwnedQuantity + foilOwnedQuantity,
-      totalBinderReservedQuantity: normalBinderReservedQuantity + foilBinderReservedQuantity,
-      totalAvailableQuantity: normalAvailableQuantity + foilAvailableQuantity,
+      legacyShowcaseOwnedQuantity,
+      legacyShowcaseBinderReservedQuantity,
+      legacyShowcaseAvailableQuantity,
+      totalOwnedQuantity: normalOwnedQuantity + foilOwnedQuantity + legacyShowcaseOwnedQuantity,
+      totalBinderReservedQuantity: normalBinderReservedQuantity + foilBinderReservedQuantity + legacyShowcaseBinderReservedQuantity,
+      totalAvailableQuantity: normalAvailableQuantity + foilAvailableQuantity + legacyShowcaseAvailableQuantity,
     }];
   });
 }

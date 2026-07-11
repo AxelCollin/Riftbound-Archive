@@ -24,6 +24,9 @@ function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
     foilOwnedQuantity: 0,
     foilBinderReservedQuantity: 0,
     foilAvailableQuantity: 0,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
     totalOwnedQuantity: 0,
     totalBinderReservedQuantity: 0,
     totalAvailableQuantity: 0,
@@ -89,6 +92,20 @@ describe("collection filtering", () => {
       totalOwnedQuantity: 0,
     }),
     row({
+      rowId: "legacy-showcase-only",
+      cardId: "legacy-showcase-only",
+      cardName: "Legacy Showcase Owner",
+      setCode: "BAS",
+      setName: "Base",
+      collectorNumber: "050",
+      rarity: "COMMON",
+      kind: "GAMEPLAY",
+      legacyShowcaseOwnedQuantity: 1,
+      legacyShowcaseAvailableQuantity: 1,
+      totalOwnedQuantity: 1,
+      totalAvailableQuantity: 1,
+    }),
+    row({
       rowId: "common",
       cardId: "common",
       cardName: "Brave Recruit",
@@ -140,7 +157,7 @@ describe("collection filtering", () => {
   });
 
   it("keeps owned rows based on totalOwnedQuantity when owned-only filter is selected", () => {
-    expect(filterCollectionRows(rows, { ownedStatus: "OWNED" }).map((candidate) => candidate.rowId)).toEqual(["ahri-standard", "common"]);
+    expect(filterCollectionRows(rows, { ownedStatus: "OWNED" }).map((candidate) => candidate.rowId)).toEqual(["ahri-standard", "legacy-showcase-only", "common"]);
   });
 
   it("keeps missing rows based on totalOwnedQuantity when missing-only filter is selected", () => {

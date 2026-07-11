@@ -254,7 +254,12 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
               <td className={`${cellPadding} ${binderClassName}`}>{row.totalBinderReservedQuantity}</td>
               <td className={`${cellPadding} ${totalClassName}`}>{row.totalAvailableQuantity}</td>
               <td className={cellPadding}><FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} compact={compact} /></td>
-              <td className={cellPadding}><FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} compact={compact} /></td>
+              <td className={cellPadding}>
+                <div className="grid gap-2">
+                  <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} compact={compact} />
+                  <LegacyShowcaseQuantity row={row} compact={compact} />
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -287,7 +292,10 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
           </dl>
           <div className="mt-4 grid gap-3 text-sm text-archive-text300 sm:grid-cols-2">
             <FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} />
-            <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} />
+            <div className="grid gap-3">
+              <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} />
+              <LegacyShowcaseQuantity row={row} />
+            </div>
           </div>
         </article>
       ))}
@@ -328,6 +336,29 @@ function CollectionCardImage({
   return (
     <div aria-label={`Illustration non disponible pour ${cardName}`} className={`${frameClassName} flex items-center justify-center p-2 text-center`} data-testid={`collection-card-placeholder-${mode}`} role="img">
       <span className={placeholderTextClassName}>No art</span>
+    </div>
+  );
+}
+
+function LegacyShowcaseQuantity({ compact = false, row }: { compact?: boolean; row: CollectionDisplayRow }) {
+  if (row.legacyShowcaseOwnedQuantity === 0) {
+    return null;
+  }
+
+  const textClassName = compact ? "text-xs" : "text-sm";
+
+  return (
+    <div className={`rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(199,168,102,0.08)] px-3 py-2 ${textClassName}`} data-testid={`legacy-showcase-${row.rowId}`}>
+      <p className="font-semibold text-archive-gold300">Showcase (compat.)</p>
+      <p className="mt-1 text-archive-text300">
+        Possédées: <span className="font-semibold text-archive-text100">{row.legacyShowcaseOwnedQuantity}</span>
+      </p>
+      <p className="text-archive-text300">
+        Réservées binder: <span className="font-semibold text-archive-gold300">{row.legacyShowcaseBinderReservedQuantity}</span>
+      </p>
+      <p className="text-archive-text300">
+        Disponibles: <span className="font-semibold text-archive-text100">{row.legacyShowcaseAvailableQuantity}</span>
+      </p>
     </div>
   );
 }

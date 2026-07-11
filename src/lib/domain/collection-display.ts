@@ -19,6 +19,9 @@ export type CollectionDisplayRow = {
   foilOwnedQuantity: number;
   foilBinderReservedQuantity: number;
   foilAvailableQuantity: number;
+  legacyShowcaseOwnedQuantity: number;
+  legacyShowcaseBinderReservedQuantity: number;
+  legacyShowcaseAvailableQuantity: number;
   totalOwnedQuantity: number;
   totalBinderReservedQuantity: number;
   totalAvailableQuantity: number;

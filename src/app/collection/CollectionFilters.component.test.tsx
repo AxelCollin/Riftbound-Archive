@@ -22,9 +22,12 @@ const rows: CollectionDisplayRow[] = [
     foilOwnedQuantity: 1,
     foilBinderReservedQuantity: 1,
     foilAvailableQuantity: 0,
-    totalOwnedQuantity: 3,
+    legacyShowcaseOwnedQuantity: 2,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 2,
+    totalOwnedQuantity: 5,
     totalBinderReservedQuantity: 1,
-    totalAvailableQuantity: 2,
+    totalAvailableQuantity: 4,
   },
   {
     rowId: "rba-002-foil",
@@ -43,6 +46,9 @@ const rows: CollectionDisplayRow[] = [
     foilOwnedQuantity: 0,
     foilBinderReservedQuantity: 0,
     foilAvailableQuantity: 0,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
     totalOwnedQuantity: 0,
     totalBinderReservedQuantity: 0,
     totalAvailableQuantity: 0,
@@ -64,6 +70,9 @@ const rows: CollectionDisplayRow[] = [
     foilOwnedQuantity: 4,
     foilBinderReservedQuantity: 1,
     foilAvailableQuantity: 3,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
     totalOwnedQuantity: 4,
     totalBinderReservedQuantity: 1,
     totalAvailableQuantity: 3,
@@ -86,6 +95,9 @@ const rows: CollectionDisplayRow[] = [
     foilOwnedQuantity: 1,
     foilBinderReservedQuantity: 0,
     foilAvailableQuantity: 1,
+    legacyShowcaseOwnedQuantity: 0,
+    legacyShowcaseBinderReservedQuantity: 0,
+    legacyShowcaseAvailableQuantity: 0,
     totalOwnedQuantity: 1,
     totalBinderReservedQuantity: 0,
     totalAvailableQuantity: 1,
@@ -241,6 +253,20 @@ describe("CollectionFilters", () => {
     expect(screen.queryByRole("img", { name: "Illustration de Aatrox l'Éveillé" })).toBeNull();
     expect(screen.queryByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeNull();
     expect(screen.getByRole("link", { name: "Braum, Gardien du foyer" }).getAttribute("href")).toBe(getCardDetailHref("rba-002"));
+  });
+
+
+  it("displays legacy Showcase compatibility quantities in grid, line, and compact modes", () => {
+    renderFilters();
+
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Showcase (compat.)");
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Possédées: 2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Disponibles: 2");
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Showcase (compat.)");
   });
 
   it("filters rows by card name from the search input", () => {

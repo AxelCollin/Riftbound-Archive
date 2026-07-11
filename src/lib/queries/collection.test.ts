@@ -167,11 +167,11 @@ describe("collection query mapping", () => {
     expect(rows[0]).toMatchObject({ normalOwnedQuantity: 2, foilOwnedQuantity: 1, totalOwnedQuantity: 3 });
   });
 
-  it("ignores legacy showcase compatibility rows for standard Normal/Foil totals", () => {
+  it("keeps legacy showcase compatibility rows visible without polluting Normal/Foil totals", () => {
     const rows = createCollectionRows([
       card({
         id: "legacy-showcase-row",
-        hasShowcase: false,
+        hasShowcase: true,
         collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 5 }],
       }),
     ]);
@@ -179,19 +179,37 @@ describe("collection query mapping", () => {
     expect(rows[0]).toMatchObject({
       normalOwnedQuantity: 0,
       foilOwnedQuantity: 0,
-      totalOwnedQuantity: 0,
-      totalAvailableQuantity: 0,
+      legacyShowcaseOwnedQuantity: 5,
+      legacyShowcaseBinderReservedQuantity: 0,
+      legacyShowcaseAvailableQuantity: 5,
+      totalOwnedQuantity: 5,
+      totalAvailableQuantity: 5,
+    });
+  });
+
+  it("includes legacy Showcase compatibility ownership in collection summary", () => {
+    const rows = createCollectionRows([
+      card({ id: "legacy-only", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", physicalFinish: null, quantity: 2 }] }),
+      card({ id: "missing", hasShowcase: true }),
+    ]);
+
+    expect(summarizeCollectionRows(rows)).toEqual({
+      totalOwnedCopies: 2,
+      ownedRows: 1,
+      trackableRows: 2,
+      missingRows: 1,
     });
   });
 
   it("keeps Showcase printed cards as separate printed-card rows from standard cards", () => {
     const rows = createCollectionRows([
-      card({ id: "standard", collectorCategory: "STANDARD", collectionEntries: [{ variant: "FOIL", quantity: 2 }] }),
+      card({ id: "standard", collectorCategory: "STANDARD", hasShowcase: true, collectionEntries: [{ variant: "SHOWCASE", quantity: 2 }] }),
       card({ id: "showcase-print", collectorCategory: "SHOWCASE", printTreatment: "ALT", collectionEntries: [{ variant: "FOIL", quantity: 1 }] }),
     ]);
 
     expect(rows.map((row) => row.cardId)).toEqual(["standard", "showcase-print"]);
-    expect(rows[1]).toMatchObject({ collectorCategory: "SHOWCASE", printTreatment: "ALT", foilOwnedQuantity: 1 });
+    expect(rows[0]).toMatchObject({ collectorCategory: "STANDARD", legacyShowcaseOwnedQuantity: 2, normalOwnedQuantity: 0, foilOwnedQuantity: 0 });
+    expect(rows[1]).toMatchObject({ collectorCategory: "SHOWCASE", printTreatment: "ALT", foilOwnedQuantity: 1, legacyShowcaseOwnedQuantity: 0 });
   });
 
   it("reserves foil first for common and uncommon rows, then computes availability", () => {
