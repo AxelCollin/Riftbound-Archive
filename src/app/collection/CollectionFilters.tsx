@@ -335,7 +335,7 @@ function CollectionCardImage({
 
   return (
     <div aria-label={`Illustration non disponible pour ${cardName}`} className={`${frameClassName} flex items-center justify-center p-2 text-center`} data-testid={`collection-card-placeholder-${mode}`} role="img">
-      <span className={placeholderTextClassName}>No art</span>
+      <span className={placeholderTextClassName}>Sans illustration</span>
     </div>
   );
 }

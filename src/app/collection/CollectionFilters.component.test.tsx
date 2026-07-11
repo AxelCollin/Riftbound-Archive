@@ -235,7 +235,7 @@ describe("CollectionFilters", () => {
     expect(screen.getByTestId("collection-grid-view")).toBeTruthy();
     expect(screen.getByRole("img", { name: "Illustration de Aatrox l'Éveillé" }).getAttribute("src")).toBe("https://assets.example/riftbound/aatrox.webp");
     expect(screen.getByRole("img", { name: "Illustration non disponible pour Braum, Gardien du foyer" })).toBeTruthy();
-    expect(screen.getAllByText("No art").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sans illustration").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Aatrox l'Éveillé" }).getAttribute("href")).toBe(getCardDetailHref("set/001"));
   });
 
