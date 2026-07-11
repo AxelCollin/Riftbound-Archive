@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getCardDetailHref } from "./card-detail-link";
-import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr, cardVariantLabelsFr } from "@/lib/formatters/cards";
+import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr } from "@/lib/formatters/cards";
 import {
   defaultCollectionDisplayMode,
   filterCollectionRows,
@@ -28,13 +28,6 @@ const kindOptions: Array<{ value: NonNullable<CollectionFilterInput["kind"]>; la
   { value: "ALL", label: "Tous les types" },
   { value: "GAMEPLAY", label: cardKindLabelsFr.GAMEPLAY },
   { value: "ENERGY", label: cardKindLabelsFr.ENERGY },
-];
-
-const variantOptions: Array<{ value: NonNullable<CollectionFilterInput["variant"]>; label: string }> = [
-  { value: "ALL", label: "Toutes les variantes" },
-  { value: "NORMAL", label: cardVariantLabelsFr.NORMAL },
-  { value: "FOIL", label: cardVariantLabelsFr.FOIL },
-  { value: "SHOWCASE", label: cardVariantLabelsFr.SHOWCASE },
 ];
 
 const quantityDisplayModeOptions: Array<{ value: CollectionDisplayMode; label: string }> = [
@@ -62,7 +55,6 @@ type CollectionFilterState = {
   searchText: string;
   rarity: NonNullable<CollectionFilterInput["rarity"]>;
   kind: NonNullable<CollectionFilterInput["kind"]>;
-  variant: NonNullable<CollectionFilterInput["variant"]>;
   ownedStatus: CollectionOwnedStatusFilter;
   displayMode: CollectionDisplayMode;
   viewMode: CollectionViewMode;
@@ -77,7 +69,6 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
     searchText: "",
     rarity: "ALL",
     kind: "ALL",
-    variant: "ALL",
     ownedStatus: "ALL",
     displayMode: defaultCollectionDisplayMode,
     viewMode: defaultCollectionViewMode,
@@ -96,14 +87,14 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
         <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-archive-text100">Cartes suivies</h2>
-            <p className="mt-2 text-sm text-archive-text300">Une ligne par carte et variante autorisée. Les jetons et cartes de règles sont exclus.</p>
+            <p className="mt-2 text-sm text-archive-text300">Une ligne par carte imprimée suivie, avec les quantités Normal et Foil regroupées. Les jetons et cartes de règles sont exclus.</p>
           </div>
           <p className="rounded-chip border border-[rgba(199,168,102,0.28)] px-4 py-2 text-sm text-archive-gold300">
             {filteredRows.length} résultat{filteredRows.length > 1 ? "s" : ""} affiché{filteredRows.length > 1 ? "s" : ""} / {rows.length}
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="grid gap-2 text-sm text-archive-text300 xl:col-span-2">
             Recherche
             <input
@@ -116,10 +107,9 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
           </label>
           <SelectFilter label="Rareté" onChange={(value) => updateFilter("rarity", value)} options={rarityOptions} value={filters.rarity} />
           <SelectFilter label="Type" onChange={(value) => updateFilter("kind", value)} options={kindOptions} value={filters.kind} />
-          <SelectFilter label="Variante" onChange={(value) => updateFilter("variant", value)} options={variantOptions} value={filters.variant} />
           <SelectFilter label="Statut" onChange={(value) => updateFilter("ownedStatus", value)} options={ownedStatusOptions} value={filters.ownedStatus} />
           <SelectFilter label="Quantité affichée" onChange={(value) => updateFilter("displayMode", value)} options={quantityDisplayModeOptions} value={filters.displayMode} />
-          <SelectFilter label="Vue" onChange={(value) => updateFilter("viewMode", value)} options={viewModeOptions} value={filters.viewMode} />
+          <ViewModeButtonGroup onChange={(value) => updateFilter("viewMode", value)} value={filters.viewMode} />
         </div>
       </div>
 
@@ -159,6 +149,34 @@ function SelectFilter<Value extends string>({ label, onChange, options, value }:
   );
 }
 
+function ViewModeButtonGroup({ onChange, value }: { onChange: (value: CollectionViewMode) => void; value: CollectionViewMode }) {
+  return (
+    <fieldset className="grid gap-2 text-sm text-archive-text300">
+      <legend>Vue</legend>
+      <div className="flex rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(8,17,27,0.9)] p-1" role="group" aria-label="Vue">
+        {viewModeOptions.map((option) => {
+          const selected = option.value === value;
+
+          return (
+            <button
+              aria-pressed={selected}
+              className={`flex-1 rounded-[0.75rem] px-3 py-2 text-sm font-semibold transition ${
+                selected
+                  ? "bg-archive-gold300 text-archive-blue950 shadow-glow"
+                  : "text-archive-text300 hover:bg-[rgba(199,168,102,0.12)] hover:text-archive-text100"
+              }`}
+              key={option.value}
+              onClick={() => onChange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
 
 type CollectionRowsViewProps = {
   quantityDisplayMode: CollectionDisplayMode;
@@ -205,11 +223,12 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
             <th className={cellPadding}>Rareté</th>
             <th className={cellPadding}>Type</th>
             <th className={cellPadding}>Traitement</th>
-            <th className={cellPadding}>Variante</th>
             <th className={`${cellPadding} text-right`}>Quantité affichée ({selectedQuantityLabel})</th>
-            <th className={`${cellPadding} text-right`}>Possédées</th>
-            <th className={`${cellPadding} text-right`}>Réservées binder</th>
-            <th className={`${cellPadding} text-right`}>Disponibles</th>
+            <th className={`${cellPadding} text-right`}>Total possédées</th>
+            <th className={`${cellPadding} text-right`}>Total réservées binder</th>
+            <th className={`${cellPadding} text-right`}>Total disponibles</th>
+            <th className={cellPadding}>Normal</th>
+            <th className={cellPadding}>Foil</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[rgba(199,168,102,0.14)]">
@@ -230,11 +249,12 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
               <td className={cellPadding}>{cardRarityLabelsFr[row.rarity]}</td>
               <td className={cellPadding}>{cardKindLabelsFr[row.kind]}</td>
               <td className={cellPadding}>{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
-              <td className={`${cellPadding} text-archive-gold300`}>{cardVariantLabelsFr[row.variant]}</td>
               <td className={`${cellPadding} ${quantityClassName}`}>{getCollectionDisplayQuantity(row, quantityDisplayMode)}</td>
-              <td className={`${cellPadding} ${totalClassName}`}>{row.ownedQuantity}</td>
-              <td className={`${cellPadding} ${binderClassName}`}>{row.binderReservedQuantity}</td>
-              <td className={`${cellPadding} ${totalClassName}`}>{row.availableQuantity}</td>
+              <td className={`${cellPadding} ${totalClassName}`}>{row.totalOwnedQuantity}</td>
+              <td className={`${cellPadding} ${binderClassName}`}>{row.totalBinderReservedQuantity}</td>
+              <td className={`${cellPadding} ${totalClassName}`}>{row.totalAvailableQuantity}</td>
+              <td className={cellPadding}><FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} compact={compact} /></td>
+              <td className={cellPadding}><FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} compact={compact} /></td>
             </tr>
           ))}
         </tbody>
@@ -261,11 +281,14 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm text-archive-text300">
             <CollectionMetric label="Type" value={cardKindLabelsFr[row.kind]} />
             <CollectionMetric label="Traitement" value={cardPrintTreatmentLabelsFr[row.printTreatment]} />
-            <CollectionMetric label="Variante" value={cardVariantLabelsFr[row.variant]} emphasize />
-            <CollectionMetric label="Possédées" value={row.ownedQuantity} />
-            <CollectionMetric label="Réservées binder" value={row.binderReservedQuantity} emphasize />
-            <CollectionMetric label="Disponibles" value={row.availableQuantity} />
+            <CollectionMetric label="Possédées" value={row.totalOwnedQuantity} />
+            <CollectionMetric label="Réservées binder" value={row.totalBinderReservedQuantity} emphasize />
+            <CollectionMetric label="Disponibles" value={row.totalAvailableQuantity} />
           </dl>
+          <div className="mt-4 grid gap-3 text-sm text-archive-text300 sm:grid-cols-2">
+            <FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} />
+            <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} />
+          </div>
         </article>
       ))}
     </div>
@@ -314,6 +337,37 @@ function CollectionMetric({ emphasize = false, label, value }: { emphasize?: boo
     <div className="rounded-card border border-[rgba(199,168,102,0.16)] bg-[rgba(5,8,14,0.44)] px-3 py-2">
       <dt className="text-xs uppercase tracking-[0.16em] text-archive-text500">{label}</dt>
       <dd className={emphasize ? "mt-1 font-semibold text-archive-gold300" : "mt-1 font-semibold text-archive-text100"}>{value}</dd>
+    </div>
+  );
+}
+
+function FinishQuantityBreakdown({
+  available,
+  compact = false,
+  finish,
+  owned,
+  reserved,
+}: {
+  available: number;
+  compact?: boolean;
+  finish: "Normal" | "Foil";
+  owned: number;
+  reserved: number;
+}) {
+  const textClassName = compact ? "text-xs" : "text-sm";
+
+  return (
+    <div className={`rounded-card border border-[rgba(199,168,102,0.16)] bg-[rgba(5,8,14,0.44)] px-3 py-2 ${textClassName}`}>
+      <p className="font-semibold text-archive-gold300">{finish}</p>
+      <p className="mt-1 text-archive-text300">
+        Possédées: <span className="font-semibold text-archive-text100">{owned}</span>
+      </p>
+      <p className="text-archive-text300">
+        Réservées binder: <span className="font-semibold text-archive-gold300">{reserved}</span>
+      </p>
+      <p className="text-archive-text300">
+        Disponibles: <span className="font-semibold text-archive-text100">{available}</span>
+      </p>
     </div>
   );
 }

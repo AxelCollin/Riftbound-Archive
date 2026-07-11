@@ -100,8 +100,18 @@ export function createCollectionRows(
     ).available;
     const cardName = getDisplayCardName(card);
 
-    return allowedVariants.map((variant) => ({
-      rowId: `${card.id}:${variant}`,
+    const normalOwnedQuantity = getVariantCount(ownedCounts, "NORMAL");
+    const normalBinderReservedQuantity = getVariantCount(binderReserved, "NORMAL");
+    const normalAvailableQuantity = getVariantCount(available, "NORMAL");
+    const foilOwnedQuantity = getVariantCount(ownedCounts, "FOIL");
+    const foilBinderReservedQuantity = getVariantCount(binderReserved, "FOIL");
+    const foilAvailableQuantity = getVariantCount(available, "FOIL");
+
+    // Legacy SHOWCASE CollectionEntry rows are intentionally excluded from the
+    // grouped collection display totals. Showcase printed cards are represented
+    // by their own Card records rather than as a third finish on a standard card.
+    return [{
+      rowId: card.id,
       cardId: card.id,
       cardName,
       officialImageUrl: card.officialImageUrl,
@@ -111,11 +121,17 @@ export function createCollectionRows(
       rarity: card.rarity,
       kind: card.kind,
       printTreatment: card.printTreatment,
-      variant,
-      ownedQuantity: getVariantCount(ownedCounts, variant),
-      binderReservedQuantity: getVariantCount(binderReserved, variant),
-      availableQuantity: getVariantCount(available, variant),
-    }));
+      collectorCategory: card.collectorCategory,
+      normalOwnedQuantity,
+      normalBinderReservedQuantity,
+      normalAvailableQuantity,
+      foilOwnedQuantity,
+      foilBinderReservedQuantity,
+      foilAvailableQuantity,
+      totalOwnedQuantity: normalOwnedQuantity + foilOwnedQuantity,
+      totalBinderReservedQuantity: normalBinderReservedQuantity + foilBinderReservedQuantity,
+      totalAvailableQuantity: normalAvailableQuantity + foilAvailableQuantity,
+    }];
   });
 }
 
@@ -124,10 +140,10 @@ export function summarizeCollectionRows(
 ): CollectionSummary {
   return rows.reduce<CollectionSummary>(
     (summary, row) => ({
-      totalOwnedCopies: summary.totalOwnedCopies + row.ownedQuantity,
-      ownedRows: summary.ownedRows + (row.ownedQuantity > 0 ? 1 : 0),
+      totalOwnedCopies: summary.totalOwnedCopies + row.totalOwnedQuantity,
+      ownedRows: summary.ownedRows + (row.totalOwnedQuantity > 0 ? 1 : 0),
       trackableRows: summary.trackableRows + 1,
-      missingRows: summary.missingRows + (row.ownedQuantity === 0 ? 1 : 0),
+      missingRows: summary.missingRows + (row.totalOwnedQuantity === 0 ? 1 : 0),
     }),
     {
       totalOwnedCopies: 0,

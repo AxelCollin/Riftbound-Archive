@@ -1,5 +1,5 @@
 import type { CardKind, CardRarity } from "./cards";
-import type { CardVariant } from "./variants";
+import type { CardCollectorCategory } from "./card-taxonomy";
 
 export type CollectionDisplayRow = {
   rowId: string;
@@ -12,15 +12,20 @@ export type CollectionDisplayRow = {
   rarity: CardRarity;
   kind: CardKind;
   printTreatment: "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
-  variant: CardVariant;
-  ownedQuantity: number;
-  binderReservedQuantity: number;
-  availableQuantity: number;
+  collectorCategory?: CardCollectorCategory | null;
+  normalOwnedQuantity: number;
+  normalBinderReservedQuantity: number;
+  normalAvailableQuantity: number;
+  foilOwnedQuantity: number;
+  foilBinderReservedQuantity: number;
+  foilAvailableQuantity: number;
+  totalOwnedQuantity: number;
+  totalBinderReservedQuantity: number;
+  totalAvailableQuantity: number;
 };
 
 export type CollectionRarityFilter = CardRarity | "ALL";
 export type CollectionKindFilter = Extract<CardKind, "GAMEPLAY" | "ENERGY"> | "ALL";
-export type CollectionVariantFilter = CardVariant | "ALL";
 export type CollectionOwnedStatusFilter = "ALL" | "OWNED" | "MISSING";
 export type CollectionDisplayMode = "OWNED" | "AVAILABLE";
 
@@ -30,7 +35,6 @@ export type CollectionFilterInput = {
   searchText?: string;
   rarity?: CollectionRarityFilter;
   kind?: CollectionKindFilter;
-  variant?: CollectionVariantFilter;
   ownedStatus?: CollectionOwnedStatusFilter;
 };
 
@@ -41,7 +45,6 @@ export function filterCollectionRows(
   const searchText = normalizeSearchText(filters.searchText ?? "");
   const rarity = filters.rarity ?? "ALL";
   const kind = filters.kind ?? "ALL";
-  const variant = filters.variant ?? "ALL";
   const ownedStatus = filters.ownedStatus ?? "ALL";
 
   return rows.filter((row) => {
@@ -50,18 +53,17 @@ export function filterCollectionRows(
       [row.cardName, row.setCode, row.collectorNumber].some((value) => normalizeSearchText(value).includes(searchText));
     const matchesRarity = rarity === "ALL" || row.rarity === rarity;
     const matchesKind = kind === "ALL" || row.kind === kind;
-    const matchesVariant = variant === "ALL" || row.variant === variant;
     const matchesOwnedStatus =
       ownedStatus === "ALL" ||
-      (ownedStatus === "OWNED" && row.ownedQuantity > 0) ||
-      (ownedStatus === "MISSING" && row.ownedQuantity === 0);
+      (ownedStatus === "OWNED" && row.totalOwnedQuantity > 0) ||
+      (ownedStatus === "MISSING" && row.totalOwnedQuantity === 0);
 
-    return matchesSearch && matchesRarity && matchesKind && matchesVariant && matchesOwnedStatus;
+    return matchesSearch && matchesRarity && matchesKind && matchesOwnedStatus;
   });
 }
 
 export function getCollectionDisplayQuantity(row: CollectionDisplayRow, mode: CollectionDisplayMode = defaultCollectionDisplayMode): number {
-  return mode === "AVAILABLE" ? row.availableQuantity : row.ownedQuantity;
+  return mode === "AVAILABLE" ? row.totalAvailableQuantity : row.totalOwnedQuantity;
 }
 
 export function normalizeSearchText(value: string): string {
