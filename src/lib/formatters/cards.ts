@@ -1,4 +1,5 @@
 import type { CardKind, CardRarity } from "../domain/cards";
+import type { CardFaction } from "../domain/card-taxonomy";
 import type { CardVariant } from "../domain/variants";
 
 export type CardPrintTreatment = "REGULAR" | "ALT" | "OVERNUMBER" | "UNKNOWN";
@@ -30,4 +31,22 @@ export const cardPrintTreatmentLabelsFr: Record<CardPrintTreatment, string> = {
   ALT: "Alternatif",
   OVERNUMBER: "Surnuméroté",
   UNKNOWN: "Inconnu",
+};
+
+export const cardFactionLabelsFr: Record<CardFaction, string> = {
+  FURY: "Furie",
+  CALM: "Calme",
+  MIND: "Esprit",
+  BODY: "Corps",
+  CHAOS: "Chaos",
+  ORDER: "Ordre",
+};
+
+export const cardFactionIconTokens: Record<CardFaction, string> = {
+  FURY: "Fu",
+  CALM: "Ca",
+  MIND: "Es",
+  BODY: "Co",
+  CHAOS: "Ch",
+  ORDER: "Or",
 };

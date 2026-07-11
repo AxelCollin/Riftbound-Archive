@@ -18,6 +18,7 @@ function row(overrides: Partial<CollectionDisplayRow>): CollectionDisplayRow {
     rarity: "COMMON",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
+    factions: [],
     normalOwnedQuantity: 0,
     normalBinderReservedQuantity: 0,
     normalAvailableQuantity: 0,
@@ -65,6 +66,7 @@ describe("collection filtering", () => {
       collectorNumber: "001",
       rarity: "RARE",
       kind: "GAMEPLAY",
+      factions: ["MIND"],
       foilOwnedQuantity: 2,
       totalOwnedQuantity: 2,
       totalAvailableQuantity: 1,
@@ -78,6 +80,7 @@ describe("collection filtering", () => {
       kind: "GAMEPLAY",
       collectorCategory: "SHOWCASE",
       printTreatment: "ALT",
+      factions: ["MIND", "ORDER"],
       totalOwnedQuantity: 0,
     }),
     row({
@@ -100,6 +103,7 @@ describe("collection filtering", () => {
       collectorNumber: "050",
       rarity: "COMMON",
       kind: "GAMEPLAY",
+      factions: ["FURY"],
       legacyShowcaseOwnedQuantity: 1,
       legacyShowcaseAvailableQuantity: 1,
       totalOwnedQuantity: 1,
@@ -114,6 +118,7 @@ describe("collection filtering", () => {
       collectorNumber: "042",
       rarity: "COMMON",
       kind: "GAMEPLAY",
+      factions: ["BODY"],
       normalOwnedQuantity: 4,
       totalOwnedQuantity: 4,
       totalAvailableQuantity: 3,
@@ -164,6 +169,18 @@ describe("collection filtering", () => {
     expect(filterCollectionRows(rows, { ownedStatus: "MISSING" }).map((candidate) => candidate.rowId)).toEqual(["ahri-showcase", "energy"]);
   });
 
+
+  it("treats undefined, empty, and every faction as all-active and keeps factionless rows", () => {
+    expect(filterCollectionRows(rows, { factions: undefined }).map((candidate) => candidate.rowId)).toEqual(rows.map((candidate) => candidate.rowId));
+    expect(filterCollectionRows(rows, { factions: [] }).map((candidate) => candidate.rowId)).toEqual(rows.map((candidate) => candidate.rowId));
+    expect(filterCollectionRows(rows, { factions: ["FURY", "CALM", "MIND", "BODY", "CHAOS", "ORDER"] }).map((candidate) => candidate.rowId)).toEqual(rows.map((candidate) => candidate.rowId));
+  });
+
+  it("filters by any selected faction and hides factionless rows during partial faction filtering", () => {
+    expect(filterCollectionRows(rows, { factions: ["MIND"] }).map((candidate) => candidate.rowId)).toEqual(["ahri-standard", "ahri-showcase"]);
+    expect(filterCollectionRows(rows, { factions: ["FURY", "BODY"] }).map((candidate) => candidate.rowId)).toEqual(["legacy-showcase-only", "common"]);
+  });
+
   it("combines filters without a user-facing variant filter", () => {
     expect(
       filterCollectionRows(rows, {
@@ -171,6 +188,7 @@ describe("collection filtering", () => {
         rarity: "RARE",
         kind: "GAMEPLAY",
         ownedStatus: "MISSING",
+        factions: ["ORDER"],
       }).map((candidate) => candidate.rowId),
     ).toEqual(["ahri-showcase"]);
   });
