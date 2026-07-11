@@ -9,7 +9,7 @@ import {
   type CardKind,
   type CardRarity,
 } from "../domain/cards";
-import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
+import type { CardCollectorCategory, CardFaction, CardGameplayType } from "../domain/card-taxonomy";
 import type { CollectionDisplayRow } from "../domain/collection-display";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
 import {
@@ -21,6 +21,10 @@ import {
 type CollectionCardTranslation = {
   locale: string;
   name: string;
+};
+
+type CollectionCardFactionMembership = {
+  faction: CardFaction;
 };
 
 type CollectionCardEntry = {
@@ -48,6 +52,7 @@ export type CollectionCardRecord = {
   translations: CollectionCardTranslation[];
   collectionEntries: CollectionCardEntry[];
   binderOverrides?: BinderOverrideIntent[];
+  factions?: CollectionCardFactionMembership[];
 };
 
 export type CollectionSummary = {
@@ -126,6 +131,7 @@ export function createCollectionRows(
       kind: card.kind,
       printTreatment: card.printTreatment,
       collectorCategory: card.collectorCategory,
+      factions: card.factions?.map((membership) => membership.faction) ?? [],
       normalOwnedQuantity,
       normalBinderReservedQuantity,
       normalAvailableQuantity,
@@ -185,6 +191,7 @@ export async function getCollectionPageData(): Promise<CollectionPageData> {
         translations: { select: { locale: true, name: true } },
         collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         binderOverrides: { where: { cardLanguage: "UNKNOWN" }, take: 1, select: { mode: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+        factions: { select: { faction: true } },
       },
     }),
     getAssembledDeckAllocationSets(),

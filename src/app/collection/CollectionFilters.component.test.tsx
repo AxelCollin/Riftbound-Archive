@@ -16,6 +16,7 @@ const rows: CollectionDisplayRow[] = [
     rarity: "COMMON",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
+    factions: ["FURY"],
     normalOwnedQuantity: 2,
     normalBinderReservedQuantity: 0,
     normalAvailableQuantity: 2,
@@ -40,6 +41,7 @@ const rows: CollectionDisplayRow[] = [
     rarity: "RARE",
     kind: "GAMEPLAY",
     printTreatment: "REGULAR",
+    factions: ["CALM"],
     normalOwnedQuantity: 0,
     normalBinderReservedQuantity: 0,
     normalAvailableQuantity: 0,
@@ -64,6 +66,7 @@ const rows: CollectionDisplayRow[] = [
     rarity: "UNKNOWN",
     kind: "ENERGY",
     printTreatment: "UNKNOWN",
+    factions: [],
     normalOwnedQuantity: 0,
     normalBinderReservedQuantity: 0,
     normalAvailableQuantity: 0,
@@ -89,6 +92,7 @@ const rows: CollectionDisplayRow[] = [
     kind: "GAMEPLAY",
     printTreatment: "ALT",
     collectorCategory: "SHOWCASE",
+    factions: ["FURY", "ORDER"],
     normalOwnedQuantity: 0,
     normalBinderReservedQuantity: 0,
     normalAvailableQuantity: 0,
@@ -127,10 +131,10 @@ function quantityCellsForCard(cardName: string) {
   const cells = within(rowForCard(cardName)).getAllByRole("cell");
 
   return {
-    selected: cells[6],
-    owned: cells[7],
-    binderReserved: cells[8],
-    available: cells[9],
+    selected: cells[7],
+    owned: cells[8],
+    binderReserved: cells[9],
+    available: cells[10],
   };
 }
 
@@ -267,6 +271,65 @@ describe("CollectionFilters", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Compact" }));
     expect(screen.getByTestId("legacy-showcase-rba-001-normal").textContent).toContain("Showcase (compat.)");
+  });
+
+
+  it("renders faction icon filters without adding a faction dropdown", () => {
+    renderFilters();
+
+    expect(screen.getByRole("group", { name: "Factions" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Filtrer Furie" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Filtrer Calme" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByLabelText("Faction")).toBeNull();
+  });
+
+  it("filters factions from all-active mode, adds another faction, removes one, and returns to all-active when the last is removed", () => {
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrer Furie" }));
+
+    expectVisibleCards(["Aatrox l'Éveillé", "Lux dorée"]);
+    expect(screen.queryByRole("link", { name: "Énergie prismatique" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Filtrer Furie" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Filtrer Calme" }).getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrer Calme" }));
+
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Lux dorée"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrer Furie" }));
+
+    expectVisibleCards(["Braum, Gardien du foyer"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrer Calme" }));
+
+    expectVisibleCards(["Aatrox l'Éveillé", "Braum, Gardien du foyer", "Énergie prismatique", "Lux dorée"]);
+    expect(screen.getByRole("button", { name: "Filtrer Furie" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Filtrer Calme" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("composes search, rarity, kind, and owned status filters with faction filtering", () => {
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtrer Furie" }));
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "rba" } });
+    fireEvent.change(screen.getByLabelText("Rareté"), { target: { value: "EPIC" } });
+    fireEvent.change(screen.getByLabelText("Type"), { target: { value: "GAMEPLAY" } });
+    fireEvent.change(screen.getByLabelText("Statut"), { target: { value: "OWNED" } });
+
+    expectVisibleCards(["Lux dorée"]);
+  });
+
+  it("shows faction badges in grid, line, and compact modes", () => {
+    renderFilters();
+
+    expect(within(rowForCard("Aatrox l'Éveillé")).getByLabelText("Furie")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Grille" }));
+    expect(screen.getAllByLabelText("Furie").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    expect(within(rowForCard("Lux dorée")).getByLabelText("Ordre")).toBeTruthy();
   });
 
   it("filters rows by card name from the search input", () => {

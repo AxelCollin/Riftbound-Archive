@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { getCardDetailHref } from "./card-detail-link";
-import { cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr } from "@/lib/formatters/cards";
+import { cardFactionIconTokens, cardFactionLabelsFr, cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr } from "@/lib/formatters/cards";
+import { CARD_FACTIONS, type CardFaction } from "@/lib/domain/card-taxonomy";
 import {
   defaultCollectionDisplayMode,
   filterCollectionRows,
@@ -58,6 +59,7 @@ type CollectionFilterState = {
   ownedStatus: CollectionOwnedStatusFilter;
   displayMode: CollectionDisplayMode;
   viewMode: CollectionViewMode;
+  factions: CardFaction[];
 };
 
 type CollectionFiltersProps = {
@@ -72,6 +74,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
     ownedStatus: "ALL",
     displayMode: defaultCollectionDisplayMode,
     viewMode: defaultCollectionViewMode,
+    factions: [],
   });
 
   const filteredRows = useMemo(() => filterCollectionRows(rows, filters), [rows, filters]);
@@ -79,6 +82,19 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
 
   function updateFilter<Key extends keyof CollectionFilterState>(key: Key, value: CollectionFilterState[Key]) {
     setFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleFaction(faction: CardFaction) {
+    setFilters((current) => {
+      const currentFactions = current.factions;
+      const nextFactions = currentFactions.length === 0 || currentFactions.length === CARD_FACTIONS.length
+        ? [faction]
+        : currentFactions.includes(faction)
+          ? currentFactions.filter((selectedFaction) => selectedFaction !== faction)
+          : [...currentFactions, faction];
+
+      return { ...current, factions: nextFactions.length === 0 ? [] : nextFactions };
+    });
   }
 
   return (
@@ -110,6 +126,7 @@ export function CollectionFilters({ rows }: CollectionFiltersProps) {
           <SelectFilter label="Statut" onChange={(value) => updateFilter("ownedStatus", value)} options={ownedStatusOptions} value={filters.ownedStatus} />
           <SelectFilter label="Quantité affichée" onChange={(value) => updateFilter("displayMode", value)} options={quantityDisplayModeOptions} value={filters.displayMode} />
           <ViewModeButtonGroup onChange={(value) => updateFilter("viewMode", value)} value={filters.viewMode} />
+          <FactionIconFilterGroup onToggle={toggleFaction} selectedFactions={filters.factions} />
         </div>
       </div>
 
@@ -146,6 +163,39 @@ function SelectFilter<Value extends string>({ label, onChange, options, value }:
         ))}
       </select>
     </label>
+  );
+}
+
+function FactionIconFilterGroup({ onToggle, selectedFactions }: { onToggle: (faction: CardFaction) => void; selectedFactions: CardFaction[] }) {
+  const allActive = selectedFactions.length === 0 || selectedFactions.length === CARD_FACTIONS.length;
+
+  return (
+    <fieldset className="grid gap-2 text-sm text-archive-text300 md:col-span-2 xl:col-span-2">
+      <legend>Factions</legend>
+      <div className="flex flex-wrap gap-2 rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(8,17,27,0.9)] p-2">
+        {CARD_FACTIONS.map((faction) => {
+          const selected = allActive || selectedFactions.includes(faction);
+
+          return (
+            <button
+              aria-label={`Filtrer ${cardFactionLabelsFr[faction]}`}
+              aria-pressed={selected}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border text-xs font-bold uppercase tracking-[0.08em] transition ${
+                selected
+                  ? "border-archive-gold300 bg-archive-gold300 text-archive-blue950 shadow-glow"
+                  : "border-[rgba(199,168,102,0.28)] text-archive-text300 hover:bg-[rgba(199,168,102,0.12)] hover:text-archive-text100"
+              }`}
+              key={faction}
+              onClick={() => onToggle(faction)}
+              title={cardFactionLabelsFr[faction]}
+              type="button"
+            >
+              {cardFactionIconTokens[faction]}
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -223,6 +273,7 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
             <th className={cellPadding}>Rareté</th>
             <th className={cellPadding}>Type</th>
             <th className={cellPadding}>Traitement</th>
+            <th className={cellPadding}>Factions</th>
             <th className={`${cellPadding} text-right`}>Quantité affichée ({selectedQuantityLabel})</th>
             <th className={`${cellPadding} text-right`}>Total possédées</th>
             <th className={`${cellPadding} text-right`}>Total réservées binder</th>
@@ -249,6 +300,7 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
               <td className={cellPadding}>{cardRarityLabelsFr[row.rarity]}</td>
               <td className={cellPadding}>{cardKindLabelsFr[row.kind]}</td>
               <td className={cellPadding}>{cardPrintTreatmentLabelsFr[row.printTreatment]}</td>
+              <td className={cellPadding}><FactionBadges factions={row.factions} /></td>
               <td className={`${cellPadding} ${quantityClassName}`}>{getCollectionDisplayQuantity(row, quantityDisplayMode)}</td>
               <td className={`${cellPadding} ${totalClassName}`}>{row.totalOwnedQuantity}</td>
               <td className={`${cellPadding} ${binderClassName}`}>{row.totalBinderReservedQuantity}</td>
@@ -286,6 +338,7 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
           <dl className="mt-4 grid grid-cols-2 gap-3 text-sm text-archive-text300">
             <CollectionMetric label="Type" value={cardKindLabelsFr[row.kind]} />
             <CollectionMetric label="Traitement" value={cardPrintTreatmentLabelsFr[row.printTreatment]} />
+            {row.factions.length > 0 ? <div className="rounded-card border border-[rgba(199,168,102,0.16)] bg-[rgba(5,8,14,0.44)] px-3 py-2"><p className="text-xs uppercase tracking-[0.16em] text-archive-text500">Factions</p><div className="mt-2"><FactionBadges factions={row.factions} /></div></div> : null}
             <CollectionMetric label="Possédées" value={row.totalOwnedQuantity} />
             <CollectionMetric label="Réservées binder" value={row.totalBinderReservedQuantity} emphasize />
             <CollectionMetric label="Disponibles" value={row.totalAvailableQuantity} />
@@ -336,6 +389,27 @@ function CollectionCardImage({
   return (
     <div aria-label={`Illustration non disponible pour ${cardName}`} className={`${frameClassName} flex items-center justify-center p-2 text-center`} data-testid={`collection-card-placeholder-${mode}`} role="img">
       <span className={placeholderTextClassName}>Sans illustration</span>
+    </div>
+  );
+}
+
+function FactionBadges({ factions }: { factions: CardFaction[] }) {
+  if (factions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5" data-testid="collection-faction-badges">
+      {factions.map((faction) => (
+        <span
+          aria-label={cardFactionLabelsFr[faction]}
+          className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-[rgba(199,168,102,0.38)] bg-[rgba(199,168,102,0.12)] px-2 text-[0.65rem] font-bold uppercase tracking-[0.08em] text-archive-gold300"
+          key={faction}
+          title={cardFactionLabelsFr[faction]}
+        >
+          {cardFactionIconTokens[faction]}
+        </span>
+      ))}
     </div>
   );
 }

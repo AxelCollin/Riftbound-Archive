@@ -33,6 +33,7 @@ function card(overrides: Partial<CollectionCardRecord>): CollectionCardRecord {
     set: { code: "ORG", name: "Origins" },
     translations: [],
     collectionEntries: [],
+    factions: [],
     ...overrides,
   };
 }
@@ -50,6 +51,7 @@ describe("collection query", () => {
         select: expect.objectContaining({
           officialImageUrl: true,
           collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
+          factions: { select: { faction: true } },
         }),
       }),
     );
@@ -100,6 +102,19 @@ describe("collection query mapping", () => {
     ]);
 
     expect(rows.map((row) => row.cardId)).toEqual(["gameplay", "energy"]);
+  });
+
+
+  it("includes factions from CardFactionMembership rows only", () => {
+    const rows = createCollectionRows([
+      card({ id: "faction-card", gameplayType: "TERRAIN", factions: [{ faction: "FURY" }, { faction: "ORDER" }] }),
+      card({ id: "legend-without-membership", gameplayType: "LEGEND", factions: [] }),
+    ]);
+
+    expect(rows).toMatchObject([
+      { cardId: "faction-card", factions: ["FURY", "ORDER"] },
+      { cardId: "legend-without-membership", factions: [] },
+    ]);
   });
 
   it("passes official image URLs into grouped collection display rows", () => {
