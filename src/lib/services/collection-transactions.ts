@@ -140,7 +140,7 @@ type CollectionTransactionWriteClient = {
     }): Promise<CollectionEntrySnapshot>;
     updateMany(args: {
       where: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage; quantity?: { gte: number } };
-      data: { quantity: CollectionEntryQuantityMutation };
+      data: { physicalFinish?: PhysicalFinish | null; quantity: CollectionEntryQuantityMutation };
     }): Promise<{ count: number }>;
   };
   collectionTransaction: {
@@ -302,23 +302,42 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
   const type: CollectionTransactionType = input.operation;
 
   if (existingSnapshot) {
-    if (input.operation === "REMOVE" && existingSnapshot.quantity < input.quantity) {
-      throw toFinishAdjustmentNegativeQuantityError(input);
-    }
+    if (input.operation === "ADD") {
+      await client.collectionEntry.update({
+        where: {
+          cardId_variant_cardLanguage: {
+            cardId: input.cardId,
+            variant: existingSnapshot.variant,
+            cardLanguage: input.cardLanguage,
+          },
+        },
+        data: {
+          physicalFinish: input.physicalFinish,
+          quantity: { increment: input.quantity },
+        },
+      });
+    } else {
+      if (existingSnapshot.quantity < input.quantity) {
+        throw toFinishAdjustmentNegativeQuantityError(input);
+      }
 
-    await client.collectionEntry.update({
-      where: {
-        cardId_variant_cardLanguage: {
+      const updateResult = await client.collectionEntry.updateMany({
+        where: {
           cardId: input.cardId,
           variant: existingSnapshot.variant,
           cardLanguage: input.cardLanguage,
+          quantity: { gte: input.quantity },
         },
-      },
-      data: {
-        physicalFinish: input.physicalFinish,
-        quantity: input.operation === "ADD" ? { increment: input.quantity } : { decrement: input.quantity },
-      },
-    });
+        data: {
+          physicalFinish: input.physicalFinish,
+          quantity: { decrement: input.quantity },
+        },
+      });
+
+      if (updateResult.count !== 1) {
+        throw toFinishAdjustmentNegativeQuantityError(input);
+      }
+    }
 
     return client.collectionTransaction.create({
       data: {

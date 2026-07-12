@@ -70,6 +70,7 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
 
     entries.set(key, {
       ...existing,
+      physicalFinish: data.physicalFinish ?? existing.physicalFinish,
       quantity: applyQuantityMutation(existing.quantity, data.quantity),
       updatedAt: new Date("2026-06-28T00:00:01.000Z"),
     });
@@ -145,9 +146,64 @@ describe("recordCollectionFinishAdjustment", () => {
 
     expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
     expect(entries.has("card-common:NORMAL:UNKNOWN")).toBe(false);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
+      data: { physicalFinish: "NORMAL", quantity: { decrement: 1 } },
+    });
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
     expect(transactions).toMatchObject([
       { cardId: "card-common", variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "REMOVE", quantity: 1 },
     ]);
+  });
+
+  it("does not create a REMOVE transaction when the guarded decrement updates no row", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(1, "card-common", "FOIL", "NORMAL"),
+    ]);
+    repository.collectionEntry.updateMany = vi.fn(async () => ({ count: 0 }));
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
+      data: { physicalFinish: "NORMAL", quantity: { decrement: 1 } },
+    });
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("treats the guarded decrement as authoritative for stale reads", async () => {
+    const staleSnapshot = createEntry(1, "card-common", "FOIL", "NORMAL");
+    const { repository, transactions } = createRepository(baseCard, [staleSnapshot]);
+    const liveQuantities = new Map([["card-common:FOIL:UNKNOWN", 0]]);
+    repository.collectionEntry.findMany = vi.fn(async ({ where }) =>
+      [staleSnapshot].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+    );
+    repository.collectionEntry.updateMany = vi.fn(async ({ where, data }) => {
+      const key = `${where.cardId}:${where.variant}:${where.cardLanguage}`;
+      const liveQuantity = liveQuantities.get(key);
+
+      if (liveQuantity === undefined || (where.quantity?.gte !== undefined && liveQuantity < where.quantity.gte)) {
+        return { count: 0 };
+      }
+
+      if (typeof data.quantity === "object" && "decrement" in data.quantity) {
+        liveQuantities.set(key, liveQuantity - data.quantity.decrement);
+      }
+
+      return { count: 1 };
+    });
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(liveQuantities.get("card-common:FOIL:UNKNOWN")).toBe(0);
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
   it("adds Normal to an UNKNOWN FOIL-keyed physical Normal snapshot without creating a canonical duplicate", async () => {
