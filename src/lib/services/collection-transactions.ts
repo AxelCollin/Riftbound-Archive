@@ -59,6 +59,7 @@ export type CollectionTransactionServiceErrorCode =
   | "INVALID_VARIANT_FOR_CARD"
   | "NEGATIVE_COLLECTION_QUANTITY"
   | "DUPLICATE_COLLECTION_FINISH_SNAPSHOT"
+  | "COLLECTION_FINISH_KEY_CONFLICT"
   | "DATABASE_WRITE_FAILED";
 
 export class CollectionTransactionServiceError extends Error {
@@ -134,6 +135,9 @@ type CollectionTransactionWriteClient = {
       where: { cardId: string; cardLanguage: CardLanguage };
       select?: { id: true; cardId: true; variant: true; physicalFinish: true; cardLanguage: true; quantity: true; createdAt: true; updatedAt: true };
     }): Promise<CollectionEntrySnapshot[]>;
+    create(args: {
+      data: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; cardLanguage: CardLanguage; quantity: number };
+    }): Promise<CollectionEntrySnapshot>;
     update(args: {
       where: { cardId_variant_cardLanguage: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage } };
       data: { physicalFinish?: PhysicalFinish | null; quantity: CollectionEntryQuantityMutation };
@@ -357,11 +361,39 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
     throw toFinishAdjustmentNegativeQuantityError(input);
   }
 
-  await client.collectionEntry.upsert({
-    where: { cardId_variant_cardLanguage: { cardId: input.cardId, variant: input.physicalFinish, cardLanguage: input.cardLanguage } },
-    create: { cardId: input.cardId, variant: input.physicalFinish, physicalFinish: input.physicalFinish, cardLanguage: input.cardLanguage, quantity: input.quantity },
-    update: { quantity: { increment: input.quantity } },
-  });
+  const canonicalLegacyVariant = input.physicalFinish;
+  const occupiedCanonicalSnapshot = unknownSnapshots.find(
+    (snapshot) => snapshot.variant === canonicalLegacyVariant,
+  );
+
+  if (occupiedCanonicalSnapshot) {
+    const occupiedEffectiveFinish = getOwnedSnapshotQuantityVariant(occupiedCanonicalSnapshot);
+
+    if (occupiedEffectiveFinish !== input.physicalFinish) {
+      throw new CollectionTransactionServiceError(
+        "COLLECTION_FINISH_KEY_CONFLICT",
+        `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is occupied by ${occupiedEffectiveFinish ?? "an unmapped"} effective finish`,
+      );
+    }
+  }
+
+  try {
+    await client.collectionEntry.create({
+      data: {
+        cardId: input.cardId,
+        variant: canonicalLegacyVariant,
+        physicalFinish: input.physicalFinish,
+        cardLanguage: input.cardLanguage,
+        quantity: input.quantity,
+      },
+    });
+  } catch (error) {
+    throw new CollectionTransactionServiceError(
+      "COLLECTION_FINISH_KEY_CONFLICT",
+      `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is no longer available`,
+      error,
+    );
+  }
 
   return client.collectionTransaction.create({
     data: {

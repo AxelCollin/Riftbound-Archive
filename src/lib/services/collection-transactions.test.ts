@@ -60,6 +60,17 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
     entries.set(key, entry);
     return entry;
   });
+  const createEntryMock = vi.fn(async ({ data }) => {
+    const key = `${data.cardId}:${data.variant}:${data.cardLanguage}`;
+
+    if (entries.has(key)) {
+      throw new Error("unique constraint failed");
+    }
+
+    const entry = { ...createEntry(data.quantity, data.cardId, data.variant, data.physicalFinish), cardLanguage: data.cardLanguage };
+    entries.set(key, entry);
+    return entry;
+  });
   const updateManyEntry = vi.fn(async ({ where, data }) => {
     const key = `${where.cardId}:${where.variant}:${where.cardLanguage ?? "UNKNOWN"}`;
     const existing = entries.get(key);
@@ -104,6 +115,7 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
     },
     collectionEntry: {
       upsert: upsertEntry,
+      create: createEntryMock,
       findMany: findManyEntry,
       update: updateEntry,
       updateMany: updateManyEntry,
@@ -240,7 +252,70 @@ describe("recordCollectionFinishAdjustment", () => {
     await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository);
 
     expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ variant: "FOIL", physicalFinish: "FOIL", quantity: 1 });
+    expect(repository.collectionEntry.create).toHaveBeenCalledWith({
+      data: { cardId: "card-common", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", quantity: 1 },
+    });
+    expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
     expect(transactions).toMatchObject([{ variant: "FOIL", physicalFinish: "FOIL", type: "ADD", quantity: 1 }]);
+  });
+
+  it("creates canonical Normal and Foil rows only when their legacy keys are unoccupied", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 2 }, repository);
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")).toMatchObject({ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 2 });
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ variant: "FOIL", physicalFinish: "FOIL", quantity: 1 });
+    expect(repository.collectionEntry.create).toHaveBeenCalledTimes(2);
+    expect(repository.collectionEntry.upsert).not.toHaveBeenCalled();
+    expect(transactions).toMatchObject([
+      { variant: "NORMAL", physicalFinish: "NORMAL", type: "ADD", quantity: 2 },
+      { variant: "FOIL", physicalFinish: "FOIL", type: "ADD", quantity: 1 },
+    ]);
+  });
+
+  it("rejects ADD Normal when the NORMAL legacy key is occupied by a physical Foil snapshot", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(2, "card-common", "NORMAL", "FOIL"),
+    ]);
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")).toMatchObject({ quantity: 2, physicalFinish: "FOIL" });
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.create).not.toHaveBeenCalled();
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects ADD Foil when the FOIL legacy key is occupied by a physical Normal snapshot", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(3, "card-common", "FOIL", "NORMAL"),
+    ]);
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ quantity: 3, physicalFinish: "NORMAL" });
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionEntry.create).not.toHaveBeenCalled();
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("does not create a transaction when canonical creation loses a unique-key race", async () => {
+    const { repository, transactions } = createRepository(baseCard);
+    repository.collectionEntry.create = vi.fn(async () => {
+      throw new Error("unique constraint failed");
+    });
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
   it("rejects removing when no matching effective-finish snapshot exists", async () => {
