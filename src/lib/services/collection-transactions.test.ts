@@ -234,9 +234,74 @@ describe("recordCollectionFinishAdjustment", () => {
 
     expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(3);
     expect(entries.has("card-common:NORMAL:UNKNOWN")).toBe(false);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", physicalFinish: "NORMAL" },
+      data: { physicalFinish: "NORMAL", quantity: { increment: 1 } },
+    });
+    expect(repository.collectionEntry.update).not.toHaveBeenCalled();
     expect(transactions).toMatchObject([
       { variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 1 },
     ]);
+  });
+
+  it("fails a stale existing ADD Normal when the live row changed to physical Foil", async () => {
+    const staleSnapshot = createEntry(0, "card-common", "FOIL", "NORMAL");
+    const { repository, entries, transactions } = createRepository(baseCard, [staleSnapshot]);
+    repository.collectionEntry.findMany = vi.fn(async ({ where }) =>
+      [staleSnapshot].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+    );
+    repository.collectionEntry.updateMany = vi.fn(async ({ where }) => {
+      expect(where).toMatchObject({
+        cardId: "card-common",
+        variant: "FOIL",
+        cardLanguage: "UNKNOWN",
+        physicalFinish: "NORMAL",
+      });
+      entries.set("card-common:FOIL:UNKNOWN", {
+        ...staleSnapshot,
+        physicalFinish: "FOIL",
+        quantity: 0,
+      });
+      return { count: 0 };
+    });
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ variant: "FOIL", physicalFinish: "FOIL", quantity: 0 });
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("fails a stale existing ADD Foil when the live row changed to physical Normal", async () => {
+    const staleSnapshot = createEntry(0, "card-common", "NORMAL", "FOIL");
+    const { repository, entries, transactions } = createRepository(baseCard, [staleSnapshot]);
+    repository.collectionEntry.findMany = vi.fn(async ({ where }) =>
+      [staleSnapshot].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+    );
+    repository.collectionEntry.updateMany = vi.fn(async ({ where }) => {
+      expect(where).toMatchObject({
+        cardId: "card-common",
+        variant: "NORMAL",
+        cardLanguage: "UNKNOWN",
+        physicalFinish: "FOIL",
+      });
+      entries.set("card-common:NORMAL:UNKNOWN", {
+        ...staleSnapshot,
+        physicalFinish: "NORMAL",
+        quantity: 0,
+      });
+      return { count: 0 };
+    });
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")).toMatchObject({ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 0 });
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
   it("edits the inverse NORMAL-keyed physical Foil snapshot independently", async () => {
