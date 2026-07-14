@@ -321,27 +321,7 @@ async function retryCanonicalCreateRace(
   const effectiveFinish = getOwnedSnapshotQuantityVariant(snapshot);
 
   if (effectiveFinish === input.physicalFinish) {
-    const updateResult = await client.collectionEntry.updateMany({
-      where: {
-        cardId: input.cardId,
-        variant: snapshot.variant,
-        cardLanguage: input.cardLanguage,
-        physicalFinish: snapshot.physicalFinish,
-      },
-      data: {
-        physicalFinish: input.physicalFinish,
-        quantity: { increment: input.quantity },
-      },
-    });
-
-    if (updateResult.count !== 1) {
-      throw toCollectionFinishKeyConflict(
-        input,
-        `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before retry`,
-      );
-    }
-
-    return createFinishAdjustmentTransaction(input, client, snapshot.variant);
+    return addToExistingFinishSnapshot(input, client, snapshot);
   }
 
   if (snapshot.quantity > 0) {
@@ -350,6 +330,9 @@ async function retryCanonicalCreateRace(
       `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is occupied by ${effectiveFinish ?? "an unmapped"} effective finish`,
     );
   }
+
+  return reuseZeroQuantityFinishSnapshot(input, client, snapshot, "retry");
+}
 
 async function addToExistingFinishSnapshot(
   input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
@@ -361,7 +344,35 @@ async function addToExistingFinishSnapshot(
       cardId: input.cardId,
       variant: snapshot.variant,
       cardLanguage: input.cardLanguage,
+      physicalFinish: snapshot.physicalFinish,
+    },
+    data: {
+      physicalFinish: input.physicalFinish,
+      quantity: { increment: input.quantity },
+    },
+  });
 
+  if (updateResult.count !== 1) {
+    throw toCollectionFinishKeyConflict(
+      input,
+      `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
+    );
+  }
+
+  return createFinishAdjustmentTransaction(input, client, snapshot.variant);
+}
+
+async function reuseZeroQuantityFinishSnapshot(
+  input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
+  client: CollectionTransactionWriteClient,
+  snapshot: CollectionEntrySnapshot,
+  conflictContext: "update" | "retry",
+): Promise<RecordedCollectionTransaction> {
+  const updateResult = await client.collectionEntry.updateMany({
+    where: {
+      cardId: input.cardId,
+      variant: snapshot.variant,
+      cardLanguage: input.cardLanguage,
       quantity: 0,
       physicalFinish: snapshot.physicalFinish,
     },
@@ -372,33 +383,13 @@ async function addToExistingFinishSnapshot(
   });
 
   if (updateResult.count !== 1) {
-
     throw toCollectionFinishKeyConflict(
       input,
-      `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before retry`,
+      `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before ${conflictContext}`,
     );
   }
 
   return createFinishAdjustmentTransaction(input, client, snapshot.variant);
-
-    throw new CollectionTransactionServiceError(
-      "COLLECTION_FINISH_KEY_CONFLICT",
-      `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
-    );
-  }
-
-  return client.collectionTransaction.create({
-    data: {
-      cardId: input.cardId,
-      variant: snapshot.variant,
-      physicalFinish: input.physicalFinish,
-      cardLanguage: input.cardLanguage,
-      type: "ADD",
-      quantity: input.quantity,
-      note: input.note ?? null,
-      source: input.source ?? null,
-    },
-  });
 }
 
 async function writeFinishAdjustmentTransactionAndSnapshot(
@@ -516,39 +507,7 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
       );
     }
 
-    const updateResult = await client.collectionEntry.updateMany({
-      where: {
-        cardId: input.cardId,
-        variant: occupiedCanonicalSnapshot.variant,
-        cardLanguage: input.cardLanguage,
-        quantity: 0,
-        physicalFinish: occupiedCanonicalSnapshot.physicalFinish,
-      },
-      data: {
-        physicalFinish: input.physicalFinish,
-        quantity: { increment: input.quantity },
-      },
-    });
-
-    if (updateResult.count !== 1) {
-      throw new CollectionTransactionServiceError(
-        "COLLECTION_FINISH_KEY_CONFLICT",
-        `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
-      );
-    }
-
-    return client.collectionTransaction.create({
-      data: {
-        cardId: input.cardId,
-        variant: occupiedCanonicalSnapshot.variant,
-        physicalFinish: input.physicalFinish,
-        cardLanguage: input.cardLanguage,
-        type,
-        quantity: input.quantity,
-        note: input.note ?? null,
-        source: input.source ?? null,
-      },
-    });
+    return reuseZeroQuantityFinishSnapshot(input, client, occupiedCanonicalSnapshot, "update");
   }
 
   try {
