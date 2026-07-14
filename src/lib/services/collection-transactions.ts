@@ -337,6 +337,7 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
           variant: existingSnapshot.variant,
           cardLanguage: input.cardLanguage,
           quantity: { gte: input.quantity },
+          physicalFinish: existingSnapshot.physicalFinish,
         },
         data: {
           physicalFinish: input.physicalFinish,

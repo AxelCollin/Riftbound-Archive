@@ -166,7 +166,13 @@ describe("recordCollectionFinishAdjustment", () => {
     expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
     expect(entries.has("card-common:NORMAL:UNKNOWN")).toBe(false);
     expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
-      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
+      where: {
+        cardId: "card-common",
+        variant: "FOIL",
+        cardLanguage: "UNKNOWN",
+        quantity: { gte: 1 },
+        physicalFinish: "NORMAL",
+      },
       data: { physicalFinish: "NORMAL", quantity: { decrement: 1 } },
     });
     expect(repository.collectionEntry.update).not.toHaveBeenCalled();
@@ -186,10 +192,72 @@ describe("recordCollectionFinishAdjustment", () => {
     ).rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
 
     expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
-      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: { gte: 1 } },
+      where: {
+        cardId: "card-common",
+        variant: "FOIL",
+        cardLanguage: "UNKNOWN",
+        quantity: { gte: 1 },
+        physicalFinish: "NORMAL",
+      },
       data: { physicalFinish: "NORMAL", quantity: { decrement: 1 } },
     });
     expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(1);
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("fails stale Normal REMOVE when the live FOIL-keyed row was repurposed to Foil", async () => {
+    const staleSnapshot = createEntry(1, "card-common", "FOIL", "NORMAL");
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(1, "card-common", "FOIL", "FOIL"),
+    ]);
+    repository.collectionEntry.findMany = vi.fn(async ({ where }) =>
+      [staleSnapshot].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+    );
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "REMOVE", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: {
+        cardId: "card-common",
+        variant: "FOIL",
+        cardLanguage: "UNKNOWN",
+        quantity: { gte: 1 },
+        physicalFinish: "NORMAL",
+      },
+      data: { physicalFinish: "NORMAL", quantity: { decrement: 1 } },
+    });
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ quantity: 1, physicalFinish: "FOIL" });
+    expect(transactions).toHaveLength(0);
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("fails stale Foil REMOVE when the live NORMAL-keyed row was repurposed to Normal", async () => {
+    const staleSnapshot = createEntry(1, "card-common", "NORMAL", "FOIL");
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(1, "card-common", "NORMAL", "NORMAL"),
+    ]);
+    repository.collectionEntry.findMany = vi.fn(async ({ where }) =>
+      [staleSnapshot].filter((entry) => entry.cardId === where.cardId && entry.cardLanguage === where.cardLanguage),
+    );
+
+    await expect(
+      recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "REMOVE", quantity: 1 }, repository),
+    ).rejects.toMatchObject({ code: "NEGATIVE_COLLECTION_QUANTITY" });
+
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: {
+        cardId: "card-common",
+        variant: "NORMAL",
+        cardLanguage: "UNKNOWN",
+        quantity: { gte: 1 },
+        physicalFinish: "FOIL",
+      },
+      data: { physicalFinish: "FOIL", quantity: { decrement: 1 } },
+    });
+    expect(entries.get("card-common:NORMAL:UNKNOWN")).toMatchObject({ quantity: 1, physicalFinish: "NORMAL" });
     expect(transactions).toHaveLength(0);
     expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
