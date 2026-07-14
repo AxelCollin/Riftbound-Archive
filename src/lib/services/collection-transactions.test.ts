@@ -306,6 +306,47 @@ describe("recordCollectionFinishAdjustment", () => {
     expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
+  it("adds Normal to an existing nonzero UNKNOWN Normal snapshot without requiring quantity zero", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(2, "card-common", "NORMAL", "NORMAL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")?.quantity).toBe(3);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "NORMAL", cardLanguage: "UNKNOWN", physicalFinish: "NORMAL" },
+      data: { physicalFinish: "NORMAL", quantity: { increment: 1 } },
+    });
+    expect(repository.collectionEntry.updateMany).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ quantity: 0 }),
+      }),
+    );
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 1 },
+    ]);
+    expect(transactions).toHaveLength(1);
+  });
+
+  it("adds Foil to an existing nonzero UNKNOWN Foil snapshot", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(4, "card-common", "FOIL", "FOIL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")?.quantity).toBe(5);
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", physicalFinish: "FOIL" },
+      data: { physicalFinish: "FOIL", quantity: { increment: 1 } },
+    });
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 1 },
+    ]);
+    expect(transactions).toHaveLength(1);
+  });
+
   it("adds Normal to an UNKNOWN FOIL-keyed physical Normal snapshot without creating a canonical duplicate", async () => {
     const { repository, entries, transactions } = createRepository(baseCard, [
       createEntry(2, "card-common", "FOIL", "NORMAL"),
