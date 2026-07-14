@@ -264,6 +264,7 @@ function toFinishAdjustmentNegativeQuantityError(input: RecordCollectionFinishAd
   );
 }
 
+
 function isPrismaUniqueConstraintError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
@@ -350,11 +351,17 @@ async function retryCanonicalCreateRace(
     );
   }
 
+async function addToExistingFinishSnapshot(
+  input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
+  client: CollectionTransactionWriteClient,
+  snapshot: CollectionEntrySnapshot,
+): Promise<RecordedCollectionTransaction> {
   const updateResult = await client.collectionEntry.updateMany({
     where: {
       cardId: input.cardId,
       variant: snapshot.variant,
       cardLanguage: input.cardLanguage,
+
       quantity: 0,
       physicalFinish: snapshot.physicalFinish,
     },
@@ -365,6 +372,7 @@ async function retryCanonicalCreateRace(
   });
 
   if (updateResult.count !== 1) {
+
     throw toCollectionFinishKeyConflict(
       input,
       `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before retry`,
@@ -372,6 +380,25 @@ async function retryCanonicalCreateRace(
   }
 
   return createFinishAdjustmentTransaction(input, client, snapshot.variant);
+
+    throw new CollectionTransactionServiceError(
+      "COLLECTION_FINISH_KEY_CONFLICT",
+      `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
+    );
+  }
+
+  return client.collectionTransaction.create({
+    data: {
+      cardId: input.cardId,
+      variant: snapshot.variant,
+      physicalFinish: input.physicalFinish,
+      cardLanguage: input.cardLanguage,
+      type: "ADD",
+      quantity: input.quantity,
+      note: input.note ?? null,
+      source: input.source ?? null,
+    },
+  });
 }
 
 async function writeFinishAdjustmentTransactionAndSnapshot(
@@ -427,19 +454,7 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
 
   if (existingSnapshot) {
     if (input.operation === "ADD") {
-      await client.collectionEntry.update({
-        where: {
-          cardId_variant_cardLanguage: {
-            cardId: input.cardId,
-            variant: existingSnapshot.variant,
-            cardLanguage: input.cardLanguage,
-          },
-        },
-        data: {
-          physicalFinish: input.physicalFinish,
-          quantity: { increment: input.quantity },
-        },
-      });
+      return addToExistingFinishSnapshot(input, client, existingSnapshot);
     } else {
       if (existingSnapshot.quantity < input.quantity) {
         throw toFinishAdjustmentNegativeQuantityError(input);
@@ -451,6 +466,7 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
           variant: existingSnapshot.variant,
           cardLanguage: input.cardLanguage,
           quantity: { gte: input.quantity },
+          physicalFinish: existingSnapshot.physicalFinish,
         },
         data: {
           physicalFinish: input.physicalFinish,
@@ -490,32 +506,7 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
     const occupiedEffectiveFinish = getOwnedSnapshotQuantityVariant(occupiedCanonicalSnapshot);
 
     if (occupiedEffectiveFinish === input.physicalFinish) {
-      await client.collectionEntry.update({
-        where: {
-          cardId_variant_cardLanguage: {
-            cardId: input.cardId,
-            variant: occupiedCanonicalSnapshot.variant,
-            cardLanguage: input.cardLanguage,
-          },
-        },
-        data: {
-          physicalFinish: input.physicalFinish,
-          quantity: { increment: input.quantity },
-        },
-      });
-
-      return client.collectionTransaction.create({
-        data: {
-          cardId: input.cardId,
-          variant: occupiedCanonicalSnapshot.variant,
-          physicalFinish: input.physicalFinish,
-          cardLanguage: input.cardLanguage,
-          type,
-          quantity: input.quantity,
-          note: input.note ?? null,
-          source: input.source ?? null,
-        },
-      });
+      return addToExistingFinishSnapshot(input, client, occupiedCanonicalSnapshot);
     }
 
     if (occupiedCanonicalSnapshot.quantity > 0) {
