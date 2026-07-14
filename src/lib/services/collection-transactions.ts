@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { isTrackableCard } from "../domain/cards";
 import type { CardCollectorCategory, CardGameplayType } from "../domain/card-taxonomy";
@@ -135,6 +136,9 @@ type CollectionTransactionWriteClient = {
       where: { cardId: string; cardLanguage: CardLanguage };
       select?: { id: true; cardId: true; variant: true; physicalFinish: true; cardLanguage: true; quantity: true; createdAt: true; updatedAt: true };
     }): Promise<CollectionEntrySnapshot[]>;
+    findUnique(args: {
+      where: { cardId_variant_cardLanguage: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage } };
+    }): Promise<CollectionEntrySnapshot | null>;
     create(args: {
       data: { cardId: string; variant: CardVariant; physicalFinish: PhysicalFinish | null; cardLanguage: CardLanguage; quantity: number };
     }): Promise<CollectionEntrySnapshot>;
@@ -260,6 +264,93 @@ function toFinishAdjustmentNegativeQuantityError(input: RecordCollectionFinishAd
   );
 }
 
+
+function isPrismaUniqueConstraintError(error: unknown): error is Prisma.PrismaClientKnownRequestError {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+function toCollectionFinishKeyConflict(input: { cardId: string; physicalFinish: PhysicalFinish }, message: string, cause?: unknown) {
+  return new CollectionTransactionServiceError(
+    "COLLECTION_FINISH_KEY_CONFLICT",
+    message,
+    cause,
+  );
+}
+
+function createFinishAdjustmentTransaction(
+  input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
+  client: CollectionTransactionWriteClient,
+  variant: CardVariant,
+): Promise<RecordedCollectionTransaction> {
+  return client.collectionTransaction.create({
+    data: {
+      cardId: input.cardId,
+      variant,
+      physicalFinish: input.physicalFinish,
+      cardLanguage: input.cardLanguage,
+      type: input.operation,
+      quantity: input.quantity,
+      note: input.note ?? null,
+      source: input.source ?? null,
+    },
+  });
+}
+
+async function retryCanonicalCreateRace(
+  input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
+  client: CollectionTransactionWriteClient,
+  canonicalLegacyVariant: CardVariant,
+): Promise<RecordedCollectionTransaction> {
+  const snapshot = await client.collectionEntry.findUnique({
+    where: {
+      cardId_variant_cardLanguage: {
+        cardId: input.cardId,
+        variant: canonicalLegacyVariant,
+        cardLanguage: input.cardLanguage,
+      },
+    },
+  });
+
+  if (!snapshot) {
+    throw toCollectionFinishKeyConflict(
+      input,
+      `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key was unavailable after a create race`,
+    );
+  }
+
+  const effectiveFinish = getOwnedSnapshotQuantityVariant(snapshot);
+
+  if (effectiveFinish === input.physicalFinish) {
+    const updateResult = await client.collectionEntry.updateMany({
+      where: {
+        cardId: input.cardId,
+        variant: snapshot.variant,
+        cardLanguage: input.cardLanguage,
+        physicalFinish: snapshot.physicalFinish,
+      },
+      data: {
+        physicalFinish: input.physicalFinish,
+        quantity: { increment: input.quantity },
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      throw toCollectionFinishKeyConflict(
+        input,
+        `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before retry`,
+      );
+    }
+
+    return createFinishAdjustmentTransaction(input, client, snapshot.variant);
+  }
+
+  if (snapshot.quantity > 0) {
+    throw toCollectionFinishKeyConflict(
+      input,
+      `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is occupied by ${effectiveFinish ?? "an unmapped"} effective finish`,
+    );
+  }
+
 async function addToExistingFinishSnapshot(
   input: Required<Pick<RecordCollectionFinishAdjustmentInput, "cardId" | "physicalFinish" | "operation" | "quantity" | "cardLanguage">> & Pick<RecordCollectionFinishAdjustmentInput, "source" | "note">,
   client: CollectionTransactionWriteClient,
@@ -270,6 +361,8 @@ async function addToExistingFinishSnapshot(
       cardId: input.cardId,
       variant: snapshot.variant,
       cardLanguage: input.cardLanguage,
+
+      quantity: 0,
       physicalFinish: snapshot.physicalFinish,
     },
     data: {
@@ -279,6 +372,15 @@ async function addToExistingFinishSnapshot(
   });
 
   if (updateResult.count !== 1) {
+
+    throw toCollectionFinishKeyConflict(
+      input,
+      `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before retry`,
+    );
+  }
+
+  return createFinishAdjustmentTransaction(input, client, snapshot.variant);
+
     throw new CollectionTransactionServiceError(
       "COLLECTION_FINISH_KEY_CONFLICT",
       `Cannot add ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
@@ -460,25 +562,18 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
       },
     });
   } catch (error) {
+    if (isPrismaUniqueConstraintError(error)) {
+      return retryCanonicalCreateRace(input, client, canonicalLegacyVariant);
+    }
+
     throw new CollectionTransactionServiceError(
-      "COLLECTION_FINISH_KEY_CONFLICT",
-      `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is no longer available`,
+      "DATABASE_WRITE_FAILED",
+      `Failed to create ${input.physicalFinish} CollectionEntry for card ${input.cardId}`,
       error,
     );
   }
 
-  return client.collectionTransaction.create({
-    data: {
-      cardId: input.cardId,
-      variant: input.physicalFinish,
-      physicalFinish: input.physicalFinish,
-      cardLanguage: input.cardLanguage,
-      type,
-      quantity: input.quantity,
-      note: input.note ?? null,
-      source: input.source ?? null,
-    },
-  });
+  return createFinishAdjustmentTransaction(input, client, input.physicalFinish);
 }
 
 export async function recordCollectionFinishAdjustment(
