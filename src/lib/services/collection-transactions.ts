@@ -143,7 +143,13 @@ type CollectionTransactionWriteClient = {
       data: { physicalFinish?: PhysicalFinish | null; quantity: CollectionEntryQuantityMutation };
     }): Promise<CollectionEntrySnapshot>;
     updateMany(args: {
-      where: { cardId: string; variant: CardVariant; cardLanguage: CardLanguage; quantity?: { gte: number } };
+      where: {
+        cardId: string;
+        variant: CardVariant;
+        cardLanguage: CardLanguage;
+        quantity?: number | { gte: number };
+        physicalFinish?: PhysicalFinish | null;
+      };
       data: { physicalFinish?: PhysicalFinish | null; quantity: CollectionEntryQuantityMutation };
     }): Promise<{ count: number }>;
   };
@@ -369,12 +375,75 @@ async function writeFinishAdjustmentTransactionAndSnapshot(
   if (occupiedCanonicalSnapshot) {
     const occupiedEffectiveFinish = getOwnedSnapshotQuantityVariant(occupiedCanonicalSnapshot);
 
-    if (occupiedEffectiveFinish !== input.physicalFinish) {
+    if (occupiedEffectiveFinish === input.physicalFinish) {
+      await client.collectionEntry.update({
+        where: {
+          cardId_variant_cardLanguage: {
+            cardId: input.cardId,
+            variant: occupiedCanonicalSnapshot.variant,
+            cardLanguage: input.cardLanguage,
+          },
+        },
+        data: {
+          physicalFinish: input.physicalFinish,
+          quantity: { increment: input.quantity },
+        },
+      });
+
+      return client.collectionTransaction.create({
+        data: {
+          cardId: input.cardId,
+          variant: occupiedCanonicalSnapshot.variant,
+          physicalFinish: input.physicalFinish,
+          cardLanguage: input.cardLanguage,
+          type,
+          quantity: input.quantity,
+          note: input.note ?? null,
+          source: input.source ?? null,
+        },
+      });
+    }
+
+    if (occupiedCanonicalSnapshot.quantity > 0) {
       throw new CollectionTransactionServiceError(
         "COLLECTION_FINISH_KEY_CONFLICT",
         `Cannot create ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key is occupied by ${occupiedEffectiveFinish ?? "an unmapped"} effective finish`,
       );
     }
+
+    const updateResult = await client.collectionEntry.updateMany({
+      where: {
+        cardId: input.cardId,
+        variant: occupiedCanonicalSnapshot.variant,
+        cardLanguage: input.cardLanguage,
+        quantity: 0,
+        physicalFinish: occupiedCanonicalSnapshot.physicalFinish,
+      },
+      data: {
+        physicalFinish: input.physicalFinish,
+        quantity: { increment: input.quantity },
+      },
+    });
+
+    if (updateResult.count !== 1) {
+      throw new CollectionTransactionServiceError(
+        "COLLECTION_FINISH_KEY_CONFLICT",
+        `Cannot reuse ${input.physicalFinish} CollectionEntry for card ${input.cardId} because its legacy storage key changed before update`,
+      );
+    }
+
+    return client.collectionTransaction.create({
+      data: {
+        cardId: input.cardId,
+        variant: occupiedCanonicalSnapshot.variant,
+        physicalFinish: input.physicalFinish,
+        cardLanguage: input.cardLanguage,
+        type,
+        quantity: input.quantity,
+        note: input.note ?? null,
+        source: input.source ?? null,
+      },
+    });
   }
 
   try {

@@ -75,7 +75,14 @@ function createRepository(card: TestCard = baseCard, initialEntries: CollectionE
     const key = `${where.cardId}:${where.variant}:${where.cardLanguage ?? "UNKNOWN"}`;
     const existing = entries.get(key);
 
-    if (!existing || (where.quantity?.gte !== undefined && existing.quantity < where.quantity.gte)) {
+    const quantityMatches =
+      where.quantity === undefined ||
+      (typeof where.quantity === "number"
+        ? existing?.quantity === where.quantity
+        : existing !== undefined && existing.quantity >= where.quantity.gte);
+    const physicalFinishMatches = where.physicalFinish === undefined || existing?.physicalFinish === where.physicalFinish;
+
+    if (!existing || !quantityMatches || !physicalFinishMatches) {
       return { count: 0 };
     }
 
@@ -302,6 +309,63 @@ describe("recordCollectionFinishAdjustment", () => {
     expect(transactions).toHaveLength(0);
     expect(repository.collectionEntry.create).not.toHaveBeenCalled();
     expect(repository.collectionEntry.update).not.toHaveBeenCalled();
+    expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
+  });
+
+  it("reuses a zero-quantity FOIL-keyed physical Normal snapshot when adding Foil", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(0, "card-common", "FOIL", "NORMAL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 2 }, repository);
+
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({
+      variant: "FOIL",
+      physicalFinish: "FOIL",
+      quantity: 2,
+    });
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 0, physicalFinish: "NORMAL" },
+      data: { physicalFinish: "FOIL", quantity: { increment: 2 } },
+    });
+    expect(repository.collectionEntry.create).not.toHaveBeenCalled();
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 2 },
+    ]);
+  });
+
+  it("reuses a zero-quantity NORMAL-keyed physical Foil snapshot when adding Normal", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(0, "card-common", "NORMAL", "FOIL"),
+    ]);
+
+    await recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "NORMAL", operation: "ADD", quantity: 3 }, repository);
+
+    expect(entries.get("card-common:NORMAL:UNKNOWN")).toMatchObject({
+      variant: "NORMAL",
+      physicalFinish: "NORMAL",
+      quantity: 3,
+    });
+    expect(transactions).toMatchObject([
+      { cardId: "card-common", variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", type: "ADD", quantity: 3 },
+    ]);
+  });
+
+  it("fails safely when stale zero-row reuse no longer matches the guarded update", async () => {
+    const { repository, entries, transactions } = createRepository(baseCard, [
+      createEntry(0, "card-common", "FOIL", "NORMAL"),
+    ]);
+    repository.collectionEntry.updateMany = vi.fn(async () => ({ count: 0 }));
+
+    await expect(recordCollectionFinishAdjustment({ cardId: "card-common", physicalFinish: "FOIL", operation: "ADD", quantity: 1 }, repository))
+      .rejects.toMatchObject({ code: "COLLECTION_FINISH_KEY_CONFLICT" });
+
+    expect(repository.collectionEntry.updateMany).toHaveBeenCalledWith({
+      where: { cardId: "card-common", variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 0, physicalFinish: "NORMAL" },
+      data: { physicalFinish: "FOIL", quantity: { increment: 1 } },
+    });
+    expect(entries.get("card-common:FOIL:UNKNOWN")).toMatchObject({ quantity: 0, physicalFinish: "NORMAL" });
+    expect(transactions).toHaveLength(0);
     expect(repository.collectionTransaction.create).not.toHaveBeenCalled();
   });
 
