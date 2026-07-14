@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { updateCollectionQuantityAction } from "./actions";
 import { getCardDetailHref } from "./card-detail-link";
 import { cardFactionIconTokens, cardFactionLabelsFr, cardKindLabelsFr, cardPrintTreatmentLabelsFr, cardRarityLabelsFr } from "@/lib/formatters/cards";
 import { CARD_FACTIONS, type CardFaction } from "@/lib/domain/card-taxonomy";
@@ -305,10 +306,10 @@ function CollectionTable({ compact, quantityDisplayMode, rows, selectedQuantityL
               <td className={`${cellPadding} ${totalClassName}`}>{row.totalOwnedQuantity}</td>
               <td className={`${cellPadding} ${binderClassName}`}>{row.totalBinderReservedQuantity}</td>
               <td className={`${cellPadding} ${totalClassName}`}>{row.totalAvailableQuantity}</td>
-              <td className={cellPadding}><FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} compact={compact} /></td>
+              <td className={cellPadding}><FinishQuantityBreakdown row={row} finish="Normal" owned={row.normalOwnedQuantity} editable={row.normalEditable} editableQuantity={row.normalEditableQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} compact={compact} /></td>
               <td className={cellPadding}>
                 <div className="grid gap-2">
-                  <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} compact={compact} />
+                  <FinishQuantityBreakdown row={row} finish="Foil" owned={row.foilOwnedQuantity} editable={row.foilEditable} editableQuantity={row.foilEditableQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} compact={compact} />
                   <LegacyShowcaseQuantity row={row} compact={compact} />
                 </div>
               </td>
@@ -344,9 +345,9 @@ function CollectionGrid({ quantityDisplayMode, rows, selectedQuantityLabel }: Co
             <CollectionMetric label="Disponibles" value={row.totalAvailableQuantity} />
           </dl>
           <div className="mt-4 grid gap-3 text-sm text-archive-text300 sm:grid-cols-2">
-            <FinishQuantityBreakdown finish="Normal" owned={row.normalOwnedQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} />
+            <FinishQuantityBreakdown row={row} finish="Normal" owned={row.normalOwnedQuantity} editable={row.normalEditable} editableQuantity={row.normalEditableQuantity} reserved={row.normalBinderReservedQuantity} available={row.normalAvailableQuantity} />
             <div className="grid gap-3">
-              <FinishQuantityBreakdown finish="Foil" owned={row.foilOwnedQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} />
+              <FinishQuantityBreakdown row={row} finish="Foil" owned={row.foilOwnedQuantity} editable={row.foilEditable} editableQuantity={row.foilEditableQuantity} reserved={row.foilBinderReservedQuantity} available={row.foilAvailableQuantity} />
               <LegacyShowcaseQuantity row={row} />
             </div>
           </div>
@@ -449,17 +450,27 @@ function CollectionMetric({ emphasize = false, label, value }: { emphasize?: boo
 function FinishQuantityBreakdown({
   available,
   compact = false,
+  editable,
+  editableQuantity,
   finish,
   owned,
   reserved,
+  row,
 }: {
   available: number;
+  editable: boolean;
+  editableQuantity: number;
   compact?: boolean;
   finish: "Normal" | "Foil";
   owned: number;
   reserved: number;
+  row: CollectionDisplayRow;
 }) {
   const textClassName = compact ? "text-xs" : "text-sm";
+
+  const finishValue = finish === "Normal" ? "NORMAL" : "FOIL";
+  const addLabel = `Ajouter 1 ${finish} à ${row.cardName}`;
+  const removeLabel = `Retirer 1 ${finish} de ${row.cardName}`;
 
   return (
     <div className={`rounded-card border border-[rgba(199,168,102,0.16)] bg-[rgba(5,8,14,0.44)] px-3 py-2 ${textClassName}`}>
@@ -473,6 +484,14 @@ function FinishQuantityBreakdown({
       <p className="text-archive-text300">
         Disponibles: <span className="font-semibold text-archive-text100">{available}</span>
       </p>
+      {editable ? (
+        <form action={updateCollectionQuantityAction} className="mt-2 flex flex-wrap gap-2">
+          <input name="cardId" type="hidden" value={row.cardId} />
+          <input name="finish" type="hidden" value={finishValue} />
+          <button aria-label={addLabel} className="rounded-chip border border-[rgba(199,168,102,0.36)] px-2 py-1 text-xs font-semibold text-archive-gold300 hover:bg-[rgba(199,168,102,0.12)]" name="operation" title={finish === "Normal" ? "Ajouter Normal" : "Ajouter Foil"} type="submit" value="ADD">+1</button>
+          <button aria-label={removeLabel} className="rounded-chip border border-[rgba(199,168,102,0.24)] px-2 py-1 text-xs font-semibold text-archive-text300 enabled:hover:bg-[rgba(199,168,102,0.12)] disabled:cursor-not-allowed disabled:opacity-45" disabled={editableQuantity <= 0} name="operation" title={finish === "Normal" ? "Retirer Normal" : "Retirer Foil"} type="submit" value="REMOVE">-1</button>
+        </form>
+      ) : null}
     </div>
   );
 }

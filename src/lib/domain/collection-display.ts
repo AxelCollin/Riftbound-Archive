@@ -17,9 +17,13 @@ export type CollectionDisplayRow = {
   normalOwnedQuantity: number;
   normalBinderReservedQuantity: number;
   normalAvailableQuantity: number;
+  normalEditableQuantity: number;
+  normalEditable: boolean;
   foilOwnedQuantity: number;
   foilBinderReservedQuantity: number;
   foilAvailableQuantity: number;
+  foilEditableQuantity: number;
+  foilEditable: boolean;
   legacyShowcaseOwnedQuantity: number;
   legacyShowcaseBinderReservedQuantity: number;
   legacyShowcaseAvailableQuantity: number;
