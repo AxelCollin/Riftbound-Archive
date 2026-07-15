@@ -9,15 +9,18 @@ import {
   physicalFinishLabelsFr,
   showcaseTreatmentLabelsFr,
 } from "@/lib/formatters/cards";
+import { updateCardDetailQuantityAction, updateCardFavoriteAction, updateCardNoteAction } from "./actions";
+import { CARD_NOTE_MAX_LENGTH } from "@/lib/services/card-user-meta";
 import { getCardDetailFromRouteParam, type CardPossessionFinish } from "@/lib/queries/card-detail";
 
 export const dynamic = "force-dynamic";
 
-type CardDetailPageProps = { params: Promise<{ cardId: string }> };
+type CardDetailPageProps = { params: Promise<{ cardId: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
 
-export default async function CardDetailPage({ params }: CardDetailPageProps) {
+export default async function CardDetailPage({ params, searchParams }: CardDetailPageProps) {
   const { cardId } = await params;
   const card = await getCardDetailFromRouteParam(cardId);
+  const feedback = getFeedback(await searchParams);
 
   if (!card) notFound();
 
@@ -40,6 +43,8 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
           <div className="mt-5 flex flex-wrap gap-2">
             {badges.map((badge) => <Badge key={badge}>{badge}</Badge>)}
           </div>
+                  <FavoriteForm cardId={printing.id} cardName={printing.displayName} favorite={card.userMeta?.favorite ?? false} />
+          <FeedbackBanners feedback={feedback} />
         </header>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(280px,420px)_1fr]">
@@ -78,10 +83,11 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
                     <Metric label="Possédées au total" value={card.possession.totalOwnedQuantity} />
                     <Metric label="Réservées binder" value={card.possession.totalBinderReservedQuantity} />
                     <Metric label="Disponibles" value={card.possession.totalAvailableQuantity} />
+                    <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><p className="text-xs uppercase tracking-[0.22em] text-archive-gold300">Statut binder</p><p className="mt-2 text-base font-semibold text-archive-text100">{card.possession.reservationStatus}</p></div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <FinishBlock title={physicalFinishLabelsFr.NORMAL} row={card.possession.normal} />
-                    <FinishBlock title={physicalFinishLabelsFr.FOIL} row={card.possession.foil} />
+                    <FinishBlock title={physicalFinishLabelsFr.NORMAL} finish="NORMAL" row={card.possession.normal} cardId={printing.id} cardName={printing.displayName} />
+                    <FinishBlock title={physicalFinishLabelsFr.FOIL} finish="FOIL" row={card.possession.foil} cardId={printing.id} cardName={printing.displayName} />
                   </div>
                   {card.possession.legacyShowcaseCompatibility ? <LegacyShowcase row={card.possession.legacyShowcaseCompatibility} /> : null}
                 </div>
@@ -109,8 +115,8 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
             <Detail label="Rareté brute" value={card.officialRarityRaw ?? "—"} />
             <Detail label="Traitement brut" value={card.printTreatmentRaw ?? "—"} />
             <Detail label="Favori local" value={card.userMeta?.favorite ? "Oui" : "Non"} />
-            <Detail label="Note locale" value={card.userMeta?.note ?? "—"} />
           </dl>
+          <NoteForm cardId={printing.id} note={card.userMeta?.note ?? ""} />
         </section>
       </section>
     </main>
@@ -120,6 +126,11 @@ export default async function CardDetailPage({ params }: CardDetailPageProps) {
 function Badge({ children }: { children: React.ReactNode }) { return <span className="rounded-full border border-[rgba(199,168,102,0.28)] bg-[rgba(199,168,102,0.10)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-archive-gold300">{children}</span>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><dt className="text-xs uppercase tracking-[0.22em] text-archive-gold300">{label}</dt><dd className="mt-2 text-base text-archive-text100">{value}</dd></div>; }
 function Metric({ label, value }: { label: string; value: number }) { return <div className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><p className="text-xs uppercase tracking-[0.22em] text-archive-gold300">{label}</p><p className="mt-2 text-3xl font-semibold text-archive-text100">{value}</p></div>; }
-function FinishBlock({ title, row }: { title: string; row: CardPossessionFinish }) { return <article className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><h3 className="text-lg font-semibold text-archive-text100">{title}</h3><dl className="mt-4 grid grid-cols-3 gap-3 text-sm"><Mini label="Possédées" value={row.ownedQuantity} /><Mini label="Réservées binder" value={row.binderReservedQuantity} /><Mini label="Disponibles" value={row.availableQuantity} /></dl></article>; }
+function FinishBlock({ title, finish, row, cardId, cardName }: { title: string; finish: "NORMAL" | "FOIL"; row: CardPossessionFinish; cardId: string; cardName: string }) { return <article className="rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><h3 className="text-lg font-semibold text-archive-text100">{title}</h3><dl className="mt-4 grid grid-cols-3 gap-3 text-sm"><Mini label="Possédées" value={row.ownedQuantity} /><Mini label="Réservées binder" value={row.binderReservedQuantity} /><Mini label="Disponibles" value={row.availableQuantity} /></dl><p className="mt-4 text-sm text-archive-text300">Copies sans langue définie modifiables : <span className="font-semibold text-archive-text100">{row.editableUnknownQuantity}</span></p>{row.canIncrement ? <div className="mt-4 flex gap-2"><QuantityButton cardId={cardId} finish={finish} operation="REMOVE" disabled={!row.canDecrement} label={`Retirer une copie ${title} de ${cardName}`}>-1</QuantityButton><QuantityButton cardId={cardId} finish={finish} operation="ADD" disabled={false} label={`Ajouter une copie ${title} de ${cardName}`}>+1</QuantityButton></div> : <p className="mt-4 text-sm text-archive-text500">Non disponible pour cette impression</p>}</article>; }
 function Mini({ label, value }: { label: string; value: number }) { return <div><dt className="text-archive-text500">{label}</dt><dd className="mt-1 text-xl font-semibold text-archive-text100">{value}</dd></div>; }
+function QuantityButton({ cardId, finish, operation, disabled, label, children }: { cardId: string; finish: "NORMAL" | "FOIL"; operation: "ADD" | "REMOVE"; disabled: boolean; label: string; children: React.ReactNode }) { return <form action={updateCardDetailQuantityAction}><input type="hidden" name="cardId" value={cardId} /><input type="hidden" name="physicalFinish" value={finish} /><input type="hidden" name="operation" value={operation} /><button aria-label={label} disabled={disabled} className="rounded-full border border-[rgba(199,168,102,0.34)] px-4 py-2 text-sm font-semibold text-archive-gold300 disabled:cursor-not-allowed disabled:opacity-40" type="submit">{children}</button></form>; }
+function FavoriteForm({ cardId, cardName, favorite }: { cardId: string; cardName: string; favorite: boolean }) { return <form action={updateCardFavoriteAction} className="mt-5"><input type="hidden" name="cardId" value={cardId} /><input type="hidden" name="favorite" value={favorite ? "false" : "true"} /><button aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} ${cardName}`} className="rounded-full border border-[rgba(199,168,102,0.38)] bg-[rgba(199,168,102,0.10)] px-4 py-2 text-sm font-semibold text-archive-gold300" type="submit">{favorite ? "Retirer des favoris" : "Ajouter aux favoris"}</button></form>; }
+function NoteForm({ cardId, note }: { cardId: string; note: string }) { return <form action={updateCardNoteAction} className="mt-5 rounded-card border border-[rgba(199,168,102,0.22)] bg-[rgba(16,32,51,0.52)] p-4"><input type="hidden" name="cardId" value={cardId} /><label className="text-xs uppercase tracking-[0.22em] text-archive-gold300" htmlFor="card-note">Note locale</label><textarea id="card-note" name="note" maxLength={CARD_NOTE_MAX_LENGTH} defaultValue={note} className="mt-3 min-h-32 w-full rounded-card border border-[rgba(199,168,102,0.28)] bg-[rgba(5,8,14,0.82)] p-3 text-archive-text100" /><p className="mt-2 text-xs text-archive-text500">Maximum {CARD_NOTE_MAX_LENGTH} caractères. Envoyez une note vide pour l’effacer.</p><button className="mt-3 rounded-full border border-[rgba(199,168,102,0.38)] px-4 py-2 text-sm font-semibold text-archive-gold300" type="submit">Enregistrer la note</button></form>; }
+function getFeedback(params?: Record<string, string | string[] | undefined>) { const first = (key: string) => { const value = params?.[key]; return Array.isArray(value) ? value[0] : value; }; return { successes: [first("quantityUpdated") ? "Quantité mise à jour." : null, first("favoriteUpdated") ? "Favori mis à jour." : null, first("noteUpdated") ? "Note locale mise à jour." : null].filter(Boolean) as string[], errors: [first("quantityError"), first("favoriteError"), first("noteError")].filter(Boolean) as string[] }; }
+function FeedbackBanners({ feedback }: { feedback: { successes: string[]; errors: string[] } }) { return <div className="mt-4 grid gap-2">{feedback.successes.map((message) => <p key={message} role="status" className="rounded-card border border-emerald-400/40 bg-emerald-950/40 p-3 text-sm text-emerald-100">{message}</p>)}{feedback.errors.map((message) => <p key={message} role="alert" className="rounded-card border border-red-400/40 bg-red-950/40 p-3 text-sm text-red-100">{message}</p>)}</div>; }
 function LegacyShowcase({ row }: { row: CardPossessionFinish }) { return <aside className="rounded-card border border-dashed border-[rgba(199,168,102,0.36)] bg-[rgba(199,168,102,0.08)] p-4 text-sm text-archive-text300"><p className="font-semibold text-archive-gold300">Données de compatibilité Showcase héritées — lecture seule</p><p className="mt-2">Ces quantités restent visibles pour compatibilité, mais Showcase n’est pas une finition physique Normal/Foil.</p><dl className="mt-3 grid gap-3 md:grid-cols-3"><Mini label="Possédées" value={row.ownedQuantity} /><Mini label="Réservées binder" value={row.binderReservedQuantity} /><Mini label="Disponibles" value={row.availableQuantity} /></dl></aside>; }

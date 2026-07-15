@@ -44,16 +44,54 @@ function card(overrides: Partial<CardDetailRecord>): CardDetailRecord {
 
 function ownershipRows(detail: CardDetail) {
   const rows = [
-    { variant: "NORMAL" as const, ...detail.possession.normal },
-    { variant: "FOIL" as const, ...detail.possession.foil },
+    { variant: "NORMAL" as const, ownedQuantity: detail.possession.normal.ownedQuantity, binderReservedQuantity: detail.possession.normal.binderReservedQuantity, availableQuantity: detail.possession.normal.availableQuantity },
+    { variant: "FOIL" as const, ownedQuantity: detail.possession.foil.ownedQuantity, binderReservedQuantity: detail.possession.foil.binderReservedQuantity, availableQuantity: detail.possession.foil.availableQuantity },
   ];
 
   return detail.possession.legacyShowcaseCompatibility
-    ? [...rows.filter((row) => row.variant !== "NORMAL" || row.ownedQuantity > 0 || row.binderReservedQuantity > 0 || row.availableQuantity > 0), { variant: "SHOWCASE" as const, ...detail.possession.legacyShowcaseCompatibility }]
+    ? [...rows.filter((row) => row.variant !== "NORMAL" || row.ownedQuantity > 0 || row.binderReservedQuantity > 0 || row.availableQuantity > 0), { variant: "SHOWCASE" as const, ownedQuantity: detail.possession.legacyShowcaseCompatibility.ownedQuantity, binderReservedQuantity: detail.possession.legacyShowcaseCompatibility.binderReservedQuantity, availableQuantity: detail.possession.legacyShowcaseCompatibility.availableQuantity }]
     : rows;
 }
 
 describe("card detail mapping", () => {
+  it("tracks UNKNOWN editable quantities separately from aggregate language ownership", () => {
+    const detail = createCardDetail(card({ collectionEntries: [
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 },
+      { variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 1 },
+      { variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "EN", quantity: 3 },
+      { variant: "FOIL", physicalFinish: "FOIL", cardLanguage: "UNKNOWN", quantity: 2 },
+      { variant: "SHOWCASE", physicalFinish: null, cardLanguage: "UNKNOWN", quantity: 9 },
+    ] }));
+    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 3, editableUnknownQuantity: 1, canIncrement: true, canDecrement: true });
+    expect(detail.possession.foil).toMatchObject({ ownedQuantity: 5, editableUnknownQuantity: 2, canIncrement: true, canDecrement: true });
+  });
+
+  it("does not allow decrement from aggregate FR ownership when UNKNOWN is zero", () => {
+    const detail = createCardDetail(card({ collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", cardLanguage: "FR", quantity: 2 }] }));
+    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 2, editableUnknownQuantity: 0, canIncrement: true, canDecrement: false });
+  });
+
+  it("uses physicalFinish before legacy variant for editable UNKNOWN quantities", () => {
+    const detail = createCardDetail(card({ collectionEntries: [{ variant: "FOIL", physicalFinish: "NORMAL", cardLanguage: "UNKNOWN", quantity: 2 }] }));
+    expect(detail.possession.normal.editableUnknownQuantity).toBe(2);
+    expect(detail.possession.foil.editableUnknownQuantity).toBe(0);
+  });
+
+  it("sets edit flags from trackability and supported finishes", () => {
+    const rare = createCardDetail(card({ rarity: "RARE", collectionEntries: [{ variant: "FOIL", cardLanguage: "UNKNOWN", quantity: 1 }] }));
+    expect(rare.possession.normal).toMatchObject({ canIncrement: false, canDecrement: false });
+    expect(rare.possession.foil).toMatchObject({ canIncrement: true, canDecrement: true });
+    const token = createCardDetail(card({ kind: "TOKEN", collectionEntries: [] }));
+    expect(token.possession.normal.canIncrement).toBe(false);
+    expect(token.possession.foil.canIncrement).toBe(false);
+  });
+
+  it("derives compact reservation status", () => {
+    expect(createCardDetail(card({ collectionEntries: [] })).possession.reservationStatus).toBe("Non acquise");
+    expect(createCardDetail(card({ collectionEntries: [{ variant: "NORMAL", quantity: 1 }] })).possession.reservationStatus).toBe("Réservée en Normal");
+    expect(createCardDetail(card({ collectionEntries: [{ variant: "FOIL", quantity: 1 }] })).possession.reservationStatus).toBe("Réservée en Foil");
+  });
+
   it("returns the preferred display name using translation fallback", () => {
     const detail = createCardDetail(
       card({
@@ -112,9 +150,9 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(detail.possession.normal).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
-    expect(detail.possession.foil).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
-    expect(detail.possession.legacyShowcaseCompatibility).toEqual({ ownedQuantity: 3, binderReservedQuantity: 0, availableQuantity: 3 });
+    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
+    expect(detail.possession.foil).toMatchObject({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
+    expect(detail.possession.legacyShowcaseCompatibility).toMatchObject({ ownedQuantity: 3, binderReservedQuantity: 0, availableQuantity: 3 });
   });
 
   it("aggregates physical card languages for current language-agnostic ownership rows", () => {
@@ -327,10 +365,10 @@ describe("card detail mapping", () => {
     expect(noReduction.possession.foil.availableQuantity).toBe(0);
 
     const assembled = createCardDetail(card({ id: "assembled-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }), [{ assembled: true, allocations: [{ cardId: "assembled-card", variant: "NORMAL", quantity: 2 }] }]);
-    expect(assembled.possession.normal).toEqual({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 1 });
+    expect(assembled.possession.normal).toMatchObject({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 1 });
 
     const theoretical = createCardDetail(card({ id: "theoretical-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }), [{ assembled: false, allocations: [{ cardId: "theoretical-card", variant: "NORMAL", quantity: 2 }] }]);
-    expect(theoretical.possession.normal).toEqual({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 3 });
+    expect(theoretical.possession.normal).toMatchObject({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 3 });
   });
 
   it("loads assembled deck allocations for the requested card detail", async () => {
@@ -412,8 +450,8 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(detail.possession.normal).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
-    expect(detail.possession.foil).toEqual({ ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 });
+    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
+    expect(detail.possession.foil).toMatchObject({ ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 });
   });
 
   it("marks TOKEN and RULES cards as non-trackable without ownership variants", () => {
