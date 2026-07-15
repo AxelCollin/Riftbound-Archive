@@ -254,9 +254,12 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
   }
 
   const canonicalGameplayIdentityKey = card.gameplayIdentityKey?.trim();
-  const relatedPrintings = canonicalGameplayIdentityKey
+  const relatedPrintingCandidates = canonicalGameplayIdentityKey
     ? await prisma.card.findMany({
-        where: { gameplayIdentityKey: canonicalGameplayIdentityKey, id: { not: card.id } },
+        where: {
+          id: { not: card.id },
+          gameplayIdentityKey: { contains: canonicalGameplayIdentityKey },
+        },
         select: cardDetailSelect,
         orderBy: [
           { set: { releasedAt: "asc" } },
@@ -266,6 +269,9 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
         ],
       })
     : [];
+  const relatedPrintings = relatedPrintingCandidates.filter(
+    (candidate) => candidate.id !== card.id && candidate.gameplayIdentityKey?.trim() === canonicalGameplayIdentityKey,
+  );
 
   return createCardDetail(card, deckAllocationSets, relatedPrintings);
 }
