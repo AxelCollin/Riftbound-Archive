@@ -122,6 +122,7 @@ Note: Phase 2 used the early MVP `CardVariant` model. Phase 7.5 is responsible f
 - [x] Add direct collection quantity editing through collection transactions.
 - [ ] Redesign card detail around printings, possession, and related cards.
   - [x] Phase 7.5O initial card-detail slice: add a printing-centric detail layout, physical-finish possession summary, and navigation between gameplay-equivalent printed cards.
+  - [x] Phase 7.5P card-detail interaction slice: allow UNKNOWN-language Normal/Foil transaction editing and exact-printing favorite/note editing from the card detail page.
 - [ ] Improve booster UX with header access, dynamic opening rows, richer settings, and opening history.
 - [ ] Redesign deckbuilder layout around filters, card catalogue, compact deck summary, and inline missing-card visibility.
 

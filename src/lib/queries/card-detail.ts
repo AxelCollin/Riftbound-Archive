@@ -17,7 +17,7 @@ import type {
   CardGameplayType,
   ShowcaseTreatment,
 } from "../domain/card-taxonomy";
-import { createOwnedVariantCounts } from "../domain/collection-quantities";
+import { createOwnedVariantCounts, getOwnedSnapshotQuantityVariant } from "../domain/collection-quantities";
 import { getAllowedVariants, getVariantCount, type CardVariant } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
@@ -77,7 +77,12 @@ export type CardPossessionFinish = {
   ownedQuantity: number;
   binderReservedQuantity: number;
   availableQuantity: number;
+  editableUnknownQuantity: number;
+  canIncrement: boolean;
+  canDecrement: boolean;
 };
+
+export type ReservationStatus = "Non acquise" | "Réservée en Normal" | "Réservée en Foil" | "Réservée en Normal et Foil" | "Non réservée";
 
 export type RelatedPrinting = {
   id: string;
@@ -116,6 +121,7 @@ export type CardDetail = {
     totalAvailableQuantity: number;
     normal: CardPossessionFinish;
     foil: CardPossessionFinish;
+    reservationStatus: ReservationStatus;
     legacyShowcaseCompatibility?: CardPossessionFinish;
   };
   relatedPrintings: RelatedPrinting[];
@@ -125,12 +131,37 @@ export type CardDetail = {
   printTreatmentRaw: string | null;
 };
 
-function finishRow(counts: { owned: Record<string, number>; binder: Record<string, number>; available: Record<string, number> }, variant: CardVariant): CardPossessionFinish {
+function countEditableUnknown(entries: CardDetailCollectionEntryRecord[], variant: "NORMAL" | "FOIL") {
+  return entries.reduce((total, entry) => {
+    if (entry.cardLanguage !== "UNKNOWN") return total;
+    return getOwnedSnapshotQuantityVariant(entry) === variant ? total + entry.quantity : total;
+  }, 0);
+}
+
+function finishRow(
+  counts: { owned: Record<string, number>; binder: Record<string, number>; available: Record<string, number> },
+  variant: CardVariant,
+  editableUnknownQuantity = 0,
+  canIncrement = false,
+): CardPossessionFinish {
   return {
     ownedQuantity: getVariantCount(counts.owned, variant),
     binderReservedQuantity: getVariantCount(counts.binder, variant),
     availableQuantity: getVariantCount(counts.available, variant),
+    editableUnknownQuantity,
+    canIncrement,
+    canDecrement: canIncrement && editableUnknownQuantity > 0,
   };
+}
+
+export function getReservationStatus(input: { totalOwnedQuantity: number; normal: Pick<CardPossessionFinish, "binderReservedQuantity">; foil: Pick<CardPossessionFinish, "binderReservedQuantity"> }): ReservationStatus {
+  if (input.totalOwnedQuantity <= 0) return "Non acquise";
+  const normalReserved = input.normal.binderReservedQuantity > 0;
+  const foilReserved = input.foil.binderReservedQuantity > 0;
+  if (normalReserved && foilReserved) return "Réservée en Normal et Foil";
+  if (normalReserved) return "Réservée en Normal";
+  if (foilReserved) return "Réservée en Foil";
+  return "Non réservée";
 }
 
 function sumRows(rows: CardPossessionFinish[]): CardPossessionFinish {
@@ -139,8 +170,11 @@ function sumRows(rows: CardPossessionFinish[]): CardPossessionFinish {
       ownedQuantity: total.ownedQuantity + row.ownedQuantity,
       binderReservedQuantity: total.binderReservedQuantity + row.binderReservedQuantity,
       availableQuantity: total.availableQuantity + row.availableQuantity,
+      editableUnknownQuantity: total.editableUnknownQuantity + row.editableUnknownQuantity,
+      canIncrement: total.canIncrement || row.canIncrement,
+      canDecrement: total.canDecrement || row.canDecrement,
     }),
-    { ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+    { ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0, editableUnknownQuantity: 0, canIncrement: false, canDecrement: false },
   );
 }
 
@@ -158,8 +192,9 @@ export function createCardDetail(
   const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverrides?.[0]).reserved;
   const available = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
   const counts = { owned: ownedCounts, binder: binderReserved, available };
-  const normal = finishRow(counts, "NORMAL");
-  const foil = finishRow(counts, "FOIL");
+  const isTrackable = isTrackableCard(record);
+  const normal = finishRow(counts, "NORMAL", countEditableUnknown(record.collectionEntries, "NORMAL"), isTrackable && supportedFinishVariants.includes("NORMAL"));
+  const foil = finishRow(counts, "FOIL", countEditableUnknown(record.collectionEntries, "FOIL"), isTrackable && supportedFinishVariants.includes("FOIL"));
 
   const legacyShowcaseEntries = record.collectionEntries.filter((entry) => entry.physicalFinish == null && entry.variant === "SHOWCASE");
   const showcaseOwned = createOwnedVariantCounts(record.id, ["SHOWCASE"], legacyShowcaseEntries);
@@ -169,6 +204,7 @@ export function createCardDetail(
   const hasLegacyShowcase = legacyShowcaseCompatibility.ownedQuantity > 0 || legacyShowcaseCompatibility.binderReservedQuantity > 0 || legacyShowcaseCompatibility.availableQuantity > 0;
 
   const total = sumRows([normal, foil]);
+  const reservationStatus = getReservationStatus({ totalOwnedQuantity: total.ownedQuantity, normal, foil });
 
   return {
     printing: {
@@ -188,10 +224,11 @@ export function createCardDetail(
       factions: (record.factions ?? []).map((membership) => membership.faction).sort(),
     },
     possession: {
-      isTrackable: isTrackableCard(record),
+      isTrackable,
       totalOwnedQuantity: total.ownedQuantity,
       totalBinderReservedQuantity: total.binderReservedQuantity,
       totalAvailableQuantity: total.availableQuantity,
+      reservationStatus,
       normal,
       foil,
       legacyShowcaseCompatibility: hasLegacyShowcase ? legacyShowcaseCompatibility : undefined,
