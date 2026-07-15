@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 const prismaMock = vi.hoisted(() => ({
   card: {
     findUnique: vi.fn(),
-    findMany: vi.fn(),
   },
   deck: {
     findMany: vi.fn(),
@@ -17,7 +16,6 @@ vi.mock("../db", () => ({
 import {
   createCardDetail,
   getCardDetail,
-  type CardDetail,
   type CardDetailRecord,
 } from "./card-detail";
 
@@ -40,17 +38,6 @@ function card(overrides: Partial<CardDetailRecord>): CardDetailRecord {
     userMeta: null,
     ...overrides,
   };
-}
-
-function ownershipRows(detail: CardDetail) {
-  const rows = [
-    { variant: "NORMAL" as const, ...detail.possession.normal },
-    { variant: "FOIL" as const, ...detail.possession.foil },
-  ];
-
-  return detail.possession.legacyShowcaseCompatibility
-    ? [...rows.filter((row) => row.variant !== "NORMAL" || row.ownedQuantity > 0 || row.binderReservedQuantity > 0 || row.availableQuantity > 0), { variant: "SHOWCASE" as const, ...detail.possession.legacyShowcaseCompatibility }]
-    : rows;
 }
 
 describe("card detail mapping", () => {
@@ -83,7 +70,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(detail.printing.displayName).toBe("Nom France");
+    expect(detail.displayName).toBe("Nom France");
   });
 
   it("reads normal and foil ownership rows from physicalFinish when present", () => {
@@ -97,7 +84,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       { variant: "NORMAL", ownedQuantity: 2, binderReservedQuantity: 0, availableQuantity: 2 },
       { variant: "FOIL", ownedQuantity: 1, binderReservedQuantity: 1, availableQuantity: 0 },
     ]);
@@ -112,9 +99,10 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(detail.possession.normal).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
-    expect(detail.possession.foil).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
-    expect(detail.possession.legacyShowcaseCompatibility).toEqual({ ownedQuantity: 3, binderReservedQuantity: 0, availableQuantity: 3 });
+    expect(detail.ownershipRows).toEqual([
+      { variant: "NORMAL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+      { variant: "FOIL", ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 },
+    ]);
   });
 
   it("aggregates physical card languages for current language-agnostic ownership rows", () => {
@@ -129,7 +117,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(ownershipRows(detail)[0]).toMatchObject({ variant: "NORMAL", ownedQuantity: 6, availableQuantity: 5 });
+    expect(detail.ownershipRows[0]).toMatchObject({ variant: "NORMAL", ownedQuantity: 6, availableQuantity: 5 });
   });
 
   it("shows quantity 0 for allowed variants without snapshots", () => {
@@ -140,7 +128,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "NORMAL",
         ownedQuantity: 0,
@@ -168,7 +156,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "FOIL",
         ownedQuantity: 1,
@@ -187,7 +175,7 @@ describe("card detail mapping", () => {
   it("maps missing valid snapshots to coherent owned, reserved, and available quantities", () => {
     const detail = createCardDetail(card({ rarity: "COMMON" }));
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "NORMAL",
         ownedQuantity: 0,
@@ -212,7 +200,7 @@ describe("card detail mapping", () => {
       }),
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "FOIL",
         ownedQuantity: 0,
@@ -244,7 +232,7 @@ describe("card detail mapping", () => {
       ],
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "NORMAL",
         ownedQuantity: 4,
@@ -278,7 +266,7 @@ describe("card detail mapping", () => {
       ],
     );
 
-    expect(ownershipRows(detail)).toEqual([
+    expect(detail.ownershipRows).toEqual([
       {
         variant: "FOIL",
         ownedQuantity: 0,
@@ -313,7 +301,7 @@ describe("card detail mapping", () => {
 
     expect(prismaMock.card.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
-        select: expect.objectContaining({
+        include: expect.objectContaining({
           collectionEntries: { select: { variant: true, physicalFinish: true, cardLanguage: true, quantity: true } },
         }),
       }),
@@ -326,12 +314,12 @@ describe("card detail mapping", () => {
       select: {
         allocations: {
           where: { cardId: "db-detail-card" },
-          select: { cardId: true, variant: true, physicalFinish: true, cardLanguage: true, quantity: true },
+          select: { cardId: true, variant: true, physicalFinish: true, quantity: true },
         },
       },
     });
     expect(
-      detail ? ownershipRows(detail).find((row) => row.variant === "NORMAL") : undefined,
+      detail?.ownershipRows.find((row) => row.variant === "NORMAL"),
     ).toMatchObject({
       ownedQuantity: 3,
       binderReservedQuantity: 1,
@@ -352,77 +340,22 @@ describe("card detail mapping", () => {
     );
   });
 
-  it("keeps Normal and Foil possession blocks even when legacy rarity allowed only Foil", () => {
-    const detail = createCardDetail(
-      card({
-        id: "rare-detail",
-        rarity: "RARE",
-        collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
-      }),
+  it("surfaces NORMAL snapshots on foil-only cards as invalid persisted data", () => {
+    expect(() =>
+      createCardDetail(
+        card({
+          id: "bad-detail-rare",
+          rarity: "RARE",
+          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+        }),
+      ),
+    ).toThrow(
+      "Invalid CollectionEntry variant NORMAL for card bad-detail-rare",
     );
-
-    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 1 });
-    expect(detail.possession.foil).toMatchObject({ ownedQuantity: 0 });
   });
 
   it("marks TOKEN and RULES cards as non-trackable without ownership variants", () => {
-    expect(createCardDetail(card({ kind: "TOKEN" })).possession.isTrackable).toBe(false);
-    expect(createCardDetail(card({ kind: "RULES" })).possession.isTrackable).toBe(false);
+    expect(createCardDetail(card({ kind: "TOKEN" })).ownershipRows).toEqual([]);
+    expect(createCardDetail(card({ kind: "RULES" })).isTrackable).toBe(false);
   });
-
-  it("queries exact gameplay identity related printings and excludes the current card", async () => {
-    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: "identity-1" }));
-    prismaMock.deck.findMany.mockResolvedValueOnce([]);
-    prismaMock.card.findMany.mockResolvedValueOnce([
-      card({ id: "showcase", name: "Showcase", collectorCategory: "SHOWCASE", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "FOIL", physicalFinish: "FOIL", quantity: 2 }] }),
-      card({ id: "standard", name: "Standard", collectorCategory: "STANDARD", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] }),
-    ]);
-
-    const detail = await getCardDetail("current");
-
-    expect(prismaMock.card.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { gameplayIdentityKey: "identity-1", id: { not: "current" } },
-      orderBy: [
-        { set: { releasedAt: "asc" } },
-        { set: { code: "asc" } },
-        { collectorNumber: "asc" },
-        { id: "asc" },
-      ],
-    }));
-    expect(detail?.relatedPrintings.map((printing) => printing.id)).toEqual(["showcase", "standard"]);
-    expect(detail?.relatedPrintings.map((printing) => printing.ownedQuantity)).toEqual([2, 1]);
-    expect(detail?.relatedPrintings[0]?.href).toBe("/cards/showcase");
-  });
-
-  it("does not query related printings for null, empty, or whitespace gameplay identity keys", async () => {
-    prismaMock.card.findMany.mockClear();
-
-    for (const gameplayIdentityKey of [null, "", "   "]) {
-      prismaMock.card.findUnique.mockResolvedValueOnce(card({ gameplayIdentityKey }));
-      prismaMock.deck.findMany.mockResolvedValueOnce([]);
-
-      const detail = await getCardDetail(`identity-${String(gameplayIdentityKey)}`);
-
-      expect(detail?.relatedPrintings).toEqual([]);
-    }
-
-    expect(prismaMock.card.findMany).not.toHaveBeenCalled();
-  });
-
-  it("keeps related-printing ownership attached to each exact printed card", () => {
-    const detail = createCardDetail(
-      card({ id: "base", gameplayIdentityKey: "shared" }),
-      [],
-      [
-        card({ id: "owned-printing", gameplayIdentityKey: "shared", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 4 }] }),
-        card({ id: "unowned-printing", gameplayIdentityKey: "shared", collectionEntries: [] }),
-      ],
-    );
-
-    expect(detail.relatedPrintings).toMatchObject([
-      { id: "owned-printing", ownedQuantity: 4 },
-      { id: "unowned-printing", ownedQuantity: 0 },
-    ]);
-  });
-
 });
