@@ -421,8 +421,14 @@ describe("card detail mapping", () => {
     expect(createCardDetail(card({ kind: "RULES" })).possession.isTrackable).toBe(false);
   });
 
-  it("queries exact gameplay identity related printings and excludes the current card", async () => {
-    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: "  identity-1  " }));
+  it("queries canonical gameplay identity related printings and excludes the current card", async () => {
+    prismaMock.card.findUnique.mockResolvedValueOnce(card({
+      id: "current",
+      name: "Padded Current Name",
+      set: { code: "CUR", name: "Current Set" },
+      collectorNumber: "999",
+      gameplayIdentityKey: "  identity-1  ",
+    }));
     prismaMock.deck.findMany.mockResolvedValueOnce([]);
     prismaMock.card.findMany.mockResolvedValueOnce([
       card({ id: "showcase", name: "Showcase", collectorCategory: "SHOWCASE", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "FOIL", physicalFinish: "FOIL", quantity: 2 }] }),
@@ -432,7 +438,7 @@ describe("card detail mapping", () => {
     const detail = await getCardDetail("current");
 
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { gameplayIdentityKey: "  identity-1  ", id: { not: "current" } },
+      where: { gameplayIdentityKey: "identity-1", id: { not: "current" } },
       orderBy: [
         { set: { releasedAt: "asc" } },
         { set: { code: "asc" } },
@@ -440,9 +446,32 @@ describe("card detail mapping", () => {
         { id: "asc" },
       ],
     }));
+    const relatedPrintingQuery = prismaMock.card.findMany.mock.calls.at(-1)?.[0];
+    expect(relatedPrintingQuery?.where).toEqual({ gameplayIdentityKey: "identity-1", id: { not: "current" } });
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("name");
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("set");
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("collectorNumber");
     expect(detail?.relatedPrintings.map((printing) => printing.id)).toEqual(["showcase", "standard"]);
     expect(detail?.relatedPrintings.map((printing) => printing.ownedQuantity)).toEqual([2, 1]);
     expect(detail?.relatedPrintings[0]?.href).toBe("/cards/showcase");
+  });
+
+  it("keeps already canonical gameplay identity keys unchanged for related-printing lookup", async () => {
+    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: "identity-1" }));
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+
+    await getCardDetail("current");
+
+    expect(prismaMock.card.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { gameplayIdentityKey: "identity-1", id: { not: "current" } },
+      orderBy: [
+        { set: { releasedAt: "asc" } },
+        { set: { code: "asc" } },
+        { collectorNumber: "asc" },
+        { id: "asc" },
+      ],
+    }));
   });
 
   it("does not query related printings for null, empty, or whitespace gameplay identity keys", async () => {

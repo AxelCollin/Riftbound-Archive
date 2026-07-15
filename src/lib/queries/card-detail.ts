@@ -253,10 +253,10 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
     return null;
   }
 
-  const rawGameplayIdentityKey = card.gameplayIdentityKey;
-  const relatedPrintings = rawGameplayIdentityKey?.trim()
+  const canonicalGameplayIdentityKey = card.gameplayIdentityKey?.trim();
+  const relatedPrintings = canonicalGameplayIdentityKey
     ? await prisma.card.findMany({
-        where: { gameplayIdentityKey: rawGameplayIdentityKey, id: { not: card.id } },
+        where: { gameplayIdentityKey: canonicalGameplayIdentityKey, id: { not: card.id } },
         select: cardDetailSelect,
         orderBy: [
           { set: { releasedAt: "asc" } },
