@@ -294,6 +294,45 @@ describe("card detail mapping", () => {
     ]);
   });
 
+
+  it("allows Common and Uncommon Normal and Foil ownership but keeps Rare and Epic Foil-only", () => {
+    for (const rarity of ["COMMON", "UNCOMMON"] as const) {
+      const detail = createCardDetail(card({ rarity, collectionEntries: [{ variant: "NORMAL", quantity: 1 }, { variant: "FOIL", quantity: 2 }] }));
+      expect(detail.possession.normal.ownedQuantity).toBe(1);
+      expect(detail.possession.foil.ownedQuantity).toBe(2);
+    }
+
+    for (const rarity of ["RARE", "EPIC"] as const) {
+      const detail = createCardDetail(card({ rarity, collectionEntries: [{ variant: "FOIL", quantity: 2 }] }));
+      expect(detail.possession.normal.ownedQuantity).toBe(0);
+      expect(detail.possession.foil.ownedQuantity).toBe(2);
+      expect(() => createCardDetail(card({ rarity, collectionEntries: [{ variant: "NORMAL", quantity: 1 }] }))).toThrow("Invalid CollectionEntry variant NORMAL");
+    }
+  });
+
+  it("preserves physicalFinish precedence for migrated Normal/Foil mismatches", () => {
+    const common = createCardDetail(card({ rarity: "COMMON", collectionEntries: [{ variant: "FOIL", physicalFinish: "NORMAL", quantity: 3 }, { variant: "NORMAL", physicalFinish: "FOIL", quantity: 4 }] }));
+    expect(common.possession.normal.ownedQuantity).toBe(3);
+    expect(common.possession.foil.ownedQuantity).toBe(4);
+
+    expect(() => createCardDetail(card({ id: "rare-mismatch", rarity: "RARE", collectionEntries: [{ variant: "FOIL", physicalFinish: "NORMAL", quantity: 1 }] }))).toThrow("Invalid CollectionEntry variant NORMAL for card rare-mismatch; allowed variants: FOIL");
+
+    const rare = createCardDetail(card({ rarity: "RARE", collectionEntries: [{ variant: "NORMAL", physicalFinish: "FOIL", quantity: 1 }] }));
+    expect(rare.possession.foil.ownedQuantity).toBe(1);
+  });
+
+  it("keeps valid owned quantities available unless binder or assembled allocations reduce them", () => {
+    const noReduction = createCardDetail(card({ collectionEntries: [{ variant: "NORMAL", quantity: 1 }, { variant: "FOIL", quantity: 1 }] }));
+    expect(noReduction.possession.normal.availableQuantity).toBe(1);
+    expect(noReduction.possession.foil.availableQuantity).toBe(0);
+
+    const assembled = createCardDetail(card({ id: "assembled-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }), [{ assembled: true, allocations: [{ cardId: "assembled-card", variant: "NORMAL", quantity: 2 }] }]);
+    expect(assembled.possession.normal).toEqual({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 1 });
+
+    const theoretical = createCardDetail(card({ id: "theoretical-card", collectionEntries: [{ variant: "NORMAL", quantity: 4 }] }), [{ assembled: false, allocations: [{ cardId: "theoretical-card", variant: "NORMAL", quantity: 2 }] }]);
+    expect(theoretical.possession.normal).toEqual({ ownedQuantity: 4, binderReservedQuantity: 1, availableQuantity: 3 });
+  });
+
   it("loads assembled deck allocations for the requested card detail", async () => {
     prismaMock.card.findUnique.mockResolvedValueOnce(
       card({
@@ -352,17 +391,29 @@ describe("card detail mapping", () => {
     );
   });
 
-  it("keeps Normal and Foil possession blocks even when legacy rarity allowed only Foil", () => {
+  it("rejects unsupported persisted Normal snapshots for Foil-only Rare cards", () => {
+    expect(() =>
+      createCardDetail(
+        card({
+          id: "rare-detail",
+          rarity: "RARE",
+          collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+        }),
+      ),
+    ).toThrow("Invalid CollectionEntry variant NORMAL for card rare-detail; allowed variants: FOIL");
+  });
+
+  it("still returns zero-valued Normal block for valid Foil-only Rare cards", () => {
     const detail = createCardDetail(
       card({
         id: "rare-detail",
         rarity: "RARE",
-        collectionEntries: [{ variant: "NORMAL", quantity: 1 }],
+        collectionEntries: [{ variant: "FOIL", quantity: 2 }],
       }),
     );
 
-    expect(detail.possession.normal).toMatchObject({ ownedQuantity: 1 });
-    expect(detail.possession.foil).toMatchObject({ ownedQuantity: 0 });
+    expect(detail.possession.normal).toEqual({ ownedQuantity: 0, binderReservedQuantity: 0, availableQuantity: 0 });
+    expect(detail.possession.foil).toEqual({ ownedQuantity: 2, binderReservedQuantity: 1, availableQuantity: 1 });
   });
 
   it("marks TOKEN and RULES cards as non-trackable without ownership variants", () => {
@@ -370,18 +421,32 @@ describe("card detail mapping", () => {
     expect(createCardDetail(card({ kind: "RULES" })).possession.isTrackable).toBe(false);
   });
 
-  it("queries exact gameplay identity related printings and excludes the current card", async () => {
-    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: "identity-1" }));
+  it("retrieves bounded related-printing candidates and filters them with canonical gameplay identity keys", async () => {
+    prismaMock.card.findUnique.mockResolvedValueOnce(card({
+      id: "current",
+      name: "Padded Current Name",
+      set: { code: "CUR", name: "Current Set" },
+      collectorNumber: "999",
+      gameplayIdentityKey: "  identity-1  ",
+    }));
     prismaMock.deck.findMany.mockResolvedValueOnce([]);
     prismaMock.card.findMany.mockResolvedValueOnce([
       card({ id: "showcase", name: "Showcase", collectorCategory: "SHOWCASE", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "FOIL", physicalFinish: "FOIL", quantity: 2 }] }),
-      card({ id: "standard", name: "Standard", collectorCategory: "STANDARD", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] }),
+      card({ id: "padded", name: "Padded", collectorCategory: "STANDARD", gameplayIdentityKey: " identity-1 ", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] }),
+      card({ id: "current", name: "Current from defensive filter", gameplayIdentityKey: "identity-1" }),
+      card({ id: "identity-10", name: "False Positive", gameplayIdentityKey: "identity-10" }),
+      card({ id: "prefixed", name: "False Positive", gameplayIdentityKey: "xidentity-1" }),
+      card({ id: "suffixed", name: "False Positive", gameplayIdentityKey: "identity-1-extra" }),
+      card({ id: "spaced", name: "False Positive", gameplayIdentityKey: "identity  -1" }),
+      card({ id: "case", name: "False Positive", gameplayIdentityKey: "Identity-1" }),
+      card({ id: "metadata", name: "Padded Current Name", collectorNumber: "999", set: { code: "CUR", name: "Current Set" }, gameplayIdentityKey: null }),
+      card({ id: "standard", name: "Standard", collectorCategory: "STANDARD", gameplayIdentityKey: "identity-1", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 3 }] }),
     ]);
 
     const detail = await getCardDetail("current");
 
     expect(prismaMock.card.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { gameplayIdentityKey: "identity-1", id: { not: "current" } },
+      where: { id: { not: "current" }, gameplayIdentityKey: { contains: "identity-1" } },
       orderBy: [
         { set: { releasedAt: "asc" } },
         { set: { code: "asc" } },
@@ -389,9 +454,47 @@ describe("card detail mapping", () => {
         { id: "asc" },
       ],
     }));
-    expect(detail?.relatedPrintings.map((printing) => printing.id)).toEqual(["showcase", "standard"]);
-    expect(detail?.relatedPrintings.map((printing) => printing.ownedQuantity)).toEqual([2, 1]);
+    const relatedPrintingQuery = prismaMock.card.findMany.mock.calls.at(-1)?.[0];
+    expect(relatedPrintingQuery?.where).toEqual({ id: { not: "current" }, gameplayIdentityKey: { contains: "identity-1" } });
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("name");
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("set");
+    expect(relatedPrintingQuery?.where).not.toHaveProperty("collectorNumber");
+    expect(detail?.relatedPrintings.map((printing) => printing.id)).toEqual(["showcase", "padded", "standard"]);
+    expect(detail?.relatedPrintings.map((printing) => printing.ownedQuantity)).toEqual([2, 1, 3]);
     expect(detail?.relatedPrintings[0]?.href).toBe("/cards/showcase");
+  });
+
+  it.each([
+    ["canonical current and canonical candidate", "identity-1", "identity-1"],
+    ["padded current and canonical candidate", "  identity-1  ", "identity-1"],
+    ["canonical current and padded candidate", "identity-1", "  identity-1  "],
+    ["padded current and padded candidate", "  identity-1  ", " identity-1 "],
+  ])("returns related printings for %s", async (_label, currentKey, candidateKey) => {
+    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: currentKey }));
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    prismaMock.card.findMany.mockResolvedValueOnce([card({ id: "related", gameplayIdentityKey: candidateKey })]);
+
+    const detail = await getCardDetail("current");
+
+    expect(detail?.relatedPrintings.map((printing) => printing.id)).toEqual(["related"]);
+  });
+
+  it("keeps already canonical gameplay identity keys unchanged for related-printing lookup", async () => {
+    prismaMock.card.findUnique.mockResolvedValueOnce(card({ id: "current", gameplayIdentityKey: "identity-1" }));
+    prismaMock.deck.findMany.mockResolvedValueOnce([]);
+    prismaMock.card.findMany.mockResolvedValueOnce([]);
+
+    await getCardDetail("current");
+
+    expect(prismaMock.card.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: { not: "current" }, gameplayIdentityKey: { contains: "identity-1" } },
+      orderBy: [
+        { set: { releasedAt: "asc" } },
+        { set: { code: "asc" } },
+        { collectorNumber: "asc" },
+        { id: "asc" },
+      ],
+    }));
   });
 
   it("does not query related printings for null, empty, or whitespace gameplay identity keys", async () => {
@@ -407,6 +510,14 @@ describe("card detail mapping", () => {
     }
 
     expect(prismaMock.card.findMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported related-printing ownership with the same validation as current card", () => {
+    expect(() =>
+      createCardDetail(card({ id: "base", gameplayIdentityKey: "shared" }), [], [
+        card({ id: "rare-related", rarity: "RARE", gameplayIdentityKey: "shared", collectionEntries: [{ variant: "NORMAL", physicalFinish: "NORMAL", quantity: 1 }] }),
+      ]),
+    ).toThrow("Invalid CollectionEntry variant NORMAL for card rare-related; allowed variants: FOIL");
   });
 
   it("keeps related-printing ownership attached to each exact printed card", () => {

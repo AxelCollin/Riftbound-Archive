@@ -18,7 +18,7 @@ import type {
   ShowcaseTreatment,
 } from "../domain/card-taxonomy";
 import { createOwnedVariantCounts } from "../domain/collection-quantities";
-import { getVariantCount, type CardVariant } from "../domain/variants";
+import { getAllowedVariants, getVariantCount, type CardVariant } from "../domain/variants";
 import { getDisplayCardName } from "./collection";
 import { getFirstCardDetailLookupResult } from "./card-detail-route";
 
@@ -144,13 +144,17 @@ function sumRows(rows: CardPossessionFinish[]): CardPossessionFinish {
   );
 }
 
+function getSupportedPhysicalFinishVariants(card: Pick<CardDetailRecord, "rarity" | "kind" | "gameplayType" | "collectorCategory" | "hasShowcase">): CardVariant[] {
+  return getAllowedVariants(card).filter((variant): variant is "NORMAL" | "FOIL" => variant === "NORMAL" || variant === "FOIL");
+}
+
 export function createCardDetail(
   record: CardDetailRecord,
   deckAllocationSets: DeckAllocationSet[] = [],
   relatedRecords: CardDetailRecord[] = [],
 ): CardDetail {
-  const finishVariants: CardVariant[] = ["NORMAL", "FOIL"];
-  const ownedCounts = createOwnedVariantCounts(record.id, finishVariants, record.collectionEntries);
+  const supportedFinishVariants = getSupportedPhysicalFinishVariants(record);
+  const ownedCounts = createOwnedVariantCounts(record.id, supportedFinishVariants, record.collectionEntries);
   const binderReserved = getBinderReservation(record, ownedCounts, record.binderOverrides?.[0]).reserved;
   const available = getCardAvailability(record, ownedCounts, deckAllocationSets, binderReserved).available;
   const counts = { owned: ownedCounts, binder: binderReserved, available };
@@ -193,7 +197,7 @@ export function createCardDetail(
       legacyShowcaseCompatibility: hasLegacyShowcase ? legacyShowcaseCompatibility : undefined,
     },
     relatedPrintings: relatedRecords.map((related) => {
-      const relatedOwnedCounts = createOwnedVariantCounts(related.id, ["NORMAL", "FOIL"], related.collectionEntries);
+      const relatedOwnedCounts = createOwnedVariantCounts(related.id, getSupportedPhysicalFinishVariants(related), related.collectionEntries);
       return {
         id: related.id,
         displayName: getDisplayCardName(related),
@@ -249,10 +253,13 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
     return null;
   }
 
-  const gameplayIdentityKey = card.gameplayIdentityKey?.trim();
-  const relatedPrintings = gameplayIdentityKey
+  const canonicalGameplayIdentityKey = card.gameplayIdentityKey?.trim();
+  const relatedPrintingCandidates = canonicalGameplayIdentityKey
     ? await prisma.card.findMany({
-        where: { gameplayIdentityKey, id: { not: card.id } },
+        where: {
+          id: { not: card.id },
+          gameplayIdentityKey: { contains: canonicalGameplayIdentityKey },
+        },
         select: cardDetailSelect,
         orderBy: [
           { set: { releasedAt: "asc" } },
@@ -262,6 +269,9 @@ export async function getCardDetail(cardId: string): Promise<CardDetail | null> 
         ],
       })
     : [];
+  const relatedPrintings = relatedPrintingCandidates.filter(
+    (candidate) => candidate.id !== card.id && candidate.gameplayIdentityKey?.trim() === canonicalGameplayIdentityKey,
+  );
 
   return createCardDetail(card, deckAllocationSets, relatedPrintings);
 }
